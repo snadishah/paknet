@@ -161,7 +161,8 @@ Each scenario becomes a short story you can present from, instead of a few alert
 - Landing stations re-snap to the new coast, and cable start points follow.
 - **Risk:** the Natural Earth outline and the Highcharts provinces may disagree near Kashmir. I'll check this first and tell you before choosing a fix.
 - This step doesn't depend on any other, so it can run in its own session in parallel.
-### 10 · Presentation material (your item 8)
+### 10 · Presentation material (your item 8) — done
+**Done (Nov 2026):** About & sources dialog generated from REFERENCES.md at build time (98 sources), first-visit representative-topology notice, seeded headless experiments with 6 figures, and `docs/PAKNET-report.docx` built from REFERENCES.md and the results (`npm run report`). Cable status was checked on 21 Nov 2026 (REFERENCES §0): **re-check Africa-1, 2Africa and SMW6 within a week of the demo.** The experiments led to one model change: international traffic now leaves on its operator's own cables, which made the AAE-1 result match the January 2025 record.
 - **Sources & credits** screen (opened from the brand card): data sources, libraries, facts with citations, all generated from `docs/REFERENCES.md`.
 - **"Representative topology" disclaimer:** shown on first load and kept as a footnote. It says that internal ISP topology isn't public, the corridors follow highways, and the operator per corridor is illustrative.
 - **Africa-1 / 2Africa status:** I check it with a web search now, and again within a week of your demo, then update the cable status and the copy.

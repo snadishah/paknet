@@ -11,6 +11,9 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
 - `npm install`, then `npm run build` produces `dist/index.html`, a single self-contained file. Open it in a browser.
 - `npm run dev` rebuilds on every save and serves `dist/` on http://localhost:5173 (`scripts/serve.mjs`). Refresh the browser to see changes. The Claude preview pane uses the same command via `.claude/launch.json`.
 - `npm test` runs the Vitest unit tests (simulation and routing logic only, no rendering).
+- `npm run experiment` runs the seeded headless experiments (`scripts/experiments.js`, bundled by `scripts/experiment.mjs`) → `docs/results/results.json`.
+- `npm run report` = experiments + charts (`scripts/report_charts.py`, needs Python with matplotlib) + the Word report (`scripts/report.mjs`, npm `docx`) → `docs/PAKNET-report.docx`. `npm run report:doc` rebuilds only the .docx. Open it in Word and update fields to fill the table of contents.
+- The build injects the source list from `docs/REFERENCES.md` into the About & sources dialog (`scripts/build.mjs`, `src/ui/sources.js`).
 - The working plan is `docs/PLAN.md`; facts, design decisions and their sources live in `docs/REFERENCES.md`.
 - `npm run build:v1` builds the first, neon-styled version into `dist/v1.html` (archived, for reference only).
 - `npm run data` regenerates `data/*.json` from the npm geo packages, then fits the provinces to the detailed outline. Rarely needed.
@@ -81,7 +84,7 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
   - **Stories** (step 8, `src/stories/`): six guided presentations (`library.js`): the 2008 YouTube hijack, the Jan 2025 AAE-1 fault, the Sep–Oct 2025 Red Sea cuts, the 2021 Facebook withdrawal, and two illustrative defence stories (DDoS, compromised phones). Beats act on the live simulation through `kit.js` (cut cables, step BGP to the historical times, start attacks, set capacities) and show live measurements; every beat cites a source. `player.js` moves between beats; going back resets the world and replays earlier beats instantly. UI: `src/ui/story.js` (desktop narrative column, phone lower third with a dated timeline, map callouts). Historical stories run with defence off.
 - **Mocked:**
   - BGP convergence after cable cuts: still a timer when protocol = BGP (the AS model doesn't map sessions onto cables)
-  - a bundle's international cable is picked by capacity (a stand-in for BGP egress choice); the Route tab's BGP view still labels Dijkstra hops with operators
+  - a bundle's international cable: its operator is drawn from market shares, then one of that operator's live cables by capacity (a stand-in for BGP egress choice); the Route tab's BGP view still labels Dijkstra hops with operators
   - model artefact: YouTube's /25s also override PTCL's own internal /24 null route, so Pakistani users "recover" at 20:18 in the model
   - security detection and response: timed scripts
 - Debug hook: `window.__sim.tick(seconds)` advances the simulation without animation frames (useful when the browser pane is hidden).

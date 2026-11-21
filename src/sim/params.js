@@ -75,6 +75,10 @@ export const YT_PK_TBPS = 0.4;    // Pakistani users → YouTube
 // and the failing DNS retries once Facebook's DNS prefixes are gone.
 export const FB_PK_TBPS = 0.6;
 export const FB_RETRY_TBPS = 0.08;
+// Whose cables international traffic leaves on (assumption, from PK_USER_SHARE below:
+// PTCL's and TWA's own users plus the ISPs that buy transit from them, CAIDA §2).
+export const INTL_EGRESS_SHARE = { PTCL: 0.5, TWA: 0.35, Cybernet: 0.15 };
+export const CYBERNET_TRANSIT_SHARE = 0.4; // of Cybernet's traffic, the part sent via PTCL or TWA transit
 // Share of Pakistani users per AS (assumption; no public split by these ASNs).
 export const PK_USER_SHARE = { 17557: 0.45, 38193: 0.15, 9541: 0.12, 23674: 0.08, 9260: 0.08, 38264: 0.08, 18053: 0.04 };
 

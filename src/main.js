@@ -31,6 +31,7 @@ import { initSecurity } from './ui/security.js';
 import { initInspector } from './ui/inspector.js';
 import { initMetrics } from './ui/metrics.js';
 import { initStories } from './ui/story.js';
+import { initSources } from './ui/sources.js';
 import { createFailures } from './scenarios/failures.js';
 import { createSecurity } from './scenarios/security.js';
 import { createRoutingDemos } from './scenarios/routing-demos.js';
@@ -63,6 +64,7 @@ initSecurity(ctx);
 ctx.inspector = initInspector(ctx);
 initMetrics(ctx);
 ctx.stories = initStories(ctx);
+initSources();
 
 const { SCEN } = ctx.failures, { runHijack, runDDoS, runMalware } = ctx.security;
 window.__flyTo = flyTo;

@@ -143,6 +143,17 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 .st-timeline { display: none; }
 .callout { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh); font: 600 var(--t-sm)/1.3 var(--f); color: var(--ink); white-space: nowrap; transform: translateY(-24px); }
 .callout i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 4px var(--bad-soft); }
+/* about, sources, first-visit notice */
+.brand { cursor: pointer; } .linkbtn { color: var(--acc); font-size: inherit; text-decoration: underline; text-underline-offset: 2px; }
+#notice { position: fixed; left: 50%; bottom: calc(var(--gutter) + var(--strip-h) + 16px); transform: translateX(-50%); width: min(440px, calc(100vw - 2 * var(--gutter))); padding: 14px 16px; z-index: 9; display: none; }
+#notice.on { display: block; animation: in .25s; } #notice b { font-size: var(--t-lg); } #notice p { margin: 6px 0 10px; color: var(--ink-2); }
+#about { position: fixed; inset: 0; background: rgba(27,38,34,.28); z-index: 10; display: none; align-items: center; justify-content: center; padding: var(--gutter); } #about.on { display: flex; }
+.ab-card { width: min(680px, 100%); max-height: calc(100vh - 2 * var(--gutter)); display: flex; flex-direction: column; overflow: hidden; }
+.ab-body { overflow: auto; padding: 4px 20px 20px; } .ab-body p { color: var(--ink-2); margin: 0 0 8px; } .ab-body code { font-size: var(--t-xs); background: var(--surface-2); padding: 0 4px; border-radius: 4px; }
+.ab-note { background: var(--warn-soft); border-left: 3px solid var(--warn); border-radius: 0 10px 10px 0; padding: 10px 12px; margin: 12px 0 4px; color: var(--ink-2); }
+.ab-libs { list-style: none; padding: 0; margin: 0; } .ab-libs li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid #f0f3f1; font-size: var(--t-sm); } .ab-libs span { color: var(--mute); white-space: nowrap; }
+.ab-body a { color: var(--acc); } .ab-group summary { color: var(--ink); } .ab-group ol { list-style: none; padding: 0; margin: 4px 0 8px; } .ab-group li { font-size: var(--t-xs); color: var(--ink-2); padding: 4px 0; border-bottom: 1px solid #f0f3f1; } .ab-group li b { color: var(--mute); margin-right: 4px; }
+@media (max-width: 720px) { #notice { bottom: calc(var(--tab-h) + 70px); } }
 .foot { font-size: var(--t-xs); color: var(--mute); margin-top: var(--s4); line-height: 1.5; }
 
 /* bottom strip: playback, trends, stories */
@@ -247,7 +258,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 <header id="header" class="card">
   <div class="brand">
     <span class="mark"><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2" fill="#fff"/><circle cx="3.5" cy="4" r="1.3" fill="#fff" opacity=".85"/><circle cx="12.5" cy="4" r="1.3" fill="#fff" opacity=".85"/><circle cx="8" cy="13.2" r="1.3" fill="#fff" opacity=".85"/><path d="M3.5 4 8 8l4.5-4M8 8v5.2" stroke="#fff" stroke-width="1" opacity=".85" fill="none"/></svg></span>
-    <div><b>PAKNET</b><small>Pakistan's internet, simulated</small></div>
+    <div><b>PAKNET</b><small>Pakistan's internet, simulated · <button id="btnAbout" class="linkbtn">About &amp; sources</button></small></div>
   </div>
   <div id="kpis">
     <div class="kpi"><label>Intl capacity</label><b><span id="kCap">13.0</span><em>Tbps</em></b></div>
@@ -385,6 +396,9 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 </div>
 <div id="popLegend" class="pop card"><h5>Packets</h5><div id="legendList"></div></div>
 
+<div id="notice" class="card" role="dialog" aria-label="About this map"><b>A representative network</b><p>Pakistan's operators don't publish their internal networks. Cable landings, exchanges and incidents come from public sources; the corridors inside the country follow highways and are illustrative.</p><div class="row"><button class="btn sm" id="noticeOk">Got it</button><button class="btn ghost sm" id="noticeMore">Sources</button></div></div>
+<div id="about" aria-hidden="true"><div class="ab-card card" role="dialog" aria-label="About and sources"><div class="phead"><h2>About &amp; sources</h2><button class="iconbtn" id="aboutClose" aria-label="Close"><svg class="ico"><use href="#i-close"/></svg></button></div><div class="ab-body" id="aboutBody"></div></div></div>
+<script type="application/json" id="sourcesData">/*SOURCES*/</script>
 <div id="tip" class="card"></div>
 <div id="insp" class="card"></div>
 <script>/*BUNDLE*/</script>

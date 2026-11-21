@@ -406,6 +406,7 @@ All values live in `src/sim/params.js`. **Sourced** values cite a section above;
 | Last mile | max(100 Gbps, population ÷ 2500) | Assumption |
 | Microwave links | 20 Gbps | Assumption (modern multi-carrier / E-band) |
 | Data centre / IXP / scrubbing uplinks | 2.5 / 2 / 10 Tbps | Assumption |
+| International egress by operator | PTCL 50%, TWA 35%, Cybernet 15% (40% of Cybernet's via PTCL or TWA transit); an operator with no live cable spills onto any live cable | Assumption, from market shares and CAIDA-inferred transit (§2). Added after the experiments: without it, losing AAE-1 barely registered, unlike January 2025 |
 | Satellite links | 5 Gbps gateway, 1 Gbps terminal | Assumption (no public PakSat-MM1 throughput found) |
 | RIP metric and infinity | hop count, 16 = unreachable | Sourced (§3, RFC 2453) |
 | RIP update timer | 30 s, compressed to one round per 0.7 s on screen | Sourced timer (§3, RFC 2453 §3.8); compression is a modelling choice |

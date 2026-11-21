@@ -1,0 +1,836 @@
+{
+ "generated": "2026-11-21T12:54:57.526Z",
+ "seed": 42,
+ "timeScaleMs": 2,
+ "daily": [
+  {
+   "hour": 0,
+   "intlTbps": 6.13,
+   "lossPct": 0.2,
+   "rttMs": 17.42
+  },
+  {
+   "hour": 3,
+   "intlTbps": 3.23,
+   "lossPct": 0.22,
+   "rttMs": 17.4
+  },
+  {
+   "hour": 6,
+   "intlTbps": 2.38,
+   "lossPct": 0,
+   "rttMs": 17.38
+  },
+  {
+   "hour": 9,
+   "intlTbps": 2.96,
+   "lossPct": 0,
+   "rttMs": 17.4
+  },
+  {
+   "hour": 12,
+   "intlTbps": 4.06,
+   "lossPct": 0.03,
+   "rttMs": 17.41
+  },
+  {
+   "hour": 15,
+   "intlTbps": 5.56,
+   "lossPct": 0.1,
+   "rttMs": 17.43
+  },
+  {
+   "hour": 18,
+   "intlTbps": 6.91,
+   "lossPct": 0.21,
+   "rttMs": 17.44
+  },
+  {
+   "hour": 21,
+   "intlTbps": 7.7,
+   "lossPct": 0.37,
+   "rttMs": 17.45
+  }
+ ],
+ "cuts": [
+  {
+   "label": "No cuts",
+   "capTbps": 17.01,
+   "intlTbps": 7.29,
+   "lossPct": 0.3,
+   "rttMs": 17.45
+  },
+  {
+   "label": "AAE-1 (Jan 2025)",
+   "capTbps": 13.43,
+   "intlTbps": 6.53,
+   "lossPct": 3.49,
+   "rttMs": 17.44
+  },
+  {
+   "label": "AAE-1 + spare capacity on IMEWE, SMW4",
+   "capTbps": 14.89,
+   "intlTbps": 7.08,
+   "lossPct": 0.39,
+   "rttMs": 17.45
+  },
+  {
+   "label": "SMW4 + IMEWE (Sep 2025)",
+   "capTbps": 13.13,
+   "intlTbps": 6.34,
+   "lossPct": 4.58,
+   "rttMs": 17.45
+  },
+  {
+   "label": "PEACE (Oct 2025)",
+   "capTbps": 16.21,
+   "intlTbps": 7.2,
+   "lossPct": 0.36,
+   "rttMs": 17.45
+  },
+  {
+   "label": "Every Karachi cable",
+   "capTbps": 0.45,
+   "intlTbps": 0.53,
+   "lossPct": 63.71,
+   "rttMs": 17.45
+  }
+ ],
+ "rip": {
+  "none": {
+   "initialRounds": 16,
+   "roundsToConverge": 14,
+   "nokKundi": [
+    3,
+    16,
+    5,
+    7,
+    7,
+    9,
+    9,
+    11,
+    11,
+    13,
+    13,
+    15,
+    15,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16
+   ],
+   "dalbandin": [
+    16,
+    4,
+    6,
+    6,
+    8,
+    8,
+    10,
+    10,
+    12,
+    12,
+    14,
+    14,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16
+   ],
+   "maxBogus": 15
+  },
+  "splitHorizon": {
+   "initialRounds": 16,
+   "roundsToConverge": 14,
+   "nokKundi": [
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    14,
+    15,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16
+   ],
+   "dalbandin": [
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    13,
+    14,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16
+   ],
+   "maxBogus": 15
+  },
+  "poisonReverse": {
+   "initialRounds": 16,
+   "roundsToConverge": 14,
+   "nokKundi": [
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    14,
+    15,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16
+   ],
+   "dalbandin": [
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    13,
+    14,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16,
+    16
+   ],
+   "maxBogus": 15
+  }
+ },
+ "ospf": [
+  {
+   "label": "KKH: Chilas–Gilgit",
+   "detect": "carrier",
+   "totalMs": 200.63,
+   "detectMs": 50,
+   "floodMs": 53.23,
+   "routers": 98,
+   "blackholedBundles": 18
+  },
+  {
+   "label": "KKH: Chilas–Gilgit",
+   "detect": "hello",
+   "totalMs": 40150.63,
+   "detectMs": 40000,
+   "floodMs": 53.23,
+   "routers": 98,
+   "blackholedBundles": 85
+  },
+  {
+   "label": "Karachi–Hyderabad",
+   "detect": "carrier",
+   "totalMs": 192.32,
+   "detectMs": 50,
+   "floodMs": 45.74,
+   "routers": 98,
+   "blackholedBundles": 505
+  },
+  {
+   "label": "Karachi–Hyderabad",
+   "detect": "hello",
+   "totalMs": 40142.32,
+   "detectMs": 40000,
+   "floodMs": 45.74,
+   "routers": 98,
+   "blackholedBundles": 3445
+  },
+  {
+   "label": "Rawalpindi–Islamabad",
+   "detect": "carrier",
+   "totalMs": 190.94,
+   "detectMs": 50,
+   "floodMs": 45.22,
+   "routers": 98,
+   "blackholedBundles": 49
+  },
+  {
+   "label": "Rawalpindi–Islamabad",
+   "detect": "hello",
+   "totalMs": 40140.94,
+   "detectMs": 40000,
+   "floodMs": 45.22,
+   "routers": 98,
+   "blackholedBundles": 585
+  },
+  {
+   "label": "Quetta–Sibi",
+   "detect": "carrier",
+   "totalMs": 183.23,
+   "detectMs": 50,
+   "floodMs": 41.45,
+   "routers": 98,
+   "blackholedBundles": 15
+  },
+  {
+   "label": "Quetta–Sibi",
+   "detect": "hello",
+   "totalMs": 40133.23,
+   "detectMs": 40000,
+   "floodMs": 41.45,
+   "routers": 98,
+   "blackholedBundles": 141
+  }
+ ],
+ "hijack": {
+  "replay": [
+   {
+    "step": "Before",
+    "utc": "18:47:45",
+    "world": 0,
+    "pakistan": 0
+   },
+   {
+    "step": "PTCL announces /24",
+    "utc": "18:48:13",
+    "world": 1,
+    "pakistan": 1
+   },
+   {
+    "step": "YouTube announces /24",
+    "utc": "20:07:27",
+    "world": 0.25,
+    "pakistan": 0.73
+   },
+   {
+    "step": "YouTube announces /25s",
+    "utc": "20:19:39",
+    "world": 0,
+    "pakistan": 0
+   },
+   {
+    "step": "PCCW filters PTCL",
+    "utc": "21:00:08",
+    "world": 0,
+    "pakistan": 0
+   }
+  ],
+  "leak": {
+   "convergenceMs": 27112.913078913887,
+   "updates": 33
+  },
+  "fixes": [
+   {
+    "label": "PTCL export filter in place",
+    "world": 0,
+    "pakistan": 0.61
+   },
+   {
+    "label": "PCCW customer prefix filter",
+    "world": 0,
+    "pakistan": 0.73
+   },
+   {
+    "label": "ROV at the carriers from the start",
+    "world": 0,
+    "pakistan": 0.73
+   },
+   {
+    "label": "Adaptive defence: ROV deployed 5 min after detection",
+    "world": 0,
+    "pakistan": 0.73,
+    "containedUtc": "18:53:44",
+    "peakWorld": 1
+   }
+  ]
+ },
+ "defence": {
+  "ddos": {
+   "off": {
+    "on": false,
+    "detectMs": null,
+    "responseMs": null,
+    "peakLossPct": 18.29,
+    "meanLossPct": 5.72,
+    "series": [
+     {
+      "t": 1,
+      "lossPct": 0,
+      "rttMs": 17.42
+     },
+     {
+      "t": 2,
+      "lossPct": 0,
+      "rttMs": 17.48
+     },
+     {
+      "t": 3,
+      "lossPct": 0,
+      "rttMs": 17.42
+     },
+     {
+      "t": 4,
+      "lossPct": 0,
+      "rttMs": 17.46
+     },
+     {
+      "t": 5,
+      "lossPct": 0,
+      "rttMs": 17.41
+     },
+     {
+      "t": 6,
+      "lossPct": 0,
+      "rttMs": 17.47
+     },
+     {
+      "t": 7,
+      "lossPct": 0,
+      "rttMs": 17.46
+     },
+     {
+      "t": 8,
+      "lossPct": 0.54,
+      "rttMs": 17.44
+     },
+     {
+      "t": 9,
+      "lossPct": 0.48,
+      "rttMs": 17.48
+     },
+     {
+      "t": 10,
+      "lossPct": 0,
+      "rttMs": 17.49
+     },
+     {
+      "t": 11,
+      "lossPct": 0.58,
+      "rttMs": 17.47
+     },
+     {
+      "t": 12,
+      "lossPct": 0.6,
+      "rttMs": 17.48
+     },
+     {
+      "t": 13,
+      "lossPct": 0.59,
+      "rttMs": 17.5
+     },
+     {
+      "t": 14,
+      "lossPct": 1.18,
+      "rttMs": 17.44
+     },
+     {
+      "t": 15,
+      "lossPct": 0.6,
+      "rttMs": 17.47
+     },
+     {
+      "t": 16,
+      "lossPct": 1.83,
+      "rttMs": 17.6
+     },
+     {
+      "t": 17,
+      "lossPct": 5.52,
+      "rttMs": 17.94
+     },
+     {
+      "t": 18,
+      "lossPct": 4.91,
+      "rttMs": 18.21
+     },
+     {
+      "t": 19,
+      "lossPct": 13.95,
+      "rttMs": 18.47
+     },
+     {
+      "t": 20,
+      "lossPct": 12.64,
+      "rttMs": 18.76
+     },
+     {
+      "t": 21,
+      "lossPct": 9.2,
+      "rttMs": 19.12
+     },
+     {
+      "t": 22,
+      "lossPct": 12.9,
+      "rttMs": 19.33
+     },
+     {
+      "t": 23,
+      "lossPct": 16.67,
+      "rttMs": 19.58
+     },
+     {
+      "t": 24,
+      "lossPct": 10.98,
+      "rttMs": 19.97
+     },
+     {
+      "t": 25,
+      "lossPct": 14.2,
+      "rttMs": 20.18
+     },
+     {
+      "t": 26,
+      "lossPct": 13.25,
+      "rttMs": 20.46
+     },
+     {
+      "t": 27,
+      "lossPct": 15.38,
+      "rttMs": 20.9
+     },
+     {
+      "t": 28,
+      "lossPct": 11.73,
+      "rttMs": 21.1
+     },
+     {
+      "t": 29,
+      "lossPct": 18.29,
+      "rttMs": 21.49
+     }
+    ]
+   },
+   "on": {
+    "on": true,
+    "detectMs": 0.37,
+    "responseMs": 0.9,
+    "peakLossPct": 5.08,
+    "meanLossPct": 1.76,
+    "series": [
+     {
+      "t": 1,
+      "lossPct": 0,
+      "rttMs": 17.42
+     },
+     {
+      "t": 2,
+      "lossPct": 0,
+      "rttMs": 17.48
+     },
+     {
+      "t": 3,
+      "lossPct": 0,
+      "rttMs": 17.42
+     },
+     {
+      "t": 4,
+      "lossPct": 0,
+      "rttMs": 17.46
+     },
+     {
+      "t": 5,
+      "lossPct": 0,
+      "rttMs": 17.41
+     },
+     {
+      "t": 6,
+      "lossPct": 0,
+      "rttMs": 17.47
+     },
+     {
+      "t": 7,
+      "lossPct": 0,
+      "rttMs": 17.46
+     },
+     {
+      "t": 8,
+      "lossPct": 0.54,
+      "rttMs": 17.44
+     },
+     {
+      "t": 9,
+      "lossPct": 0.49,
+      "rttMs": 17.48
+     },
+     {
+      "t": 10,
+      "lossPct": 0,
+      "rttMs": 17.49
+     },
+     {
+      "t": 11,
+      "lossPct": 0.56,
+      "rttMs": 17.48
+     },
+     {
+      "t": 12,
+      "lossPct": 0.58,
+      "rttMs": 17.48
+     },
+     {
+      "t": 13,
+      "lossPct": 0.58,
+      "rttMs": 17.5
+     },
+     {
+      "t": 14,
+      "lossPct": 1.18,
+      "rttMs": 17.47
+     },
+     {
+      "t": 15,
+      "lossPct": 0.56,
+      "rttMs": 17.49
+     },
+     {
+      "t": 16,
+      "lossPct": 1.78,
+      "rttMs": 17.52
+     },
+     {
+      "t": 17,
+      "lossPct": 4.95,
+      "rttMs": 17.44
+     },
+     {
+      "t": 18,
+      "lossPct": 4.65,
+      "rttMs": 17.5
+     },
+     {
+      "t": 19,
+      "lossPct": 4.91,
+      "rttMs": 17.46
+     },
+     {
+      "t": 20,
+      "lossPct": 2.84,
+      "rttMs": 17.43
+     },
+     {
+      "t": 21,
+      "lossPct": 2.81,
+      "rttMs": 17.44
+     },
+     {
+      "t": 22,
+      "lossPct": 3.05,
+      "rttMs": 17.46
+     },
+     {
+      "t": 23,
+      "lossPct": 5.08,
+      "rttMs": 17.47
+     },
+     {
+      "t": 24,
+      "lossPct": 1.79,
+      "rttMs": 17.45
+     },
+     {
+      "t": 25,
+      "lossPct": 2.78,
+      "rttMs": 17.43
+     },
+     {
+      "t": 26,
+      "lossPct": 2.5,
+      "rttMs": 17.43
+     },
+     {
+      "t": 27,
+      "lossPct": 3.77,
+      "rttMs": 17.44
+     },
+     {
+      "t": 28,
+      "lossPct": 1.13,
+      "rttMs": 17.43
+     },
+     {
+      "t": 29,
+      "lossPct": 4.46,
+      "rttMs": 17.41
+     }
+    ],
+    "analysis": "486 receives 8.3 Tbps (normal 0.00, z = 413) from 12 sources (entropy 2.3 bits, normally 0.0)."
+   }
+  },
+  "beacon": {
+   "on": true,
+   "detectMs": 1.2,
+   "responseMs": 1.7,
+   "peakLossPct": 0.61,
+   "meanLossPct": 0.15,
+   "series": [
+    {
+     "t": 1,
+     "lossPct": 0,
+     "rttMs": 17.42
+    },
+    {
+     "t": 2,
+     "lossPct": 0,
+     "rttMs": 17.48
+    },
+    {
+     "t": 3,
+     "lossPct": 0,
+     "rttMs": 17.42
+    },
+    {
+     "t": 4,
+     "lossPct": 0,
+     "rttMs": 17.46
+    },
+    {
+     "t": 5,
+     "lossPct": 0,
+     "rttMs": 17.41
+    },
+    {
+     "t": 6,
+     "lossPct": 0,
+     "rttMs": 17.48
+    },
+    {
+     "t": 7,
+     "lossPct": 0,
+     "rttMs": 17.46
+    },
+    {
+     "t": 8,
+     "lossPct": 0.53,
+     "rttMs": 17.44
+    },
+    {
+     "t": 9,
+     "lossPct": 0,
+     "rttMs": 17.46
+    },
+    {
+     "t": 10,
+     "lossPct": 0.61,
+     "rttMs": 17.47
+    },
+    {
+     "t": 11,
+     "lossPct": 0,
+     "rttMs": 17.46
+    },
+    {
+     "t": 12,
+     "lossPct": 0.53,
+     "rttMs": 17.45
+    },
+    {
+     "t": 13,
+     "lossPct": 0.53,
+     "rttMs": 17.48
+    },
+    {
+     "t": 14,
+     "lossPct": 0.6,
+     "rttMs": 17.4
+    },
+    {
+     "t": 15,
+     "lossPct": 0,
+     "rttMs": 17.46
+    },
+    {
+     "t": 16,
+     "lossPct": 0,
+     "rttMs": 17.45
+    },
+    {
+     "t": 17,
+     "lossPct": 0,
+     "rttMs": 17.43
+    },
+    {
+     "t": 18,
+     "lossPct": 0,
+     "rttMs": 17.47
+    },
+    {
+     "t": 19,
+     "lossPct": 0,
+     "rttMs": 17.45
+    }
+   ],
+   "analysis": "23 contacts c2-server every 100 µs of network time (gap variation 0%): machine-like beaconing."
+  },
+  "falsePositives": {
+   "networkMs": 100,
+   "alarms": 0
+  }
+ }
+}

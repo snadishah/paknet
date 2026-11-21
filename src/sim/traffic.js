@@ -11,7 +11,7 @@ import { buildPath } from '../routing/paths.js';
 import { createEngine } from './engine.js';
 import { edgeCapacityGbps, edgeDelayMs } from './links.js';
 import {
-  BUNDLE_GBIT, TIME_SCALE_MS, PEAK_OFFERED_TBPS, CLASS_SHARE, BUFFER_MS, PROBE_EVERY_MS, GWADAR_CABLE_GBPS, GRAVITY_EXPONENT, MIN_POP
+  BUNDLE_GBIT, TIME_SCALE_MS, PEAK_OFFERED_TBPS, CLASS_SHARE, BUFFER_MS, PROBE_EVERY_MS, GWADAR_CABLE_GBPS, GRAVITY_EXPONENT, MIN_POP, INTL_EGRESS_SHARE, CYBERNET_TRANSIT_SHARE
 } from './params.js';
 
 export const MAXP = 4000;
@@ -62,10 +62,22 @@ export function createTraffic(G, net) {
   function pickCity() { let r = Math.random() * srcTot; for (let i = 0; i < srcPool.length; i++) { r -= srcW[i]; if (r <= 0) return srcPool[i]; } return srcPool[0]; }
 
   // Pick a live cable direction, weighted by capacity (operators balance load roughly this way).
-  function pickCableEdge() {
-    const live = []; for (const c of net.liveCables()) for (const e of c.edges) if (!e.cut) live.push([e, edgeCapacityGbps(G, e) * (e.dir === 'W' ? 1.6 : e.dir === 'E' ? 0.9 : 0.8)]);
-    if (state.plannedActive) live.push([plannedEdges[0], GWADAR_CABLE_GBPS]);
+  // Pick an international cable for a bundle. With an operator, only that
+  // operator's live cables are used (its users leave on its own cables); if it
+  // has none left, the traffic spills onto any live cable (bought transit). Within
+  // the chosen set, cables are weighted by capacity.
+  function pickCableEdge(op) {
+    const all = []; for (const c of net.liveCables()) for (const e of c.edges) if (!e.cut) all.push([e, edgeCapacityGbps(G, e) * (e.dir === 'W' ? 1.6 : e.dir === 'E' ? 0.9 : 0.8), c.op]);
+    if (state.plannedActive) all.push([plannedEdges[0], GWADAR_CABLE_GBPS, 'SCO']);
+    let live = op ? all.filter(x => x[2] === op) : all; if (!live.length) live = all;
     if (!live.length) return null; const tot = live.reduce((a, b) => a + b[1], 0); let r = Math.random() * tot; for (const [e, w] of live) { r -= w; if (r <= 0) return e; } return live[0][0];
+  }
+  // Which operator's cables a user's international traffic leaves on.
+  function pickOperator() {
+    let r = Math.random(), op = 'PTCL';
+    for (const [k, w] of Object.entries(INTL_EGRESS_SHARE)) { if (r < w) { op = k; break; } r -= w; }
+    if (op === 'Cybernet' && Math.random() < CYBERNET_TRANSIT_SHARE) op = Math.random() < 0.5 ? 'PTCL' : 'TWA'; // Cybernet also buys transit from both
+    return op;
   }
 
   // Paths are { seq, edges, fate }. A path whose fate isn't 'ok' stops where
@@ -83,7 +95,7 @@ export function createTraffic(G, net) {
     for (const [k, w] of CLASSES) { if (r < w) { cls = k; break; } r -= w; }
     const either = (out, inn) => (Math.random() < 0.5 ? out() : inn());
     if (cls === 'intl') {
-      const city = pickCity(); let ce = pickCableEdge();
+      const city = pickCity(); let ce = pickCableEdge(pickOperator());
       if (stale && state.staleSet.size) { const c = edges[[...state.staleSet][Math.floor(Math.random() * state.staleSet.size)]]; if (c.cable) ce = c; }
       if (!ce) return send(fwd(city.id, INTL.N.id), 'intl'); // no cables left: China fibre is the only way out
       const far = G.nodes[ce.a].tier === 'intl' ? ce.a : ce.b, cls_ = ce.a === far ? ce.b : ce.a; // endpoint, landing station
