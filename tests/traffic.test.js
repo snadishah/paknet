@@ -14,7 +14,7 @@ describe('traffic on the full network', () => {
   let G, net, traffic;
   beforeEach(() => {
     G = buildTopology(); net = createNetwork(G); traffic = createTraffic(G, net);
-    Object.assign(state, { simHour: 21, plannedActive: false, convergeUntil: 0, staleSet: new Set() });
+    Object.assign(state, { simHour: 21, plannedActive: false, convergeUntil: 0, staleSet: new Set(), protocol: 'BGP' });
   });
 
   it('capacity KPI is the sum of the live cables plus the China fibre', () => {
@@ -97,6 +97,24 @@ describe('traffic on the full network', () => {
       runFor(traffic, 30);
       expect(traffic.engine.counters.droppedBy.unreachable).toBeGreaterThan(before); // now dropped as unreachable
     } finally { state.protocol = 'BGP'; }
+  });
+
+  it('under OSPF, traffic is black-holed at a cut until the routers converge', () => {
+    state.protocol = 'OSPF';
+    const k = G.N('Karachi').id, h = G.N('Hyderabad').id;
+    const e = G.adj.get(k).find(x => x.type === 'fiber' && (x.a === h || x.b === h));
+    runFor(traffic, 20);
+    net.cutEdge(e); traffic.onCut(e); net.topologyChanged([e], 'OSPF');
+    const down0 = traffic.engine.counters.droppedBy.down;
+    runFor(traffic, 20); // OSPF clock not advanced: routers still point at the dead link
+    const blackholed = traffic.engine.counters.droppedBy.down - down0;
+    expect(blackholed).toBeGreaterThan(10);
+    let conv = null; net.ls.hooks.converged = r => (conv = r);
+    for (let i = 0; i < 400 && !conv; i++) net.lsAdvance(0.05); // run OSPF to convergence
+    expect(conv).not.toBeNull();
+    runFor(traffic, 30); const down1 = traffic.engine.counters.droppedBy.down;
+    runFor(traffic, 20);
+    expect(traffic.engine.counters.droppedBy.down - down1).toBe(0); // no more black hole
   });
 
   it('at night (03:00) the network is lightly loaded', () => {

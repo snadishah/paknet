@@ -7,12 +7,11 @@
 // forwarding from per-router tables arrives with the real protocols (steps 4–6).
 import { FLOW } from '../palette.js';
 import { state } from '../state.js';
-import { KM_PER_UNIT } from '../geo/projection.js';
 import { buildPath } from '../routing/paths.js';
 import { createEngine } from './engine.js';
+import { edgeCapacityGbps, edgeDelayMs } from './links.js';
 import {
-  propDelayMs, GEO_HOP_MS, BUNDLE_GBIT, TIME_SCALE_MS, PEAK_OFFERED_TBPS, CLASS_SHARE, BUFFER_MS,
-  PROBE_EVERY_MS, CABLE_GBPS, GWADAR_CABLE_GBPS, EDGE_GBPS, FIBRE_GBPS_PER_OPERATOR, GRAVITY_EXPONENT, MIN_POP, ACCESS_GBPS_PER_PERSON
+  BUNDLE_GBIT, TIME_SCALE_MS, PEAK_OFFERED_TBPS, CLASS_SHARE, BUFFER_MS, PROBE_EVERY_MS, GWADAR_CABLE_GBPS, GRAVITY_EXPONENT, MIN_POP
 } from './params.js';
 
 export const MAXP = 4000; // most bundles drawn at once (the simulation itself has no cap)
@@ -24,23 +23,8 @@ export function diurnal(h) {
   const t = ((h - 22 + 24) % 24) / 7; return 0.3 + 0.7 * (1 + Math.cos(Math.PI * t)) / 2;
 }
 
-// Capacity of an edge per direction, in Gbps (sources in params.js).
-export function edgeCapacityGbps(G, e) {
-  if (e.cable) return (CABLE_GBPS[e.cable.id] ?? 1000) / e.cable.dirs.length;
-  if (e.type === 'planned') return e.plannedCable ? GWADAR_CABLE_GBPS : EDGE_GBPS.planned;
-  if (e.type === 'fiber') return Math.max(1, e.ops.length) * (e.ops.length >= 3 ? FIBRE_GBPS_PER_OPERATOR.trunk : FIBRE_GBPS_PER_OPERATOR.regional);
-  if (e.type === 'metro') {
-    const t = [G.nodes[e.a], G.nodes[e.b]];
-    if (t.some(n => n.scrub)) return EDGE_GBPS.scrub;
-    if (t.some(n => n.tier === 'dc')) return EDGE_GBPS.dc;
-    if (t.some(n => n.tier === 'ixp')) return EDGE_GBPS.ixp;
-    return EDGE_GBPS.metro;
-  }
-  if (e.type === 'access') return Math.max(EDGE_GBPS.access, (G.nodes[e.a].pop || 0) * ACCESS_GBPS_PER_PERSON);
-  if (e.type === 'sat') return G.nodes[e.a].tier === 'gw' || G.nodes[e.b].tier === 'gw' ? EDGE_GBPS.satGateway : EDGE_GBPS.satTerminal;
-  return EDGE_GBPS[e.type] ?? EDGE_GBPS.fiber;
-}
-export const edgeDelayMs = e => (e.type === 'sat' ? GEO_HOP_MS : propDelayMs(e.len * KM_PER_UNIT));
+// Link capacity and delay live in links.js (shared with OSPF); re-exported for callers.
+export { edgeCapacityGbps, edgeDelayMs };
 
 const VIS_CAT = { intl: 'intl', china: 'intl', border: 'intl', dom: 'dom', cdn: 'cdn', sat: 'sat', atk: 'atk', loop: 'loop' };
 const INTL_CLASSES = ['intl', 'china', 'border'];
@@ -87,7 +71,7 @@ export function createTraffic(G, net) {
 
   function spawnOne() {
     const now = performance.now();
-    const stale = state.protocol !== 'RIP' && now < state.convergeUntil && Math.random() < 0.55 * (state.convergeUntil - now) / (state.convergeUntil - state.convergeStart);
+    const stale = state.protocol === 'BGP' && now < state.convergeUntil && Math.random() < 0.55 * (state.convergeUntil - now) / (state.convergeUntil - state.convergeStart);
     const fwd = (a, b, st = false) => net.forward(a, b, st); // follows the active routing protocol
     let r = Math.random() * SHARE_SUM, cls = CLASSES[CLASSES.length - 1][0];
     for (const [k, w] of CLASSES) { if (r < w) { cls = k; break; } r -= w; }

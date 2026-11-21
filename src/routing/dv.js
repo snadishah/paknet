@@ -15,11 +15,10 @@
 // router), and the 26-link microwave backup chain is one logical link, so
 // the network stays within RIP's 15-hop limit.
 
+import { buildRouterGraph, walkLink } from './routergraph.js';
+
 export const INFINITY = 16;
 export const TTL = 32; // forwarding hop limit for a bundle (IP TTL, simplified)
-
-const ROUTER_TIERS = new Set(['core', 'agg', 'cls', 'ixp', 'dc', 'intl']);
-const LINK_TYPES = new Set(['fiber', 'metro', 'microwave', 'aerial', 'xborder', 'subsea', 'planned']);
 
 /**
  * @param {object} G      graph from buildTopology()
@@ -31,26 +30,8 @@ const LINK_TYPES = new Set(['fiber', 'metro', 'microwave', 'aerial', 'xborder', 
 export function createDV(G, o) {
   const { usable } = o;
   const opts = { splitHorizon: !!o.splitHorizon, poisonReverse: !!o.poisonReverse };
-  const routers = G.nodes.filter(n => ROUTER_TIERS.has(n.tier)).map(n => n.id);
-  const R = routers.length, idx = new Map(routers.map((id, i) => [id, i]));
-  const stub = routers.map(id => G.nodes[id].tier === 'intl'); // international endpoints never carry transit
-
-  // links between routers: real edges, plus the microwave chain as one logical link.
-  // Parallel links to the same neighbour (e.g. several cables to one endpoint) are
-  // grouped: the neighbour is reachable while any of them is up.
-  const nbrs = routers.map(() => []);
-  const addLink = (a, b, edges) => {
-    const i = idx.get(a), j = idx.get(b); if (i == null || j == null) return;
-    const L = { a, b, edges };
-    for (const [x, y] of [[i, j], [j, i]]) { let n = nbrs[x].find(n => n.j === y); if (!n) nbrs[x].push(n = { j: y, links: [] }); n.links.push(L); }
-  };
-  for (const e of G.edges) if (LINK_TYPES.has(e.type) && idx.has(e.a) && idx.has(e.b)) addLink(e.a, e.b, [e]);
-  const chain = G.edges.filter(e => e.type === 'mwbackup');
-  if (chain.length) {
-    const towerIds = new Set(G.towers.map(t => t.id));
-    const ends = chain.flatMap(e => [e.a, e.b]).filter(id => !towerIds.has(id));
-    if (ends.length === 2) addLink(ends[0], ends[1], orderChain(chain, ends[0]));
-  }
+  const { routers, idx, stub, nbrs } = buildRouterGraph(G);
+  const R = routers.length;
   const linkUp = L => L.edges.every(usable);
   const nbrUp = n => n.links.some(linkUp);
   const upLink = n => n.links.find(linkUp);
@@ -120,8 +101,7 @@ export function createDV(G, o) {
       if (j < 0 || dist[i][kb] >= INFINITY) return { seq, edges, fate: 'unreachable' };
       const link = upLink(nbrs[i].find(n => n.j === j));
       if (!link) return { seq, edges, fate: 'unreachable' };
-      const es = link.a === cur ? link.edges : [...link.edges].reverse();
-      for (const e of es) { const nxt = e.a === seq[seq.length - 1] ? e.b : e.a; edges.push(e); seq.push(nxt); }
+      walkLink(link, cur, seq, edges);
       cur = routers[j]; hops++;
     }
     return { seq, edges, fate: 'ok' };
@@ -132,14 +112,4 @@ export function createDV(G, o) {
     isRouter: id => idx.has(id),
     get round() { return round; }, get lastChange() { return lastChange; }
   };
-}
-
-// Order the microwave chain's edges as a walk starting at node `start`.
-function orderChain(chain, start) {
-  const out = [], left = new Set(chain); let cur = start;
-  while (left.size) {
-    const e = [...left].find(x => x.a === cur || x.b === cur); if (!e) break;
-    out.push(e); left.delete(e); cur = e.a === cur ? e.b : e.a;
-  }
-  return out;
 }

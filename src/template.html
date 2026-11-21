@@ -292,7 +292,9 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
     <button class="btn ghost" data-scen="restore" style="margin-top:10px">Restore everything</button>
     <h5>Submarine cables</h5>
     <div id="cablelist"></div>
-    <div class="fld" style="margin-top:14px"><label>Routing protocol</label><select id="falgo"><option value="BGP">BGP · convergence timing mocked</option><option value="OSPF">OSPF · convergence timing mocked</option><option value="RIP">RIP · simulated distance vector</option></select></div>
+    <div class="fld" style="margin-top:14px"><label>Routing protocol</label><select id="falgo"><option value="OSPF">OSPF · simulated link state</option><option value="RIP">RIP · simulated distance vector</option><option value="BGP">BGP · convergence timing mocked</option></select></div>
+    <div class="fld" id="detectFld"><label>How OSPF routers notice a failure</label><select id="fdetect"><option value="carrier">Loss of light · about 50 ms</option><option value="hello">Hellos stop · 40 s dead interval</option></select></div>
+    <p class="muted" id="ospfLast"></p>
     <p class="foot">Cable status checked Nov 2026. Africa-1 and 2Africa have landed but aren't confirmed in service; SMW6 is partly active and sources disagree. Hover a cable for details.</p>
   </section>
 
@@ -313,7 +315,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
       <div class="chart"><label>Convergence</label><b id="mConv">—</b><canvas id="cConv"></canvas></div>
     </div>
     <h5>Cable utilisation</h5><div id="cutil"></div>
-    <p class="foot">Measured from the simulation: bundles of 0.1 Gbit on links with representative capacities, FIFO queues and tail drop. Convergence time is still mocked.</p>
+    <p class="foot">Measured from the simulation: bundles of 0.1 Gbit on links with representative capacities, FIFO queues and tail drop. Convergence time is measured for OSPF and RIP, and still mocked for BGP.</p>
   </section>
 </aside>
 

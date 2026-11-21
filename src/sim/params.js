@@ -41,6 +41,24 @@ export const PROBE_EVERY_MS = 0.5;
 export const RIP_UPDATE_S = 30;
 export const DV_ROUND_S = 0.7;
 
+// OSPF (RFC 2328; Cisco defaults, REFERENCES §3). Times in ms of OSPF time.
+export const OSPF = {
+  helloDeadMs: 40000,   // RouterDeadInterval: 4 × HelloInterval 10 s (RFC 2328 App. C.3)
+  helloUpMs: 10000,     // a restored link is seen at the next Hello (≤ HelloInterval)
+  carrierMs: 50,        // loss of light / BFD detects a fibre cut. Assumption
+  lsaDelayMs: 50,       // LSA throttle, initial (Cisco "optimize enabled" default)
+  procMs: 2,            // per-hop LSA processing before re-flooding. Assumption
+  spfDelayMs: 50,       // SPF throttle, initial (Cisco "optimize enabled" default)
+  spfRunMs: 2,          // SPF computation for ~120 routers. Assumption
+  refGbps: 100000       // reference bandwidth for cost = ref / link capacity (auto-cost)
+};
+// OSPF time is compressed separately from packet time: OSPF_MS_PER_S of OSPF
+// time per wall second, sped up to OSPF_FAST_MS_PER_S while only a long timer
+// (the 40 s dead interval) is pending.
+export const OSPF_MS_PER_S = 100;
+export const OSPF_FAST_MS_PER_S = 10000;
+export const OSPF_LONG_WAIT_MS = 1000;
+
 /* ---------- capacities (Gbps, per direction) ---------- */
 // Active international capacity per cable. PTA presentation via TechJuice
 // (~late 2025): AAE-1 3.58, SMW4 1.98, IMEWE 1.9, TW1 2.6, PEACE 0.8, Pak-China

@@ -412,6 +412,11 @@ All values live in `src/sim/params.js`. **Sourced** values cite a section above;
 | RIP split horizon / poison reverse | optional, off by default | Sourced (§3, RFC 2453 §3.4.3) |
 | Link-down detection | at the start of the next round | Simplification (RIP's 180 s timeout replaced by interface-down detection) |
 | Forwarding hop limit (TTL) | 32 router hops | Simplification of the IP TTL |
+| OSPF detection | loss of light / BFD 50 ms (assumption), or RouterDeadInterval 40 s; a restored link is seen at the next Hello (10 s) | Sourced timers (§3, RFC 2328 App. C.3); 50 ms is an assumption |
+| OSPF LSA and SPF throttle | 50 ms initial each | Sourced (§3, Cisco doc 211432, "optimize enabled" defaults) |
+| OSPF per-hop LSA processing, SPF run time | 2 ms, 2 ms | Assumption |
+| OSPF cost | 100 Tbps ÷ link capacity (auto-cost reference bandwidth) | Method sourced (RFC 2328 leaves cost to the operator; auto-cost is vendor practice); reference value is an assumption |
+| OSPF time compression | 100 ms of OSPF time per wall second; 10 s per wall second while only a long timer is pending | Modelling choice |
 | Microwave backup chain | one logical RIP hop | Modelling choice: keeps the network within RIP's 15-hop limit |
 | Peak offered load | 18 Tbps (all classes) | Assumption, chosen so peak international use (~6.6 Tbps busier direction) matches Dawn's 7–8 Tbps used (§0 #9) |
 | Traffic classes | international 62%, domestic 19%, CDN 12%, China 1.5%, land borders 1%, satellite 0.2% | Assumption |

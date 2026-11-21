@@ -38,7 +38,7 @@ export function initFailures(ctx) {
   // RIP is simulated: show the live round count, then how many rounds it really took.
   let rip = null;
   function showRip(startRound) {
-    clearInterval(convTimer); rip = { start: startRound };
+    clearInterval(convTimer); rip = { start: startRound }; ospf = false;
     const el = ui('conv'); el.classList.add('on');
     el.innerHTML = `<span>Rerouting · RIP</span><b>round 0</b><i style="width:4%"></i>`;
   }
@@ -53,13 +53,31 @@ export function initFailures(ctx) {
     setTimeout(() => { if (!rip) el.classList.remove('on'); }, 3500);
   });
 
+  // OSPF is simulated: show elapsed OSPF time live, then the measured breakdown.
+  let ospf = false;
+  const fmtMs = ms => (ms >= 1000 ? (ms / 1000).toFixed(ms >= 10000 ? 0 : 1) + ' s' : Math.round(ms) + ' ms');
+  function showOspf() { clearInterval(convTimer); rip = null; ospf = true; const el = ui('conv'); el.classList.add('on'); el.innerHTML = '<span>Rerouting · OSPF</span><b>detecting…</b><i style="width:3%"></i>'; }
+  on('ospf:progress', ({ elapsedMs, detected, fast }) => {
+    if (!ospf) return;
+    const phase = !detected ? (fast ? '⏩ waiting for the dead interval' : 'detecting') : 'flooding LSAs · SPF';
+    ui('conv').innerHTML = `<span>Rerouting · OSPF · ${phase}</span><b>${fmtMs(elapsedMs)}</b><i style="width:${Math.min(96, 4 + elapsedMs / 4)}%"></i>`;
+  });
+  on('ospf:converged', r => {
+    ui('ospfLast').textContent = `Last OSPF convergence: ${fmtMs(r.totalMs)} = detection ${fmtMs(r.detectMs)} + LSA flooding ${fmtMs(r.floodMs)} + SPF throttling and delays; ${r.routersUpdated} routers recomputed.`;
+    if (!ospf) return; ospf = false;
+    const el = ui('conv');
+    el.innerHTML = `<span>Converged · OSPF</span><b>${fmtMs(r.totalMs)}</b><i style="width:100%"></i>`;
+    setTimeout(() => { if (!ospf && !rip) el.classList.remove('on'); }, 3500);
+  });
+
   on('topology:changed', ({ cutEdges, algo, T }) => {
-    if (cutEdges.length) { if (algo === 'RIP') showRip(net.dv.round); else showConv(algo, state.lastConv, T); }
+    if (cutEdges.length) { if (algo === 'RIP') showRip(net.dv.round); else if (algo === 'OSPF') showOspf(); else showConv(algo, state.lastConv, T); }
     renderCables();
   });
+  ui('fdetect').onchange = e => { net.ls.opts.detect = e.target.value; };
   document.querySelectorAll('[data-scen]').forEach(b => b.onclick = () => failures.SCEN[b.dataset.scen]());
   // the protocol choice drives how traffic is forwarded (RIP) or the mocked timing (OSPF, BGP)
-  ui('falgo').value = state.protocol;
+  setProtocol(state.protocol);
   ui('falgo').onchange = e => setProtocol(e.target.value);
   renderCables();
 }
@@ -67,4 +85,5 @@ export function initFailures(ctx) {
 export function setProtocol(p) {
   state.protocol = p;
   const sel = ui('falgo'); if (sel && sel.value !== p) sel.value = p;
+  const d = ui('detectFld'); if (d) d.style.display = p === 'OSPF' ? '' : 'none';
 }

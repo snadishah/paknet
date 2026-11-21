@@ -80,7 +80,7 @@ describe('paths', () => {
 });
 
 describe('network', () => {
-  beforeEach(() => { state.plannedActive = false; G.edges.forEach(e => (e.cut = false)); });
+  beforeEach(() => { state.plannedActive = false; state.protocol = 'BGP'; G.edges.forEach(e => (e.cut = false)); }); // the stale-route mock is BGP-only
   it('treats landed-but-inactive cables and planned links as unusable', () => {
     const net = createNetwork(G);
     const afr = G.CABLES.find(c => c.id === 'AFR1');

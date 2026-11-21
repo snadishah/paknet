@@ -5,7 +5,7 @@
 //   RTT         = Karachi → Lahore → Karachi delay of tiny probe bundles (propagation + queueing)
 //   loss        = bundles lost (tail drop, cut links, blackholes) ÷ bundles that finished
 //   utilisation = share of time a link was transmitting
-// Convergence time is still mocked until the real protocols land (step 5).
+// Convergence time is measured for OSPF and RIP (routing/ls.js, routing/dv.js); BGP is still mocked (step 6).
 import { state } from '../state.js';
 import { on } from '../events.js';
 import { FLOW } from '../palette.js';
@@ -35,19 +35,26 @@ export function initMetrics(ctx) {
     return cap;
   }
   on('topology:changed', updateCapacity);
+  let convShowUntil = 0;
+  on('ospf:converged', () => { if (state.protocol === 'OSPF') convShowUntil = performance.now() + 6000; });
+  on('rip:converged', () => { convShowUntil = performance.now() + 6000; });
 
   setInterval(() => {
     const cap = updateCapacity();
     const m = traffic.sample(); if (!m) return; // paused: keep the last values on screen
     smooth.thr = ewma(smooth.thr, m.intlTbps); smooth.loss = ewma(smooth.loss, m.lossPct);
     const thr = smooth.thr, loss = smooth.loss, lat = m.rttMs;
-    series.thr.push(thr); series.lat.push(lat ?? 0); series.loss.push(loss); series.conv.push(performance.now() < state.convergeUntil ? state.lastConv : 0);
+    // convergence: BGP shows its mocked window; OSPF and RIP show the measured time for a few seconds after they settle
+    const nowMs = performance.now();
+    const showConv = (state.protocol === 'BGP' && nowMs < state.convergeUntil) || nowMs < convShowUntil;
+    series.thr.push(thr); series.lat.push(lat ?? 0); series.loss.push(loss); series.conv.push(showConv ? state.lastConv : 0);
     for (const k in series) if (series[k].length > 120) series[k].shift();
 
     ui('kThr').textContent = thr.toFixed(1); ui('kLat').textContent = lat != null ? lat.toFixed(0) : '—'; ui('kLoss').textContent = loss.toFixed(1);
     ui('kLossBox').classList.toggle('bad', loss > 1);
     ui('mThr').textContent = thr.toFixed(2) + ' Tbps'; ui('mLat').textContent = lat != null ? lat.toFixed(1) + ' ms' : '—'; ui('mLoss').textContent = loss.toFixed(2) + ' %';
-    ui('mConv').textContent = series.conv.at(-1) ? series.conv.at(-1).toFixed(1) + ' s (mocked)' : 'stable';
+    const c = series.conv.at(-1);
+    ui('mConv').textContent = c ? (c < 10 ? c.toFixed(2) : c.toFixed(0)) + ' s' + (state.protocol === 'BGP' ? ' (mocked)' : state.protocol === 'RIP' ? ' of RIP time' : '') : 'stable';
     const thrMax = Math.max(cap, 1) * 1.1, lossMax = Math.max(2, ...series.loss) * 1.2;
     spark('cThr', series.thr, '#0f766e', thrMax); spark('cLat', series.lat, '#b45309'); spark('cLoss', series.loss, '#dc2626', lossMax); spark('cConv', series.conv, '#6d28d9');
     spark('sThr', series.thr, '#0f766e', thrMax); spark('sLat', series.lat, '#b45309'); spark('sLoss', series.loss, '#dc2626', lossMax);

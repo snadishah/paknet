@@ -73,10 +73,11 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
   - **metrics**, all measured from that simulation: capacity, international throughput (busier direction), Karachi–Lahore RTT (probe bundles), loss on legitimate traffic, link and cable utilisation, router queue rings, link-load layer
   - attack traffic in the security scenarios (it really congests links)
   - **RIP** (step 4, `src/routing/dv.js`): distance vector in synchronous rounds, hop count, infinity 16, split horizon and poison reverse toggles. With protocol = RIP (Failures tab), traffic follows the routers' next hops, so loops (TTL drops) and black holes emerge; convergence is measured in rounds. One round = RIP's 30 s timer, compressed to `DV_ROUND_S`. The Route tab's Bellman-Ford view and the count-to-infinity demo (cut Nok Kundi–Taftan) read the real tables.
+  - **OSPF** (step 5, `src/routing/ls.js`; the default protocol): per-router link-state databases, failure detection (loss of light ~50 ms, or the 40 s dead interval, time-lapsed on screen), LSA flooding with per-hop delay, SPF throttle, the two-way check. Traffic follows each router's own table, so routers that haven't heard yet black-hole traffic into the cut. Convergence is measured from the failure to the last install, with a breakdown (Failures tab). LSA arrivals draw the flooding wave. Costs = 100 Tbps ÷ link capacity. OSPF time is compressed separately (`OSPF_MS_PER_S`).
+  - Both protocols run on `src/routing/routergraph.js` (routers, stubs, grouped parallel links, the microwave chain as one link). Link capacity and delay live in `src/sim/links.js`.
 - **Mocked:**
-  - OSPF and BGP convergence: still a timer per protocol, with stale-route drops during the window
-  - under OSPF/BGP a bundle's path is fixed at injection (Dijkstra); hop-by-hop forwarding for those comes with steps 5–6
-  - BGP: uses Dijkstra paths with only AS-path labels
+  - BGP: Dijkstra paths with AS-path labels and a convergence timer (stale-route drops during the window); real BGP is step 6
+  - a bundle's international cable is picked by capacity (a stand-in for BGP egress choice)
   - security detection and response: timed scripts
 - Debug hook: `window.__sim.tick(seconds)` advances the simulation without animation frames (useful when the browser pane is hidden).
 

@@ -101,7 +101,8 @@ The `sim/`, `routing/` and `defence/` folders never import three.js or the DOM. 
 - **Tests:** with both toggles off the cut destination reaches 16 in N rounds; split horizon prevents the two-node loop; poison reverse withdraws it immediately.
 - **Check:** packets visibly bounce between the two routers until TTL runs out, then stop at 16.
 
-### 5 · Real link-state / OSPF (your item 3)
+### 5 · Real link-state / OSPF (your item 3) — done
+**Done (Nov 2026):** `src/routing/ls.js` on the shared `routergraph.js`; OSPF is now the default protocol and drives forwarding; detection by loss of light or the dead interval; measured convergence with a breakdown; flooding wave from real LSA arrivals; 9 new tests. Measured: the KKH landslide converges in ~200 ms (50 ms detection + ~50 ms flooding + SPF throttle), or ~40 s when routers wait for the dead interval. Before routers hear about a cut they black-hole traffic into it; the whole-network test confirms the black hole ends at convergence.
 - Each router keeps its own link-state database. On a failure: detection delay (dead interval) → the adjacent routers originate a new LSA → flooding with per-hop delay → each router reruns Dijkstra after an SPF delay → installs its table.
 - **Convergence time** is measured from the moment of failure until the last router installs its new table. It feeds the convergence chart and toast.
 - The flooding wave is drawn from real LSA arrival times (the current pulse animation becomes real).

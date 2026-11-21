@@ -46,6 +46,8 @@ const traffic = createTraffic(G, net);
 on('edge:cut', e => { markCut(e); burst(lift(e.cutPos, 0.06), '#dc2626', 0.5, 1); traffic.onCut(e); });
 on('edge:restore', unmarkCut);
 on('topology:changed', ({ cutEdges }) => { if (hasHighlight() && cutEdges.length) clearHighlight(); });
+// OSPF flooding wave: a ring at each router the moment a new LSA reaches it
+on('ospf:lsa', ({ router }) => { if (state.protocol === 'OSPF' && G.nodes[router].tier !== 'intl') burst(lift(G.nodes[router].pos, 0.02), '#0f766e', 0.14, 0.7); });
 
 /* ---------- scenarios + UI ---------- */
 const ctx = { G, net, traffic, view, flyTo };
@@ -78,12 +80,13 @@ const packetEvents = {
 };
 
 // Advance everything that runs on simulated time by sdt (wall seconds × speed):
-// attack traffic, RIP rounds (on their own compressed clock) and the packet engine.
+// attack traffic, RIP rounds and OSPF events (each on its own compressed clock) and the packet engine.
 let dvClock = 0;
 function stepWorld(sdt) {
   if (sdt > 0) {
     ctx.security.spawn(sdt);
     dvClock += sdt; while (dvClock >= DV_ROUND_S) { dvClock -= DV_ROUND_S; net.dvRound(); }
+    net.lsAdvance(sdt);
   }
   traffic.advance(sdt, packetEvents);
 }
