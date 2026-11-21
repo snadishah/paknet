@@ -41,7 +41,12 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
 - **No neon, no bloom, nothing that looks AI-generated.** Clean, cartographic and calm.
 - **Declutter.** By default show only the backbone, cables, core routers, gateways and packets. Everything else is a toggle in the Layers pop-up, or switched on by the scenario that needs it.
 - Keep the animated packets. They are the signature visual. Four colours: orange international, blue domestic, teal CDN, purple satellite. Red is reserved for cuts and attacks.
-- UI: light cards, one side panel with 5 tabs (Overview, Route, Failures, Security, Metrics), a small playback pill, and a dock with Layers, Views and Legend pop-ups. Progressive disclosure, short copy.
+- UI layout (chosen from the mockups in `prototype/ui-mockups/`, Nov 2026):
+  - **Desktop, normal:** mockup B with A's header. A floating header card at top left (brand + the five KPIs), with notifications stacked under it. An icon rail on the right (Overview, Route, Failures, Security, Metrics, then Layers, Views, Legend) opens a collapsible side panel. A bottom status strip holds playback, small trend charts (throughput, latency, loss) and the Stories button. KPI numbers appear only in the header.
+  - **Desktop, story mode:** B's narrative column. The panel shows the current beat on top and the chapter list below.
+  - **Phone, normal:** B. The rail becomes a bottom tab bar, the KPIs a row you can scroll sideways at the top, and the panel a bottom sheet.
+  - **Phone, story mode:** C's lower third with the dated timeline.
+- Light cards, one consistent line-icon set, an 8 px spacing grid, progressive disclosure, short copy.
 
 ## Facts used (checked 21 Nov 2026; sources and full detail in `docs/REFERENCES.md`)
 `docs/REFERENCES.md` is the source of truth. Update it first when a fact changes, then the code and this list. Re-check the cable statuses within a week of any demo.
