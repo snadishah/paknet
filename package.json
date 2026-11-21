@@ -1,0 +1,24 @@
+{
+  "name": "paknet",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Pakistan internet traffic & routing simulator (three.js) — Computer Networks course project, proof of concept",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "build:v1": "node scripts/build.mjs --v1",
+    "data": "node scripts/extract-geo.js && node scripts/merge-provinces.js"
+  },
+  "dependencies": {
+    "three": "^0.160.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "@highcharts/map-collection": "^2.3.3",
+    "all-the-cities": "^3.1.0",
+    "polygon-clipping": "^0.15.7",
+    "proj4": "^2.23.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
+  }
+}

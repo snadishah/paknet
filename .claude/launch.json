@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "paknet-dist",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/HF/AppData/Local/Temp/claude/37cc05bff507d907/4f00687c-aebd-484a-ad99-7dc2a10c18a3/scratchpad/serve.mjs", "C:/Users/HF/Documents/paknet/dist", "5173"],
+      "port": 5173
+    }
+  ]
+}

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAKNET — Pakistan Internet Traffic Simulator (proof of concept)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#030711;--glass:rgba(7,14,30,.66);--line:rgba(120,200,255,.14);--txt:#d8ecff;--mut:#7f9bb8;--acc:#5cf2ff;--bad:#ff3355;--good:#4dffb5;--warn:#ffd166;--f:'Space Grotesk',system-ui,sans-serif;--m:'JetBrains Mono',ui-monospace,monospace}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:var(--f);overflow:hidden;-webkit-font-smoothing:antialiased}
+#app{position:fixed;inset:0}#app canvas{display:block}
+.labels{position:fixed!important;inset:0;pointer-events:none}
+.lbl{font-family:var(--f);white-space:nowrap;pointer-events:none;text-shadow:0 0 6px #000,0 0 2px #000;transform:translateY(-6px)}
+.lbl.core{font-size:13px;font-weight:700;color:#e9fcff;letter-spacing:.02em;padding:2px 7px;border-radius:6px;background:rgba(10,30,50,.55);border:1px solid rgba(94,231,255,.35)}
+.lbl.agg{font-size:10.5px;color:#9fd2ff;font-weight:500}
+.lbl.acc{font-size:9px;color:#7fa3c7}
+.lbl.cls{font-size:10px;color:#ffb27a;font-weight:600}.lbl.cls.planned{color:#ffb347;font-size:11px}
+.lbl.ixp{font-size:10px;color:#ffd166;font-weight:600}.lbl.dc{font-size:9.5px;color:#d2b3ff}
+.lbl.intl{font-size:11px;color:#bff7ff;font-weight:600;padding:3px 8px;border-radius:20px;background:rgba(0,40,60,.55);border:1px solid rgba(122,243,255,.4)}
+.lbl.satl{font-size:12px;color:#ffc6f6;font-weight:600}
+.lbl.prov{font-size:12px;letter-spacing:.32em;color:rgba(140,200,255,.32);font-weight:600;text-align:center;line-height:1.3}
+.lbl.country{font-size:13px;letter-spacing:.45em;color:rgba(120,160,210,.28);font-weight:500}
+.lbl.cab{font-family:var(--m);font-size:9.5px;color:var(--c);opacity:.95}
+.lbl.note{font-family:var(--m);font-size:9.5px;color:#a8c6e6;padding:2px 6px;border-left:2px solid #36c8ff;background:rgba(3,10,20,.6)}
+.lbl.note.mwn{border-color:#ff7de9}.lbl.note.xbn{border-color:#a6ff6b}.lbl.note.pln{border-color:#ffb347}
+.glass{background:var(--glass);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.04)}
+/* top */
+#top{position:fixed;left:14px;right:14px;top:12px;height:58px;display:flex;align-items:center;gap:18px;padding:0 16px;z-index:5}
+.brand{display:flex;align-items:center;gap:10px;min-width:max-content}
+.brand h1{margin:0;font-size:18px;letter-spacing:.14em;font-weight:700;background:linear-gradient(90deg,#9ff8ff,#5cb8ff 60%,#c08bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand small{display:block;font-size:10.5px;color:var(--mut);letter-spacing:.04em;margin-top:1px}
+.kpis{display:flex;gap:8px;margin-left:auto;flex-wrap:nowrap;overflow:hidden}
+.kpi{padding:6px 12px;border-radius:11px;background:rgba(120,200,255,.05);border:1px solid rgba(120,200,255,.1);min-width:max-content}
+.kpi label{display:block;font-size:9.5px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase}
+.kpi b{font-family:var(--m);font-size:15px;color:#eaffff;font-weight:600}.kpi em{font-style:normal;color:var(--mut);font-size:11px;margin-left:3px}
+.kpi.bad b{color:var(--bad)}.kpi.clock b{color:var(--acc)}
+/* left */
+#left{position:fixed;left:14px;top:82px;bottom:92px;width:262px;padding:14px;z-index:4;overflow:auto;scrollbar-width:thin}
+h4{margin:2px 0 10px;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);font-weight:600}
+.lay{display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:12.5px;cursor:pointer;border-radius:8px}
+.lay:hover{background:rgba(120,200,255,.06)}.lay input{display:none}
+.sw{width:26px;height:15px;border-radius:10px;background:#1a2940;position:relative;flex:none;transition:.2s}
+.sw:after{content:'';position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#58708c;transition:.2s}
+.lay input:checked+.sw{background:linear-gradient(90deg,#0b8bd0,#21d4ff)}.lay input:checked+.sw:after{left:13px;background:#fff}
+.lt{flex:1}.ops{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px}
+.op{font-size:10.5px;padding:3px 8px;border-radius:20px;border:1px solid color-mix(in srgb,var(--c) 50%,transparent);color:var(--c);background:color-mix(in srgb,var(--c) 10%,transparent)}
+.views{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{font-family:var(--f);cursor:pointer}
+.vbtn,.mini,.big{border:1px solid rgba(120,200,255,.18);background:rgba(120,200,255,.06);color:var(--txt);border-radius:9px;padding:7px 8px;font-size:11.5px;transition:.15s}
+.vbtn:hover,.mini:hover,.big:hover{background:rgba(120,200,255,.14);border-color:rgba(120,200,255,.4)}
+.vbtn.on,.mini.on{background:linear-gradient(90deg,rgba(11,139,208,.5),rgba(33,212,255,.35));border-color:#3cd6ff}
+.mini{padding:4px 9px;font-size:11px}.mini.r{color:#ff8197;border-color:rgba(255,51,85,.35)}.mini.g{color:var(--good);border-color:rgba(77,255,181,.35)}
+.big{width:100%;padding:10px;font-size:12.5px;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:8px;text-align:left}
+.big.prim{background:linear-gradient(90deg,#0a6fb0,#16a9e0);border-color:#3cd6ff}
+.big.danger{background:linear-gradient(90deg,rgba(160,20,50,.55),rgba(255,51,85,.25));border-color:rgba(255,51,85,.5)}
+.big small{display:block;font-weight:400;color:#b9cde3;font-size:10.5px;margin-top:2px}
+/* right */
+#right{position:fixed;right:14px;top:82px;bottom:92px;width:362px;z-index:4;display:flex;flex-direction:column}
+.tabs{display:flex;padding:6px;gap:4px;border-bottom:1px solid var(--line)}
+.tab{flex:1;border:0;background:transparent;color:var(--mut);padding:8px 2px;border-radius:9px;font-size:11.5px;font-weight:600;letter-spacing:.02em}
+.tab.on{background:rgba(92,242,255,.12);color:#dffcff;box-shadow:inset 0 0 0 1px rgba(92,242,255,.3)}
+.pane{display:none;padding:14px;overflow:auto;flex:1;scrollbar-width:thin}.pane.on{display:block}
+.mx{display:grid;grid-template-columns:10px 1fr 70px 34px;align-items:center;gap:8px;font-size:11.5px;margin:6px 0}
+.mx i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.bar{height:6px;border-radius:4px;background:rgba(120,200,255,.08);overflow:hidden}.bar>*{display:block;height:100%;border-radius:4px;transition:width .25s}
+.mx em,.cu em{font-style:normal;font-family:var(--m);font-size:10.5px;color:var(--mut);text-align:right}
+.card{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:rgba(0,0,0,.18)}
+.card p{margin:4px 0 0;font-size:12px;line-height:1.5;color:#b5cae0}.card h5{margin:0 0 4px;font-size:12.5px}
+.tier{display:grid;grid-template-columns:24px 1fr;gap:6px 8px;font-size:11.5px;align-items:center;color:#b5cae0}
+.muted{color:var(--mut);font-size:11.5px}
+select{width:100%;background:#0a1628;border:1px solid rgba(120,200,255,.2);color:var(--txt);border-radius:8px;padding:7px;font-family:var(--f);font-size:12px}
+.fld{margin:8px 0}.fld label{display:block;font-size:10.5px;color:var(--mut);margin-bottom:4px;letter-spacing:.06em;text-transform:uppercase}
+.seg{display:flex;gap:4px;background:rgba(0,0,0,.25);padding:4px;border-radius:10px}.seg button{flex:1;border:0;background:transparent;color:var(--mut);padding:7px 4px;border-radius:7px;font-size:11px;font-weight:600}
+.seg button.on{background:rgba(255,230,107,.14);color:#fff3b0;box-shadow:inset 0 0 0 1px rgba(255,230,107,.35)}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}th{color:var(--mut);font-weight:500;text-align:left;font-size:10px;letter-spacing:.06em;padding:4px 3px;border-bottom:1px solid var(--line)}
+td{padding:5px 3px;border-bottom:1px solid rgba(120,200,255,.06);vertical-align:top}td small{display:block;color:var(--mut);font-size:9.5px}td:last-child{font-family:var(--m);color:#fff3b0;text-align:right}td:first-child{color:var(--mut);font-family:var(--m)}
+#rsum{font-size:12px;margin-top:8px;color:#cfe3f7}#aspath{font-size:11px;margin-top:8px;line-height:2}
+.as{padding:3px 7px;border-radius:6px;border:1px solid var(--c);color:var(--c);font-family:var(--m);font-size:10.5px}#aspath i{color:var(--mut);margin:0 4px;font-style:normal}#aspath small{display:block;color:var(--mut);line-height:1.4}
+.ctir{display:flex;flex-direction:column;font-family:var(--m);font-size:10.5px;padding:6px 8px;border-left:2px solid #ffb347;margin:4px 0;background:rgba(255,179,71,.06)}.ctir span:first-child{color:var(--mut)}.ctir.done{border-color:var(--good);color:var(--good);font-family:var(--f);font-size:11.5px}
+.cab{display:grid;grid-template-columns:4px 1fr auto;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid rgba(120,200,255,.06)}
+.cab i{height:28px;border-radius:3px;background:var(--c);box-shadow:0 0 8px var(--c)}.cab b{font-size:12.5px}.cab small{display:block;font-size:10.5px;color:var(--mut)}.cab em{font-style:normal}
+.cab.cut i{background:var(--bad);box-shadow:0 0 10px var(--bad)}.cab.cut em{color:var(--bad);font-weight:700}.cab.retired{opacity:.5}.cab.landed em{color:var(--warn)}
+.switch{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;background:linear-gradient(90deg,rgba(77,255,181,.08),transparent);border:1px solid rgba(77,255,181,.25);margin-bottom:8px}
+.switch input{display:none}.switch .sw{width:36px;height:20px}.switch .sw:after{width:16px;height:16px}.switch input:checked+.sw{background:linear-gradient(90deg,#14a873,#4dffb5)}.switch input:checked+.sw:after{left:18px}
+.switch b{font-size:12.5px}.switch small{display:block;color:var(--mut);font-size:10.5px}
+.alert{font-size:11.5px;line-height:1.45;padding:8px 10px;border-radius:9px;margin:6px 0;border-left:3px solid;animation:pop .35s}
+.alert.info{border-color:#5cb8ff;background:rgba(92,184,255,.07)}.alert.crit{border-color:var(--bad);background:rgba(255,51,85,.09)}.alert.warn{border-color:var(--warn);background:rgba(255,209,102,.07)}.alert.ok{border-color:var(--good);background:rgba(77,255,181,.07)}
+.alert code{font-family:var(--m);font-size:10.5px;color:#ffb3c0}.alert small{color:var(--mut)}
+@keyframes pop{from{transform:translateX(10px);opacity:0}}
+.chart{margin:0 0 12px}.chart label{display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);letter-spacing:.06em;text-transform:uppercase}.chart label b{font-family:var(--m);color:#eaffff;font-size:12px;text-transform:none;letter-spacing:0}
+.chart canvas{width:100%;height:54px;display:block;margin-top:4px;border-radius:8px;background:rgba(0,0,0,.2)}
+.cu{display:grid;grid-template-columns:96px 1fr 38px;gap:8px;align-items:center;font-size:11px;margin:5px 0}
+.badge{font-size:9.5px;padding:2px 6px;border-radius:5px;background:rgba(255,179,71,.15);color:#ffcf8a;border:1px solid rgba(255,179,71,.3);margin-left:6px;vertical-align:middle;letter-spacing:.04em}
+/* bottom */
+#bottom{position:fixed;left:14px;right:14px;bottom:12px;height:68px;display:flex;align-items:center;gap:14px;padding:0 14px;z-index:5}
+#play{width:42px;height:42px;border-radius:50%;border:1px solid #3cd6ff;background:linear-gradient(135deg,#0a6fb0,#16a9e0);color:#fff;font-size:14px;flex:none}
+#speeds{display:flex;gap:3px}#speeds button{border:1px solid rgba(120,200,255,.15);background:transparent;color:var(--mut);border-radius:7px;padding:5px 7px;font-size:11px;font-family:var(--m)}#speeds button.on{color:#fff;background:rgba(92,242,255,.14);border-color:#3cd6ff}
+.tl{position:relative;width:300px;height:44px;flex:none}.tl svg{position:absolute;left:0;top:2px;width:300px;height:32px}
+.tl input{position:absolute;left:0;bottom:0;width:300px;margin:0;-webkit-appearance:none;appearance:none;background:transparent;height:44px}
+.tl input::-webkit-slider-thumb{-webkit-appearance:none;width:3px;height:40px;background:#fff;border-radius:2px;box-shadow:0 0 10px #5cf2ff}
+.tl input::-moz-range-thumb{width:3px;height:40px;background:#fff;border:0;border-radius:2px}
+.tl .hrs{position:absolute;left:0;right:0;bottom:-2px;display:flex;justify-content:space-between;font-family:var(--m);font-size:8.5px;color:var(--mut);pointer-events:none}
+#ticker{flex:1;font-size:12px;color:#cfe3f7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);flex:none}.dot.bad{background:var(--bad);box-shadow:0 0 8px var(--bad)}.dot.good{background:var(--good);box-shadow:0 0 8px var(--good)}.dot.warn{background:var(--warn)}
+#evlog{display:none}
+.pk{font-family:var(--m);font-size:11px;color:var(--mut);min-width:max-content}.pk b{color:var(--acc)}
+/* toast, tip, inspector, intro */
+#toast{position:fixed;left:50%;top:84px;transform:translate(-50%,-20px);opacity:0;transition:.35s;z-index:6;padding:10px 16px;min-width:300px;pointer-events:none}
+#toast.on{opacity:1;transform:translate(-50%,0)}#toast div{display:flex;justify-content:space-between;font-size:13px;gap:20px}#toast b{color:#e0b3ff}
+#toastVal{font-family:var(--m);color:#fff}#toast .bar{margin-top:8px;height:4px}#toastBar{background:linear-gradient(90deg,#c08bff,#5cf2ff)}
+#tip{position:fixed;left:0;top:0;z-index:7;pointer-events:none;opacity:0;transition:opacity .12s;padding:9px 12px;font-size:12px;max-width:260px}
+#tip b{display:block;font-size:13px}#tip small{color:var(--mut);font-size:10px}#tip div{color:#b5cae0;font-size:11px;margin:3px 0}
+.tb{display:inline-block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:rgba(92,242,255,.12);color:#9ff8ff;margin-top:3px}
+.t-cls{background:rgba(255,138,61,.15);color:#ffb27a}.t-ixp{background:rgba(255,209,102,.15);color:#ffd166}.t-dc{background:rgba(192,139,255,.15);color:#d2b3ff}.t-sat,.t-gw,.t-vsat,.t-tower{background:rgba(255,156,242,.14);color:#ffc6f6}.t-access{background:rgba(156,200,255,.1);color:#9cc8ff}
+#insp{position:fixed;left:290px;bottom:92px;width:330px;z-index:5;padding:14px;opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s;max-height:calc(100vh - 200px);overflow:auto}
+#insp.on{opacity:1;transform:none;pointer-events:auto}#insp h3{margin:4px 0 0;font-size:16px}#insp .ih small{color:var(--mut);font-size:10.5px}
+#insp .x{position:absolute;right:10px;top:8px;border:0;background:none;color:var(--mut);font-size:20px}
+.ig{display:grid;grid-template-columns:1fr 1fr 70px;gap:10px;margin:12px 0}.ig label,.sec{font-size:9.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:4px}.ig b{font-family:var(--m);font-size:12px}
+#iq{background:linear-gradient(90deg,#4dffb5,#ffd166,#ff3355);width:10%}#icpu{background:#5cb8ff;width:20%}
+.if{display:grid;grid-template-columns:52px 1fr 38px;gap:2px 8px;font-size:11px;padding:5px 0;border-bottom:1px solid rgba(120,200,255,.06)}.if code{font-family:var(--m);color:#9ff8ff;font-size:10px}.if em{grid-column:2;font-style:normal;color:var(--mut);font-size:9.5px}.if b{grid-row:1/3;grid-column:3;font-family:var(--m);font-size:10.5px;text-align:right;color:#cfe3f7}.if.cut b,.if.cut span{color:var(--bad)}
+.ibtns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+#intro{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle at 50% 45%,rgba(3,7,17,.2),rgba(3,7,17,.85));transition:opacity 1.2s;pointer-events:none}
+#intro.off{opacity:0}#intro h2{font-size:54px;letter-spacing:.3em;margin:0;font-weight:700;background:linear-gradient(90deg,#9ff8ff,#5cb8ff,#c08bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#intro p{color:var(--mut);letter-spacing:.25em;font-size:12px;text-transform:uppercase}
+.disc{font-size:10.5px;color:var(--mut);line-height:1.5;margin-top:14px;padding-top:10px;border-top:1px solid var(--line)}
+@media (max-width:1250px){.kpi.opt{display:none}}
+@media (max-width:980px){#left{display:none}#insp{left:14px}.tl{display:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="intro"><h2>PAKNET</h2><p>Pakistan internet traffic · proof of concept</p></div>
+
+<header id="top" class="glass">
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 34 34"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#9ff8ff"/><stop offset="1" stop-color="#c08bff"/></linearGradient></defs><polygon points="17,2 30,9.5 30,24.5 17,32 4,24.5 4,9.5" fill="none" stroke="url(#lg)" stroke-width="2"/><circle cx="17" cy="17" r="3.2" fill="#5cf2ff"/><circle cx="10" cy="12" r="1.8" fill="#9ff8ff"/><circle cx="24" cy="12" r="1.8" fill="#9ff8ff"/><circle cx="17" cy="26" r="1.8" fill="#c08bff"/><path d="M10 12L17 17L24 12M17 17V26" stroke="#5cf2ff" stroke-width="1"/></svg>
+    <div><h1>PAKNET</h1><small>Pakistan Internet Traffic &amp; Routing Simulator · proof of concept</small></div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><label>Intl capacity</label><b id="kCap">17.2</b><em>Tbps</em></div>
+    <div class="kpi"><label>Throughput</label><b id="kThr">—</b><em>Tbps</em></div>
+    <div class="kpi opt"><label>RTT KHI⇄LHE</label><b id="kLat">—</b><em>ms</em></div>
+    <div class="kpi"><label>Packet loss</label><b id="kLoss">0.00</b><em>%</em></div>
+    <div class="kpi"><label>Cables live</label><b id="kCab">7/9</b></div>
+    <div class="kpi clock"><label>Sim time · PKT</label><b id="kClock">21:00</b></div>
+  </div>
+</header>
+
+<aside id="left" class="glass">
+  <h4>Layers</h4>
+  <div id="layers"></div>
+  <h4 style="margin-top:16px">Operators <span class="badge">illustrative</span></h4>
+  <div class="ops" id="ops"></div>
+  <h4>Camera</h4>
+  <div class="views">
+    <button class="vbtn" data-view="overview">Overview</button>
+    <button class="vbtn" data-view="top">Top-down map</button>
+    <button class="vbtn" data-view="karachi">Karachi gateway</button>
+    <button class="vbtn" data-view="sea">Arabian Sea</button>
+    <button class="vbtn" data-view="north">KKH · China link</button>
+    <button class="vbtn" data-view="sat">Satellite view</button>
+  </div>
+  <button class="big" id="btnTour" style="margin-top:8px">🎬 Cinematic auto-tour</button>
+  <div class="disc">Drag to pan · right-drag to tilt/rotate · scroll to zoom · hover or click any router.<br>Geography: Natural Earth borders + GeoNames coordinates for every Pakistani city in the dataset (443 + key relay towns). Internal ISP topology is <b>representative</b> — real topology isn't public.</div>
+</aside>
+
+<aside id="right" class="glass">
+  <nav class="tabs">
+    <button class="tab on" data-tab="traffic">Traffic</button>
+    <button class="tab" data-tab="routing">Routing</button>
+    <button class="tab" data-tab="failures">Failures</button>
+    <button class="tab" data-tab="security">Security</button>
+    <button class="tab" data-tab="metrics">Metrics</button>
+  </nav>
+  <section class="pane on" id="pane-traffic">
+    <h4>Live flow mix <span class="pk" style="float:right">packets in flight <b id="pcount">0</b></span></h4>
+    <div id="mix"></div>
+    <div class="card"><h5>What you're seeing</h5><p>Every glowing dot is a packet. ~60% of flows leave the country — and every one of them squeezes through a handful of landing stations on Karachi's coast before going out on a submarine cable. Domestic traffic meets at the PKIX exchanges (Islamabad, Karachi, Lahore), and local CDN caches keep popular content in-country.</p></div>
+    <h4>Network hierarchy</h4>
+    <div class="tier">
+      <svg width="22" height="16"><polygon points="11,1 17,4 17,11 11,14 5,11 5,4" fill="#baf8ff"/></svg><span><b>Core router</b> — 11 metros (P/PE, DWDM-fed)</span>
+      <svg width="22" height="16"><polygon points="11,4 15,6 15,10 11,12 7,10 7,6" fill="#59b8ff"/></svg><span><b>Aggregation</b> — district & relay towns</span>
+      <svg width="22" height="16"><polygon points="11,5 14,8 11,11 8,8" fill="#9cc8ff"/></svg><span><b>Access</b> — OLT / DSLAM / 4G sites (all cities)</span>
+      <svg width="22" height="16"><rect x="7" y="4" width="8" height="8" fill="#ff9a4d"/></svg><span><b>Cable landing station</b> (Karachi)</span>
+      <svg width="22" height="16"><polygon points="11,2 16,8 11,14 6,8" fill="#ffd166"/></svg><span><b>IXP</b> — PKIX nodes</span>
+      <svg width="22" height="16"><rect x="6" y="3" width="10" height="3" fill="#b07cff"/><rect x="6" y="7" width="10" height="3" fill="#b07cff"/><rect x="6" y="11" width="10" height="3" fill="#e7d4ff"/></svg><span><b>Data centre / CDN edge</b></span>
+      <svg width="22" height="16"><path d="M5 12 A6 6 0 0 1 17 12Z" fill="#ff9cf2"/></svg><span><b>Teleport / VSAT</b> — PakSat-MM1</span>
+      <svg width="22" height="16"><polygon points="11,2 14,14 8,14" fill="#ff7de9"/></svg><span><b>Microwave relay</b></span>
+    </div>
+  </section>
+  <section class="pane" id="pane-routing">
+    <h4>Algorithm</h4>
+    <div class="seg" id="algos"><button data-a="dijkstra" class="on">Dijkstra · OSPF</button><button data-a="bf">Bellman-Ford · RIP</button><button data-a="bgp">BGP policy</button></div>
+    <div class="card algoinfo" data-a="dijkstra"><p><b>Link-state.</b> Every router floods LSAs, builds the full map, then runs Dijkstra. Watch the yellow pulses: nodes settle in order of distance from the source.</p></div>
+    <div class="card algoinfo" data-a="bf" style="display:none"><p><b>Distance-vector.</b> Routers only tell neighbours their distances; estimates relax hop by hop (orange waves). Slow to converge, and bad news travels slowly.</p></div>
+    <div class="card algoinfo" data-a="bgp" style="display:none"><p><b>Path-vector between ISPs (ASes).</b> Routes are chosen by business policy, not just distance. The hop table shows the AS each segment belongs to.</p></div>
+    <div class="fld"><label>Source</label><select id="rsrc"></select></div>
+    <div class="fld"><label>Destination</label><select id="rdst"></select></div>
+    <div class="fld"><label>Metric</label><select id="rmetric"><option value="latency">Latency (km × medium factor)</option><option value="hops">Hop count</option><option value="cost">Monetary cost (transit, satellite)</option></select></div>
+    <button class="big prim" id="btnTrace">▶ Trace route <small style="margin-left:auto">animate + hop table</small></button>
+    <button class="mini" id="btnClear" style="margin-top:6px">Clear</button>
+    <div id="rsum"></div><div id="aspath"></div><div id="hops"></div>
+    <div id="ctiwrap" style="display:none"><h4 style="margin-top:14px">Count-to-infinity demo</h4>
+      <button class="big" id="btnCTI">⚠ Fail Quetta–Sibi & watch RIP loop</button><div id="cti"></div></div>
+  </section>
+  <section class="pane" id="pane-failures">
+    <h4>Failure injection</h4>
+    <div class="fld"><label>Control plane that reconverges</label><select id="falgo"><option value="BGP">BGP (international, ~30–60 s)</option><option value="OSPF">OSPF (domestic, ~1–2 s)</option><option value="RIP">RIP (slow, count-to-infinity)</option></select></div>
+    <button class="big danger" data-scen="aae1">⚡ Replay: AAE-1 fault near Qatar <small>2 Jan 2025 — PTCL's biggest cable</small></button>
+    <button class="big danger" data-scen="oct25">⚡ Replay: PEACE cut + IMEWE down <small>Oct 2025</small></button>
+    <button class="big danger" data-scen="karachi">☠ Lose the Karachi landing zone <small>the single point of failure — all subsea cables at once</small></button>
+    <button class="big danger" data-scen="kkh">⛰ Landslide cuts KKH fibre <small>Gilgit-Baltistan fails over to microwave</small></button>
+    <button class="big" data-scen="gwadar" id="btnGwadar">⚓ What-if: activate Gwadar landing + CPEC-II fibre <small>second gateway, planned</small></button>
+    <button class="big" data-scen="restore">↺ Restore everything</button>
+    <h4 style="margin-top:16px">Submarine cables · Karachi</h4>
+    <div id="cablelist"></div>
+    <p class="muted" style="margin-top:8px">Status as reported in late 2025: SMW6 activated Nov 2025; Africa-1 and 2Africa landed but capacity was pending; SMW3 retired.</p>
+  </section>
+  <section class="pane" id="pane-security">
+    <label class="switch"><input type="checkbox" id="def" checked><span class="sw"></span><div><b>Adaptive defence</b><small id="defTxt">ON — detect &amp; adapt automatically</small></div></label>
+    <button class="big danger" id="btnHijack">🏴 BGP prefix hijack <small>replay of the 2008 PTCL/YouTube incident</small></button>
+    <button class="big danger" id="btnDDoS">🌊 Volumetric DDoS on a Lahore data centre <small>detect → divert to scrubbing → RTBH</small></button>
+    <button class="big danger" id="btnMal">📱 Compromised mobile cluster <small>self-protecting devices · adaptive access control</small></button>
+    <h4 style="margin-top:14px">Alert feed</h4>
+    <div id="alerts"><div class="muted">No alerts. Run a scenario, then toggle defence off and run it again to compare.</div></div>
+  </section>
+  <section class="pane" id="pane-metrics">
+    <div class="chart"><label>International throughput <b>—</b></label><canvas id="cThr"></canvas></div>
+    <div class="chart"><label>RTT Karachi ⇄ Lahore <b>—</b></label><canvas id="cLat"></canvas></div>
+    <div class="chart"><label>Packet loss <b>—</b></label><canvas id="cLoss"></canvas></div>
+    <div class="chart"><label>Convergence time <b>—</b></label><canvas id="cConv"></canvas></div>
+    <h4>Cable utilisation</h4><div id="cutil"></div>
+    <p class="muted">All numbers here are simulated placeholders driven by the animation, not measurements.</p>
+  </section>
+</aside>
+
+<footer id="bottom" class="glass">
+  <button id="play">❚❚</button>
+  <div id="speeds"><button data-s="0.5">½×</button><button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button></div>
+  <div class="tl"><svg id="curve" viewBox="0 0 300 32" preserveAspectRatio="none"><defs><linearGradient id="cg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#5cf2ff" stop-opacity=".35"/><stop offset="1" stop-color="#5cf2ff" stop-opacity="0"/></linearGradient></defs></svg>
+    <input type="range" id="tod" min="0" max="23.99" step="0.01" value="21"><div class="hrs"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div></div>
+  <div id="ticker"><span class="dot"></span>Starting…</div>
+</footer>
+<div id="evlog"></div>
+<div id="toast" class="glass"><div><span id="toastTxt">Reconverging</span><span id="toastVal">0 s</span></div><div class="bar"><i id="toastBar"></i></div></div>
+<div id="tip" class="glass"></div>
+<div id="insp" class="glass"></div>
+<script>/*BUNDLE*/</script>
+</body>
+</html>
