@@ -5,6 +5,7 @@ import { state } from '../state.js';
 import { on } from '../events.js';
 import { FLOW } from '../palette.js';
 import { diurnal } from '../sim/traffic.js';
+import { INTL_CAPACITY_TBPS } from '../sim/params.js';
 import { ui } from './dom.js';
 import { layers } from '../render/scene.js';
 import { drawHeat } from '../render/heat.js';
@@ -22,15 +23,19 @@ export function initMetrics(ctx) {
   const { stats } = traffic;
   const scen = state.scen;
   const series = { thr: [], lat: [], loss: [], conv: [] };
+  // Capacity scales with the share of cables still live; peak demand keeps the
+  // proof-of-concept's demand/capacity ratio (12.4 / 16.5) on the new figure.
+  const BASE_SHARE = CABLES.filter(c => c.status === 'live').reduce((a, c) => a + c.share, 0);
+  const PEAK_DEMAND = INTL_CAPACITY_TBPS * 12.4 / 16.5;
 
   function updateKPIs() {
-    const live = net.liveCables(); const cap = Math.max(0.35, live.reduce((a, c) => a + c.share, 0) * 17.2 / 0.96 + (state.plannedActive ? 2 : 0));
+    const live = net.liveCables(); const cap = Math.max(0.35, live.reduce((a, c) => a + c.share, 0) * INTL_CAPACITY_TBPS / BASE_SHARE + (state.plannedActive ? 2 : 0));
     ui('kCab').textContent = `${live.length}/${CABLES.filter(c => c.status !== 'retired').length}`; ui('kCap').textContent = cap.toFixed(1); return cap;
   }
   on('topology:changed', updateKPIs);
 
   setInterval(() => {
-    const cap = updateKPIs(), load = diurnal(state.simHour), demand = 12.4 * load + (scen.ddos ? 3 : 0);
+    const cap = updateKPIs(), load = diurnal(state.simHour), demand = PEAK_DEMAND * load + (scen.ddos ? 3 : 0);
     const thr = Math.min(cap * 0.97, demand) * (0.97 + Math.random() * 0.06);
     const congestion = Math.min(4, Math.max(0, demand / Math.max(cap, 0.1) - 0.8));
     const loss = Math.min(100, (stats.sent ? stats.dropped / stats.sent * 100 : 0) + congestion * 8);
@@ -40,7 +45,7 @@ export function initMetrics(ctx) {
     ui('kThr').textContent = thr.toFixed(1); ui('kLat').textContent = lat.toFixed(0); ui('kLoss').textContent = loss.toFixed(1);
     ui('kLoss').parentElement.classList.toggle('bad', loss > 1);
     ui('mThr').textContent = thr.toFixed(1) + ' Tbps'; ui('mLat').textContent = lat.toFixed(0) + ' ms'; ui('mLoss').textContent = loss.toFixed(2) + ' %'; ui('mConv').textContent = series.conv.at(-1) ? series.conv.at(-1).toFixed(1) + ' s' : 'stable';
-    spark('cThr', series.thr, '#0f766e', 18); spark('cLat', series.lat, '#b45309'); spark('cLoss', series.loss, '#dc2626'); spark('cConv', series.conv, '#6d28d9');
+    spark('cThr', series.thr, '#0f766e', INTL_CAPACITY_TBPS * 1.1); spark('cLat', series.lat, '#b45309'); spark('cLoss', series.loss, '#dc2626'); spark('cConv', series.conv, '#6d28d9');
     const tot = Object.values(stats.cableLoad).reduce((a, b) => a + b, 0) || 1;
     ui('cutil').innerHTML = CABLES.filter(c => c.status !== 'retired').map(c => { const dead = c.edges.every(e => e.cut) || (c.status === 'landed' && !c.forceLive); const u = dead ? 0 : Math.min(98, (stats.cableLoad[c.id] || 0) / tot * 100 / Math.max(0.03, c.share) * 0.42 * load + 8); return `<div class="cu"><span>${c.name}</span><div class="bar"><i style="width:${u}%;background:${u > 85 ? '#dc2626' : u > 65 ? '#d97706' : '#0f766e'}"></i></div><em>${dead ? '—' : u.toFixed(0) + '%'}</em></div>`; }).join('');
     stats.cableLoad = {}; stats.sent = 0; stats.dropped = 0;

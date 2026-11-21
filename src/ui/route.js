@@ -3,6 +3,7 @@
 import { state } from '../state.js';
 import { KM_PER_UNIT, lift } from '../geo/projection.js';
 import { nodeSeq } from '../routing/paths.js';
+import { propDelayMs } from '../sim/params.js';
 import { ui, setTab } from './dom.js';
 import { burst, highlightPath } from '../render/fx.js';
 
@@ -37,7 +38,7 @@ export function initRoute(ctx) {
       }
     }
     const seq = nodeSeq(s, res.edges); let ms = 0; const rows = [];
-    seq.forEach((id, i) => { const e = res.edges[i - 1]; if (e) ms += e.len * KM_PER_UNIT * 1.35 * 0.005 + 0.06; const n = nodes[id]; if (n.tier === 'tower') return; rows.push(`<li><span>${n.name}</span><em>${e ? mediumName(e) : 'start'}${algo === 'bgp' && e ? ' · ' + (e.cable ? e.cable.op : e.ops[0] || '—') : ''}</em><b>${(ms * 2).toFixed(1)}</b></li>`); });
+    seq.forEach((id, i) => { const e = res.edges[i - 1]; if (e) ms += propDelayMs(e.len * KM_PER_UNIT) + 0.06; const n = nodes[id]; if (n.tier === 'tower') return; rows.push(`<li><span>${n.name}</span><em>${e ? mediumName(e) : 'start'}${algo === 'bgp' && e ? ' · ' + (e.cable ? e.cable.op : e.ops[0] || '—') : ''}</em><b>${(ms * 2).toFixed(1)}</b></li>`); });
     let asPath = '';
     if (algo === 'bgp') { const ap = []; res.edges.forEach(e => { const a = e.cable ? e.cable.op : e.ops[0]; if (a && ap[ap.length - 1] !== a) ap.push(a); }); asPath = `<div class="aspath">${ap.map(a => `<span>${a === 'PTCL' ? 'AS17557 PTCL' : a}</span>`).join('<i>›</i>')}</div>`; }
     ui('rres').innerHTML = `<div class="rsum"><div><b>${seq.length - 1}</b><small>hops</small></div><div><b>${(ms * 2).toFixed(1)}</b><small>ms round trip</small></div><div><b>${res.order.length}</b><small>nodes explored</small></div></div>${asPath}<details><summary>Hop by hop</summary><ol class="hops">${rows.join('')}</ol></details>`;

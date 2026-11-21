@@ -23,13 +23,13 @@ export function initInspector(ctx) {
 
   function tip(n, x, y) {
     const t = ui('tip'); if (!n) { t.style.opacity = 0; return; }
-    t.innerHTML = `<b>${n.name}</b><small>${tierName(n)}${n.pop ? ' · pop. ' + n.pop.toLocaleString() : ''}</small>`; t.style.opacity = 1; t.style.transform = `translate(${x + 14}px, ${y + 12}px)`;
+    t.innerHTML = `<b>${n.name}</b><small>${tierName(n)}${n.pop ? ' · pop. ' + n.pop.toLocaleString() : ''}</small>${n.note ? `<small class="nt">${n.note}</small>` : ''}`; t.style.opacity = 1; t.style.transform = `translate(${x + 14}px, ${y + 12}px)`;
   }
 
   function open(n) {
     inspectNode = n; const el = ui('insp'); el.classList.add('on');
     const links = adj.get(n.id).filter(e => e.type !== 'access' || n.tier === 'access').slice(0, 7).map(e => { const o = nodes[e.a === n.id ? e.b : e.a]; return `<li class="${e.cut ? 'cut' : ''}"><span>${o.name}</span><em>${mediumName(e)}</em><b data-e="${e.id}"></b></li>`; }).join('');
-    el.innerHTML = `<button class="x" id="inspX" aria-label="Close">×</button><small class="kick">${tierName(n)}</small><h3>${n.name}</h3>
+    el.innerHTML = `<button class="x" id="inspX" aria-label="Close">×</button><small class="kick">${tierName(n)}</small><h3>${n.name}</h3>${n.note ? `<p class="muted nt">${n.note}</p>` : ''}
     <div class="meters"><div><label>Queue</label><div class="bar"><i id="iq"></i></div></div><div><label>Load</label><b id="ipps">—</b></div></div>
     <label class="sub">Links</label><ul class="links">${links || '<li class="muted">none</li>'}</ul>
     <div class="row"><button class="btn sm" id="iSrc">Route from here</button><button class="btn sm ghost danger" id="iFail">Fail this node</button></div>`;

@@ -12,7 +12,7 @@ function label(html, pos, cls, maxD = 999, minD = 0, off = null) {
   const o = new CSS2DObject(d); o.position.copy(pos); o.userData = { minD, maxD }; layers.labels.add(o); labelObjs.push(o); return o;
 }
 
-const OFF = { Rawalpindi: [30, 12], Islamabad: [4, -10], Faisalabad: [-28, 0], Lahore: [20, -2], Peshawar: [-20, 0], "TWA landing station · Hawke's Bay": [-95, -16], "PTCL landing station · Hawke's Bay": [-105, 10], 'Cybernet landing station (PEACE)': [-40, 32], 'PTCL landing station · Sea View': [95, 14], 'Gwadar landing station (planned)': [-20, 18] };
+const OFF = { Rawalpindi: [30, 12], Islamabad: [4, -10], Faisalabad: [-28, 0], Lahore: [20, -2], Peshawar: [-20, 0], "TWA landing station · Hawke's Bay": [-95, -16], "PTCL landing station · Hawke's Bay": [-105, 10], 'Cybernet landing station (PEACE)': [-40, 32], 'PTCL landing station · Clifton / Sea View': [110, 14], 'Gwadar landing station (planned)': [-20, 18] };
 
 export function buildLabels(G) {
   const { nodes, N, SAT, CABLES } = G;

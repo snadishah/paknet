@@ -19,16 +19,19 @@ const EXTRA = {
   Kashmore: [69.58, 28.43, 40000], Vehari: [72.35, 30.04, 120000], Khanewal: [71.93, 30.30, 200000]
 };
 
+// Status as checked on 21 Nov 2026 (docs/REFERENCES.md §0 and §1.1).
+// status: 'live' carries traffic | 'landed' landed but not in service | 'retired'.
+// stat: short status shown in the UI; note: longer explanation (tooltip / sources).
 export const CABLE_LIST = [
   { id: 'SMW4', name: 'SEA-ME-WE 4', cls: 'ptclHB', op: 'PTCL', dirs: ['W', 'E'], status: 'live', share: 0.13 },
   { id: 'IMEWE', name: 'IMEWE', cls: 'ptclHB', op: 'PTCL', dirs: ['W', 'E'], status: 'live', share: 0.10 },
   { id: 'AAE1', name: 'AAE-1', cls: 'ptclSV', op: 'PTCL', dirs: ['W', 'E'], status: 'live', share: 0.17 },
-  { id: 'AFR1', name: 'Africa-1', cls: 'ptclSV', op: 'PTCL', dirs: ['SW'], status: 'landed', share: 0.04 },
+  { id: 'AFR1', name: 'Africa-1', cls: 'ptclSV', op: 'PTCL', dirs: ['SW'], status: 'landed', share: 0.04, stat: 'Landed, not in service', note: 'Landed 22 Feb 2025 at Sea View. Not in service; TeleGeography lists RFS 2027.' },
   { id: 'SMW5', name: 'SEA-ME-WE 5', cls: 'twa', op: 'TWA', dirs: ['W', 'E'], status: 'live', share: 0.16 },
   { id: 'TW1', name: 'TW1', cls: 'twa', op: 'TWA', dirs: ['W'], status: 'live', share: 0.07 },
-  { id: 'SMW6', name: 'SEA-ME-WE 6', cls: 'twa', op: 'TWA', dirs: ['W', 'E'], status: 'live', share: 0.20 },
-  { id: '2AFR', name: '2Africa', cls: 'twa', op: 'TWA', dirs: ['SW'], status: 'landed', share: 0.04 },
-  { id: 'PEACE', name: 'PEACE', cls: 'cyber', op: 'Cybernet', dirs: ['SW'], status: 'live', share: 0.09 },
+  { id: 'SMW6', name: 'SEA-ME-WE 6', cls: 'twa', op: 'TWA', dirs: ['W', 'E'], status: 'live', share: 0.20, stat: 'Live (partial)', note: 'Landed Nov 2025. MoITT reported 4 of 13.2 Tbps active; TeleGeography still lists the system as RFS 2027. Sources conflict.' },
+  { id: '2AFR', name: '2Africa', cls: 'twa', op: 'TWA', dirs: ['SW'], status: 'landed', share: 0.04, stat: 'Landed, service unconfirmed', note: "Landed at Hawke's Bay (announced Feb 2025). No official notice that it carries traffic." },
+  { id: 'PEACE', name: 'PEACE', cls: 'cyber', op: 'Cybernet', dirs: ['SW'], status: 'live', share: 0.09, note: 'Lands in Karachi. A Gwadar landing is reported by one source only.' },
   { id: 'SMW3', name: 'SEA-ME-WE 3', cls: 'ptclHB', op: 'PTCL', dirs: ['W'], status: 'retired', share: 0 }
 ];
 
@@ -88,15 +91,17 @@ export function buildTopology() {
   R(['Umarkot', 'Mithi'], 'microwave', ['PTCL']); R(['Mingora', 'Chitral'], 'microwave', ['PTCL']);
   R(['Gilgit', 'Skardu'], 'microwave', ['SCO']); R(['Panjgur', 'Kharan', 'Nushki'], 'microwave', ['PTCL']); R(['Khuzdar', 'Awaran', 'Turbat'], 'microwave', ['PTCL']);
 
-  // microwave backup chain (26 relays Rawalpindi → Karimabad)
+  // microwave backup chain Rawalpindi → Karimabad: 26 links (Dawn 2018), so 25
+  // intermediate relays. Sources say "26 links" and "nodes"; see REFERENCES §1.2.
   const towers = [];
+  const MW_LINKS = 26;
   {
     const curve = new THREE.CatmullRomCurve3(['Rawalpindi', 'Abbottabad', 'Mansehra', 'Besham', 'Dasu', 'Chilas', 'Gilgit', 'Karimabad'].map(n => N(n).pos), false, 'catmullrom', 0.2);
     let prev = N('Rawalpindi');
-    for (let i = 1; i <= 26; i++) {
-      const t = i / 27, p = curve.getPointAt(t), tan = curve.getTangentAt(t);
+    for (let i = 1; i < MW_LINKS; i++) {
+      const t = i / MW_LINKS, p = curve.getPointAt(t), tan = curve.getTangentAt(t);
       const off = new THREE.Vector3(-tan.y, tan.x, 0).normalize().multiplyScalar(0.12);
-      const tw = addNode({ name: `Microwave relay ${i}/26`, pos: p.clone().add(off).setZ(NET), tier: 'tower', kind: 'tower', op: 'SCO' });
+      const tw = addNode({ name: `Microwave relay ${i}/${MW_LINKS - 1}`, pos: p.clone().add(off).setZ(NET), tier: 'tower', kind: 'tower', op: 'SCO' });
       towers.push(tw); addEdge(prev, tw, 'mwbackup', ['SCO']); prev = tw;
     }
     addEdge(prev, N('Karimabad'), 'mwbackup', ['SCO']);
@@ -108,13 +113,18 @@ export function buildTopology() {
     twa: coastNode("TWA landing station · Hawke's Bay", 'Sindh', 66.80, 24.86, 'TWA'),
     ptclHB: coastNode("PTCL landing station · Hawke's Bay", 'Sindh', 66.88, 24.82, 'PTCL'),
     cyber: coastNode('Cybernet landing station (PEACE)', 'Sindh', 66.97, 24.78, 'Cybernet'),
-    ptclSV: coastNode('PTCL landing station · Sea View', 'Sindh', 67.06, 24.76, 'PTCL'),
+    // AAE-1 lands at Clifton beach, Africa-1 at the adjacent Sea View beach (REFERENCES §1.1)
+    ptclSV: coastNode('PTCL landing station · Clifton / Sea View', 'Sindh', 67.06, 24.76, 'PTCL'),
     gwadar: coastNode('Gwadar landing station (planned)', 'Balochistan', 62.33, 25.10, 'SCO', { planned: true })
   };
   for (const k of ['ptclHB', 'ptclSV', 'twa', 'cyber']) addEdge(CLS[k], N('Karachi'), 'metro', [CLS[k].op]);
   addEdge(CLS.gwadar, N('Gwadar'), 'planned', ['SCO']);
   const attach = (name, cityName, dx, dy, tier) => { const city = N(cityName); const o = addNode({ name, pos: city.pos.clone().add(new THREE.Vector3(dx, dy, 0)), tier, kind: tier, lon: city.lon, lat: city.lat }); addEdge(o, city, 'metro', []); o.city = city; return o; };
-  const IXP = [['PKIX Islamabad', 'Islamabad', 0.08, 0.06], ['PKIX Karachi', 'Karachi', 0.12, 0.1], ['PKIX Lahore', 'Lahore', 0.09, 0.06]].map(([n, c, dx, dy]) => attach(n, c, dx, dy, 'ixp'));
+  // PKIX sites are confirmed (2017–2021) but current activity is unverified; PIE
+  // Karachi (DE-CIX with PTCL) is the only Pakistani IX with listed members (REFERENCES §1.4).
+  const PKIX_NOTE = 'PKIX site (opened 2017–2021). Current activity unverified.';
+  const IXP = [['PKIX Islamabad', 'Islamabad', 0.08, 0.06], ['PKIX Karachi', 'Karachi', 0.12, 0.1], ['PKIX Lahore', 'Lahore', 0.09, 0.06]].map(([n, c, dx, dy]) => Object.assign(attach(n, c, dx, dy, 'ixp'), { note: PKIX_NOTE }));
+  IXP.push(Object.assign(attach('PIE Karachi (DE-CIX / PTCL)', 'Karachi', 0.2, 0.02, 'ixp'), { note: 'Run by DE-CIX with PTCL. 9 member networks in PeeringDB (Nov 2026).' }));
   const DCS = [['Cloudflare edge · Karachi', 'Karachi', -0.02, 0.15], ['Cloudflare edge · Lahore', 'Lahore', -0.09, 0.06], ['Cloudflare edge · Islamabad', 'Islamabad', -0.09, 0.04], ['TWA Tier III data centre', 'Karachi', -0.15, 0.08]].map(([n, c, dx, dy]) => attach(n, c, dx, dy, 'dc'));
 
   // international endpoints

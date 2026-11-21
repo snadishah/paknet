@@ -43,13 +43,22 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
 - Keep the animated packets. They are the signature visual. Four colours: orange international, blue domestic, teal CDN, purple satellite. Red is reserved for cuts and attacks.
 - UI: light cards, one side panel with 5 tabs (Overview, Route, Failures, Security, Metrics), a small playback pill, and a dock with Layers, Views and Legend pop-ups. Progressive disclosure, short copy.
 
-## Facts used (verify before presenting; status as of late 2025)
-- All of Pakistan's international submarine cables land in **Karachi**, a single point of failure. About nine have landed: SMW4, IMEWE, AAE-1, Africa-1 (PTCL); SMW5, TW1, SMW6, 2Africa (TWA); PEACE (Cybernet); SMW3 is retired. SMW3, SMW4 and IMEWE land at Hawke's Bay and AAE-1 at Clifton (submarinenetworks.com). SMW6 landed at Hawke's Bay in Nov 2025. Africa-1 and 2Africa had landed, but their capacity was pending as of late 2025.
-- **Pak-China OFC (SCO):** about 820 km from Rawalpindi to Khunjerab. 26 microwave nodes between Rawalpindi and Karimabad act as backup, plus 171 km of aerial fibre from Karimabad to Khunjerab. Phase II plans extensions to Karachi and Gwadar, and a Gwadar landing station.
-- **PKIX** exchanges: Islamabad, Karachi, Lahore.
-- **PakSat-MM1:** geostationary at 38.2°E, launched May 2024, with gateway beams over Lahore, Karachi and Islamabad and 11 Ka-band spot beams.
-- **AAE-1** fault near Qatar, Jan 2025: PTCL shifted its traffic to other cables.
-- **2008 YouTube hijack:** AS17557 (PTCL) announced 208.65.153.0/24. It leaked through AS3491 (PCCW), and the outage lasted about 2 hours. YouTube is AS36561.
+## Facts used (checked 21 Nov 2026; sources and full detail in `docs/REFERENCES.md`)
+`docs/REFERENCES.md` is the source of truth. Update it first when a fact changes, then the code and this list. Re-check the cable statuses within a week of any demo.
+- All of Pakistan's international submarine cables land in **Karachi**, a single point of failure. Nine have landed: SMW4, IMEWE, AAE-1, Africa-1 (PTCL); SMW5, TW1, SMW6, 2Africa (TWA); PEACE (Cybernet). SMW3 is retired. SMW3, SMW4 and IMEWE land at Hawke's Bay, AAE-1 at Clifton beach, Africa-1 at the adjacent Sea View beach.
+  - **Africa-1:** landed 22 Feb 2025, **not in service** (TeleGeography: RFS 2027).
+  - **2Africa:** landed (announced Feb 2025); **service unconfirmed**.
+  - **SMW6:** landed Nov 2025; MoITT reported 4 of 13.2 Tbps active, but TeleGeography still lists RFS 2027. Sources conflict; show "partial".
+  - **PEACE:** Karachi only. One source claims a Gwadar landing; don't draw it.
+  - **Total international capacity:** sources range from about 13 to 17.7 Tbps. The app uses **13 Tbps lit, labelled representative**.
+- **Pak-China OFC (SCO):** about 820 km from Rawalpindi to Khunjerab. **26 microwave links** (backup) between Rawalpindi and Karimabad, plus **about 171–172 km** of aerial fibre from Karimabad to Khunjerab. Phase II (approved Jan 2021) plans Karachi, Gwadar and a Gwadar landing station; its progress is unverified.
+- **Exchanges:** PKIX sites in Islamabad, Karachi and Lahore (opened 2017–2021); current activity unverified. **PIE Karachi** (DE-CIX with PTCL) is the only Pakistani IX with listed members (9 networks).
+- **PakSat-MM1:** geostationary at 38.2°E, launched 30 May 2024, with gateways over Lahore, Karachi and Islamabad and 11 Ka-band spot beams.
+- **AAE-1** fault near Qatar, Jan 2025: PTCL moved about 1.8 Tbps to IMEWE and 1.5 Tbps to SMW4.
+- **Sep 2025:** SMW4 and IMEWE cut near Jeddah (SMW5, AAE-1, PEACE unaffected). **20 Oct 2025:** PEACE cut near Sudan. These are two separate events.
+- **2008 YouTube hijack:** AS17557 (PTCL) announced 208.65.153.0/24, which leaked through AS3491 (PCCW). YouTube was AS36561 with 208.65.152.0/22. The outage lasted about 2 hours. **Today** the /22 is originated by AS43515 and has ROAs, so the same /24 would be RPKI Invalid. Any RPKI defence in the 2008 scenario is a what-if.
+- **ASNs:** PTCL 17557, TWA 38193, Cybernet/StormFiber 9541, Nayatel 23674, Multinet 9260, Wateen 38264, SCO 18053, PCCW 3491. Inter-AS relationships are inferred (CAIDA).
+- **Model parameters:** fibre delay 5 µs/km × route factor **1.5** (Singla et al. 2014; a labelled assumption, set in `src/sim/params.js`).
 - Internal ISP topology is **not public**. Corridors follow motorways and national highways, and the operator per corridor is illustrative. Say so in any presentation.
 
 ## What is real vs mocked right now
@@ -62,7 +71,7 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
   - cable utilisation bars
 
 ## Roadmap (suggested order)
-1. Give every edge a capacity (Gbps), a propagation delay (km × ~5 µs × route factor) and a FIFO queue. Move packets as discrete events, with queueing delay and tail drop. Then derive the real metrics.
+1. Give every edge a capacity (Gbps), a propagation delay (km × 5 µs × route factor 1.5, see `src/sim/params.js`) and a FIFO queue. Move packets as discrete events, with queueing delay and tail drop. Then derive the real metrics.
 2. Write proper Bellman-Ford / distance-vector with timed update rounds, so count-to-infinity happens naturally. Add split horizon and poison reverse as options.
 3. Link-state with flooding delay. Measure convergence time from the moment of failure.
 4. Simplified BGP between ISP ASes: customer > peer > provider preference, valley-free export, AS-path length tie-break. Make the hijack scenario emerge from the BGP logic instead of a script.

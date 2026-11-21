@@ -10,8 +10,8 @@ export function initFailures(ctx) {
   function renderCables() {
     ui('cablelist').innerHTML = CABLES.filter(c => c.status !== 'retired').map(c => {
       const cut = c.edges.every(e => e.cut), pending = c.status === 'landed' && !c.forceLive;
-      const st = pending ? 'Landed, not yet active' : cut ? 'Cut' : c.forceLive ? 'Active (what-if)' : 'Live';
-      return `<label class="crow ${cut ? 'cut' : ''} ${pending ? 'pending' : ''}"><div><b>${c.name}</b><small>${c.op} · ${st}</small></div><span class="tog"><input type="checkbox" data-c="${c.id}" ${!cut && !pending ? 'checked' : ''}><i></i></span></label>`;
+      const st = cut ? 'Cut' : c.forceLive ? 'Active (what-if)' : c.stat || (pending ? 'Landed, not in service' : 'Live');
+      return `<label class="crow ${cut ? 'cut' : ''} ${pending ? 'pending' : ''}" title="${c.note || ''}"><div><b>${c.name}</b><small>${c.op} · ${st}</small></div><span class="tog"><input type="checkbox" data-c="${c.id}" ${!cut && !pending ? 'checked' : ''}><i></i></span></label>`;
     }).join('');
     ui('cablelist').querySelectorAll('input').forEach(i => i.onchange = () => {
       const c = CABLES.find(x => x.id === i.dataset.c);

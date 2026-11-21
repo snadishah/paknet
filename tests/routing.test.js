@@ -14,7 +14,16 @@ describe('topology', () => {
   it('has the core cities, four live landing stations and nine non-retired cables', () => {
     for (const c of ['Karachi', 'Lahore', 'Islamabad', 'Quetta', 'Gwadar']) expect(G.N(c)?.tier).toBe('core');
     expect(G.CABLES.filter(c => c.status !== 'retired')).toHaveLength(9);
-    expect(G.towers).toHaveLength(26);
+    // 26 microwave links Rawalpindi → Karimabad = 25 relays (REFERENCES §1.2)
+    expect(G.towers).toHaveLength(25);
+    expect(G.edges.filter(e => e.type === 'mwbackup')).toHaveLength(26);
+  });
+  it('has PIE Karachi alongside the three PKIX sites', () => {
+    expect(G.IXP.map(n => n.name)).toContain('PIE Karachi (DE-CIX / PTCL)');
+    expect(G.IXP).toHaveLength(4);
+  });
+  it('keeps Africa-1 and 2Africa landed but out of service', () => {
+    for (const id of ['AFR1', '2AFR']) expect(G.CABLES.find(c => c.id === id).status).toBe('landed');
   });
   it('lands every cable in Karachi landing stations except the planned Gwadar one', () => {
     for (const e of G.cableEdges) expect(G.nodes[e.a].tier).toBe('cls');

@@ -99,7 +99,7 @@ details{margin-top:6px}summary{cursor:pointer;font-size:12px;font-weight:550;col
 #note.on{opacity:1;transform:translate(-50%,0)}#note.bad{background:#8f2a20}#note.good{background:#25543f}
 #conv{position:fixed;left:calc(50% - 180px);top:122px;transform:translateX(-50%);opacity:0;transition:.25s;padding:8px 14px;min-width:230px;display:flex;justify-content:space-between;gap:16px;font-size:12px;z-index:6;overflow:hidden;pointer-events:none}
 #conv.on{opacity:1}#conv b{font-variant-numeric:tabular-nums}#conv i{position:absolute;left:0;bottom:0;height:3px;background:var(--acc)}
-#tip{position:fixed;left:0;top:0;padding:7px 10px;z-index:8;pointer-events:none;opacity:0;transition:opacity .1s;border-radius:10px}#tip b{display:block;font-size:12.5px}#tip small{color:var(--mu);font-size:11px}
+#tip{position:fixed;left:0;top:0;padding:7px 10px;z-index:8;pointer-events:none;opacity:0;transition:opacity .1s;border-radius:10px}#tip b{display:block;font-size:12.5px}#tip small{display:block;color:var(--mu);font-size:11px}#tip .nt,#insp .nt{font-size:11px;color:var(--warn);max-width:260px;white-space:normal}#insp .nt{margin:-6px 0 10px}
 #insp{position:fixed;left:16px;bottom:68px;width:290px;padding:14px 16px;z-index:6;display:none}#insp.on{display:block;animation:in .2s}
 #insp .x{position:absolute;right:8px;top:6px;border:0;background:none;font-size:20px;color:var(--mu)}
 #insp .kick{color:var(--mu);font-size:11px;font-weight:500}#insp h3{margin:1px 0 10px;font-size:15px}
@@ -119,7 +119,7 @@ details{margin-top:6px}summary{cursor:pointer;font-size:12px;font-weight:550;col
 </div>
 
 <div id="kpis" class="card">
-  <div class="kpi"><label>Intl capacity</label><b id="kCap">16.5</b><em>Tbps</em></div>
+  <div class="kpi"><label>Intl capacity</label><b id="kCap">13.0</b><em>Tbps</em></div>
   <div class="kpi"><label>Throughput</label><b id="kThr">—</b><em>Tbps</em></div>
   <div class="kpi opt"><label>RTT Karachi–Lahore</label><b id="kLat">—</b><em>ms</em></div>
   <div class="kpi"><label>Packet loss</label><b id="kLoss">0.0</b><em>%</em></div>
@@ -161,7 +161,8 @@ details{margin-top:6px}summary{cursor:pointer;font-size:12px;font-weight:550;col
     <h2>Failure injection</h2>
     <p class="lead">Break something and watch traffic reroute.</p>
     <button class="action amber" data-scen="aae1"><span class="ic">✂</span><div><b>AAE-1 fault near Qatar</b><small>January 2025</small></div><span class="go">›</span></button>
-    <button class="action amber" data-scen="oct25"><span class="ic">✂</span><div><b>PEACE cut, IMEWE down</b><small>October 2025</small></div><span class="go">›</span></button>
+    <button class="action amber" data-scen="sep25"><span class="ic">✂</span><div><b>SMW4 and IMEWE cut near Jeddah</b><small>September 2025</small></div><span class="go">›</span></button>
+    <button class="action amber" data-scen="oct25"><span class="ic">✂</span><div><b>PEACE cut near Sudan</b><small>October 2025</small></div><span class="go">›</span></button>
     <button class="action red" data-scen="karachi"><span class="ic">!</span><div><b>Lose all of Karachi's cables</b><small>The single point of failure</small></div><span class="go">›</span></button>
     <button class="action amber" data-scen="kkh"><span class="ic">⛰</span><div><b>Landslide on the KKH</b><small>Gilgit-Baltistan switches to microwave</small></div><span class="go">›</span></button>
     <button class="action green" data-scen="gwadar" id="scGwadar"><span class="ic">⚓</span><div><b>What if Gwadar had a landing?</b><small>Planned second gateway</small></div><span class="go">›</span></button>
@@ -169,7 +170,7 @@ details{margin-top:6px}summary{cursor:pointer;font-size:12px;font-weight:550;col
     <h5>Submarine cables</h5>
     <div id="cablelist"></div>
     <div class="fld" style="margin-top:14px"><label>Rerouting protocol for manual cuts</label><select id="falgo"><option value="BGP">BGP · tens of seconds</option><option value="OSPF">OSPF · about a second</option><option value="RIP">RIP · slow</option></select></div>
-    <p class="foot">Cable status as reported in late 2025. Africa-1 and 2Africa had landed but weren't yet carrying traffic.</p>
+    <p class="foot">Cable status checked Nov 2026. Africa-1 and 2Africa have landed but aren't confirmed in service; SMW6 is partly active and sources disagree. Hover a cable for details.</p>
   </section>
 
   <section class="pane" id="pane-security">

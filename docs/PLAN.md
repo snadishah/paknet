@@ -41,7 +41,7 @@ This is the central idea. Today each packet is an animation along a precomputed 
 
 - **Two clocks.** *Network time* (milliseconds) runs in slow motion, about 1 wall-second to a few ms of network time at 1×, so a Karachi→Lahore crossing still takes about 1.5 s on screen. *Time of day* (the 21:00 slider) stays separate and only sets how much traffic is offered.
 - **Each dot is a bundle of traffic** (a fixed volume, for example 0.5 Gbit), not one IP packet. Simulating Tbps packet by packet is impossible in a browser. The KPIs scale the bundles back up to Tbps. The UI and the report both say this.
-- **Discrete-event engine.** A heap-ordered event queue handles arrive-at-router, finish-transmission and drop events. Each directed link has a capacity (Gbps), a delay (`km × 5 µs × 1.4`), a FIFO buffer sized from its bandwidth-delay product, and tail drop.
+- **Discrete-event engine.** A heap-ordered event queue handles arrive-at-router, finish-transmission and drop events. Each directed link has a capacity (Gbps), a delay (`km × 5 µs × 1.5`; route factor 1.5 from Singla et al. 2014, a labelled assumption in `src/sim/params.js`), a FIFO buffer sized from its bandwidth-delay product, and tail drop.
 - **Hop-by-hop forwarding.** Each router has a forwarding table written by the active protocol (OSPF, distance-vector or BGP). Packets look up their next hop at every router; there are no precomputed paths. So during convergence, packets *really* follow stale or inconsistent tables. Loops, TTL expiry and black holes come out of the model on their own, with no script.
 - **Access cities are hosts behind their parent router** (like prefixes). Routing runs among about 110 routers and infrastructure nodes, not all 500 places. The 26 microwave relays collapse into one logical link for routing purposes, otherwise RIP's 15-hop limit would be crossed on that chain alone.
 - **Seeded random numbers**, so a scenario replays identically. The defence before/after comparison depends on this.
@@ -106,7 +106,8 @@ The `sim/`, `routing/` and `defence/` folders never import three.js or the DOM. 
 - **Tests:** every router's table matches a global Dijkstra after convergence; convergence time rises with network diameter and the per-hop delay.
 
 ### 6 · Simplified BGP (your item 4)
-- About 12 ASes: PTCL AS17557, TWA, Cybernet/StormFiber, Nayatel, Multinet, Wateen, SCO, PCCW AS3491, YouTube AS36561, plus two or three generic transit/Tier-1 ASes and "rest of world" sources. The ASNs other than 17557, 3491 and 36561 get verified before use.
+- About 12 ASes: PTCL AS17557, TWA, Cybernet/StormFiber, Nayatel, Multinet, Wateen, SCO, PCCW AS3491, YouTube AS36561, plus two or three generic transit/Tier-1 ASes and "rest of world" sources. All ASNs are verified in `docs/REFERENCES.md` §2 (TWA 38193, Cybernet 9541, Nayatel 23674, Multinet 9260, Wateen 38264, SCO 18053); the relationships are CAIDA inferences and get labelled as such.
+- The RPKI comparison is honest about dates: RPKI did not exist in 2008, but today YouTube's /22 has ROAs (AS43515, AS36040), so the replay can show "2008 rules" against "today's rules".
 - Relationships: customer, peer (PKIX) and provider. Route choice: customer > peer > provider, then shortest AS path, then a tie-break. Gao-Rexford valley-free export. UPDATE and WITHDRAW messages with delays.
 - The data plane uses **longest-prefix match**, which is the real mechanism of 2008.
 - **The 2008 hijack:** PTCL originates `208.65.153.0/24` internally to black-hole YouTube. The fault we inject is a **missing export filter** toward PCCW; PCCW has no customer prefix filter. From there the BGP rules spread the /24, longest-prefix match beats YouTube's /22, and traffic from abroad flows into Pakistan. No timed script.
@@ -129,9 +130,12 @@ Each scenario becomes a short story you can present from, instead of a few alert
 - **Each story ends** with "what fixed it", "what would have prevented it" (ROV, filters, a second landing site…), and an option to replay it with adaptive defence on.
 - **Scenario library.** Candidates, all to be confirmed by the research (step R) before they're built:
   - 2008 YouTube hijack by PTCL (the existing one, rebuilt)
-  - 2008 Mediterranean cable cuts (SMW4 and FLAG near Alexandria) and the effect on Pakistan
-  - 2024 Red Sea cable cuts (including AAE-1)
-  - January 2025 AAE-1 fault near Qatar
+  - 2005 SMW3 cut, when Pakistan had a single cable: 12 days down, satellite fallback (confirmed; SANOG 6 talk, Dawn)
+  - 2008 Mediterranean cable cuts (SMW4 and FLAG near Alexandria): about 80% of Pakistan's prefixes affected (confirmed)
+  - 2024 Red Sea cable cuts (including AAE-1). The effect on Pakistan is unverified, so the story says so
+  - January 2025 AAE-1 fault near Qatar: PTCL moved about 1.8 Tbps to IMEWE and 1.5 Tbps to SMW4 (confirmed)
+  - September 2025: SMW4 and IMEWE cut near Jeddah while SMW5, AAE-1 and PEACE kept running (confirmed)
+  - 20 October 2025: PEACE cut near Sudan (confirmed, ISP statement)
   - A Facebook-style mass withdrawal (2021): a big content network vanishes, and the CDN caches in Pakistan go dark
   - A Verizon/DQE-style route leak (2019) re-enacted with a Pakistani ISP's customer (hypothetical, labelled as such)
   - A Mirai-style IoT botnet DDoS on a Pakistani data centre (illustrative)
@@ -168,9 +172,9 @@ Each scenario becomes a short story you can present from, instead of a few alert
 | 4 | 8, 10, buffer |
 
 ## Facts to verify before the demo
-- ASNs other than AS17557, AS3491 and AS36561.
 - Cable capacities (shown as representative, not exact).
-- Whether Africa-1 and 2Africa are carrying traffic yet.
+- Whether Africa-1, 2Africa and SMW6 are carrying traffic (checked 21 Nov 2026: Africa-1 no, 2Africa unconfirmed, SMW6 conflicting).
+- Ms. Sajjad's publication list: ask her to confirm it before it goes on a slide (REFERENCES §4).
 - Whether the Natural Earth Pakistan outline includes Azad Kashmir and Gilgit-Baltistan as the current slabs do.
 
 ## Risks

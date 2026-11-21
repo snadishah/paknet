@@ -21,8 +21,9 @@ export function createSecurity(ctx) {
     later(1800, () => { alertFeed('The route leaks to upstream AS3491 (PCCW) and spreads worldwide — the /24 is more specific than YouTube\'s /22', 'crit'); scen.hijack.phase = 2; });
     later(3500, () => { scen.hijack.phase = 3; alertFeed('YouTube traffic from abroad now flows into Pakistan and is dropped', 'crit'); });
     if (state.defense) {
-      later(5600, () => alertFeed('<b>Detected:</b> origin conflict, RPKI says invalid (only AS36561 is authorised)', 'warn'));
-      later(7600, () => { alertFeed('<b>Adapted:</b> upstreams filter the bad route, YouTube announces more-specific /25s — contained', 'ok'); scen.hijack.phase = 4; shieldAt(k, 0.6); });
+      // What-if: RPKI did not exist in 2008. Today the /22 has ROAs (AS43515, AS36040), so this /24 would be Invalid (REFERENCES §0 #10).
+      later(5600, () => alertFeed('<b>Detected (what-if, with today\'s RPKI):</b> origin conflict — a /24 from AS17557 is <i>Invalid</i> against YouTube\'s ROAs', 'warn'));
+      later(7600, () => { alertFeed('<b>Adapted:</b> upstreams drop the invalid route (route origin validation) — contained', 'ok'); scen.hijack.phase = 4; shieldAt(k, 0.6); });
       later(12500, () => scen.hijack = null);
     } else { later(7000, () => alertFeed('No defence — in 2008 the outage lasted about two hours', 'crit')); later(14000, () => scen.hijack = null); }
   }
