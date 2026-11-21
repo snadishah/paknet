@@ -123,6 +123,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .chart { background: var(--surface-2); border-radius: var(--r-md); padding: 10px; } .chart label { display: block; font-size: var(--t-xs); color: var(--mute); } .chart b { font-size: 14px; font-variant-numeric: tabular-nums; }
 .chart canvas { width: 100%; height: 40px; display: block; margin-top: 6px; }
 .cu { display: grid; grid-template-columns: 92px 1fr 34px; gap: 10px; align-items: center; font-size: var(--t-sm); margin: 7px 0; }
+.bgprow { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 0; border-bottom: 1px solid #f0f3f1; font-size: var(--t-sm); } .bgprow em { grid-column: 1; font-style: normal; color: var(--mute); font-size: var(--t-xs); font-variant-numeric: tabular-nums; } .bgprow b { grid-row: 1/3; grid-column: 2; align-self: center; font-size: var(--t-xs); font-weight: 600; padding: 2px 8px; border-radius: 6px; } .bgprow b.ok { background: var(--acc-soft); color: var(--acc); } .bgprow b.bad { background: var(--bad-soft); color: var(--bad); }
 .foot { font-size: var(--t-xs); color: var(--mute); margin-top: var(--s4); line-height: 1.5; }
 
 /* bottom strip: playback, trends, stories */
@@ -305,6 +306,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
     <button class="action red" id="btnMal"><span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span><div><b>Compromised phones</b><small>Self-protecting devices, adaptive access control</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
     <h5>Alerts</h5>
     <div id="alerts"><p class="muted empty">Run a scenario. Then switch defence off and run it again to compare.</p></div>
+    <div id="bgpBox" style="display:none"><h5>What each network believes · <span id="bgpClock"></span></h5><p class="muted" style="margin:-4px 0 8px">Route each network uses for YouTube's address 208.65.153.238 (longest-prefix match). Relationships are CAIDA inferences; world regions are aggregates.</p><div id="bgpTable"></div></div>
   </section>
 
   <section class="pane" id="pane-metrics">

@@ -14,6 +14,7 @@ import { lift } from './geo/projection.js';
 import { buildTopology } from './graph/topology.js';
 import { createNetwork } from './sim/network.js';
 import { createTraffic } from './sim/traffic.js';
+import { createInterdomain } from './sim/interdomain.js';
 import { DV_ROUND_S } from './sim/params.js';
 import { renderer, labelRenderer, scene, camera, controls, layers } from './render/scene.js';
 import { buildBasemap } from './render/basemap.js';
@@ -50,7 +51,7 @@ on('topology:changed', ({ cutEdges }) => { if (hasHighlight() && cutEdges.length
 on('ospf:lsa', ({ router }) => { if (state.protocol === 'OSPF' && G.nodes[router].tier !== 'intl') burst(lift(G.nodes[router].pos, 0.02), '#0f766e', 0.14, 0.7); });
 
 /* ---------- scenarios + UI ---------- */
-const ctx = { G, net, traffic, view, flyTo };
+const ctx = { G, net, traffic, view, flyTo, interdomain: createInterdomain() };
 ctx.setLayer = initPanel(ctx);
 ctx.failures = createFailures(ctx);
 ctx.security = createSecurity(ctx);
@@ -66,7 +67,7 @@ window.__flyTo = flyTo;
 window.__sim = { SCEN, runHijack, runDDoS, runMalware, setTab, traceRoute: ctx.route.traceRoute, countToInfinity: ctx.demos.countToInfinity, setLayer: ctx.setLayer, inspect: name => ctx.inspector.open(G.N(name)),
   // debug: advance the simulation by `seconds` of wall time without waiting for frames
   tick: (seconds = 1) => { for (let t = 0; t < seconds; t += 1 / 60) stepWorld(state.speed / 60); },
-  traffic, net };
+  traffic, net, interdomain: ctx.interdomain };
 
 /* ---------- main loop ---------- */
 const fmtClock = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
@@ -87,6 +88,7 @@ function stepWorld(sdt) {
     ctx.security.spawn(sdt);
     dvClock += sdt; while (dvClock >= DV_ROUND_S) { dvClock -= DV_ROUND_S; net.dvRound(); }
     net.lsAdvance(sdt);
+    ctx.interdomain.advance(sdt);
   }
   traffic.advance(sdt, packetEvents);
 }

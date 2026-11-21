@@ -108,7 +108,8 @@ The `sim/`, `routing/` and `defence/` folders never import three.js or the DOM. 
 - The flooding wave is drawn from real LSA arrival times (the current pulse animation becomes real).
 - **Tests:** every router's table matches a global Dijkstra after convergence; convergence time rises with network diameter and the per-hop delay.
 
-### 6 · Simplified BGP (your item 4)
+### 6 · Simplified BGP (your item 4) — done
+**Done (Nov 2026):** `src/routing/bgp.js` + `as-topology.js` + `src/sim/interdomain.js`; the hijack scenario replays the day's operator actions and everything else emerges; 10 new tests. Replayed result: at 18:48 100% of world and Pakistani YouTube traffic heads into PTCL; after YouTube's /24 at 20:07 only Asia-Pacific (25%) stays hijacked (PCCW prefers its customer's route), matching the partial recovery seen in 2008; the /25s at 20:18 end it; PCCW's filter at 20:59 removes the route. With ROV at the carriers (what-if) the leak never spreads. Not done: BGP sessions are not mapped onto cables, so cable-cut convergence under BGP stays mocked, and normal international traffic still picks its cable by capacity.
 - About 12 ASes: PTCL AS17557, TWA, Cybernet/StormFiber, Nayatel, Multinet, Wateen, SCO, PCCW AS3491, YouTube AS36561, plus two or three generic transit/Tier-1 ASes and "rest of world" sources. All ASNs are verified in `docs/REFERENCES.md` §2 (TWA 38193, Cybernet 9541, Nayatel 23674, Multinet 9260, Wateen 38264, SCO 18053); the relationships are CAIDA inferences and get labelled as such.
 - The RPKI comparison is honest about dates: RPKI did not exist in 2008, but today YouTube's /22 has ROAs (AS43515, AS36040), so the replay can show "2008 rules" against "today's rules".
 - Relationships: customer, peer (PKIX) and provider. Route choice: customer > peer > provider, then shortest AS path, then a tie-break. Gao-Rexford valley-free export. UPDATE and WITHDRAW messages with delays.

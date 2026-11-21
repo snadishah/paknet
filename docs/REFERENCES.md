@@ -417,6 +417,14 @@ All values live in `src/sim/params.js`. **Sourced** values cite a section above;
 | OSPF per-hop LSA processing, SPF run time | 2 ms, 2 ms | Assumption |
 | OSPF cost | 100 Tbps ÷ link capacity (auto-cost reference bandwidth) | Method sourced (RFC 2328 leaves cost to the operator; auto-cost is vendor practice); reference value is an assumption |
 | OSPF time compression | 100 ms of OSPF time per wall second; 10 s per wall second while only a long timer is pending | Modelling choice |
+| BGP decision and export | LOCAL_PREF own > customer > peer > provider; shortest AS path; lowest neighbour ASN; valley-free export | Sourced (§3, RFC 4271 §9.1; Gao 2001; Gao & Rexford 2001) |
+| BGP MRAI | 30 s × U(0.75, 1) per session; withdrawals sent at once | Sourced timer (§3, RFC 4271 §10); immediate withdrawals are a simplification |
+| BGP session delay | 500 ms per hop | Assumption |
+| AS model | 7 Pakistani ASes, PCCW 3491, Level3 3356, Arelion 1299, Cogent 174, YouTube 36561, 3 aggregated world regions (private ASNs 64601–64603) | ASNs sourced (§2); relationships inferred by CAIDA (§2); carrier peering mesh, YouTube's 2008 upstreams and world regions are assumptions |
+| 2008 filters | Level3, Arelion, Cogent filter PTCL's announcements; PCCW does not | Matches the observed first path "3491 17557" (§1.7); the other carriers' filters are inferred from that |
+| ROA for the what-if | 208.65.152.0/22, maxLength 22, origin AS36561 | What-if: RPKI did not exist in 2008; today the /22 has ROAs (§0 #10) |
+| YouTube traffic volumes | world 2 Tbps, Pakistan 0.4 Tbps | Illustrative |
+| BGP time compression | 20 s of BGP time per wall second; 10 min per wall second while only scenario actions are waiting | Modelling choice |
 | Microwave backup chain | one logical RIP hop | Modelling choice: keeps the network within RIP's 15-hop limit |
 | Peak offered load | 18 Tbps (all classes) | Assumption, chosen so peak international use (~6.6 Tbps busier direction) matches Dawn's 7–8 Tbps used (§0 #9) |
 | Traffic classes | international 62%, domestic 19%, CDN 12%, China 1.5%, land borders 1%, satellite 0.2% | Assumption |

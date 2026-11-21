@@ -59,6 +59,21 @@ export const OSPF_MS_PER_S = 100;
 export const OSPF_FAST_MS_PER_S = 10000;
 export const OSPF_LONG_WAIT_MS = 1000;
 
+// BGP (RFC 4271 §10 suggested defaults, REFERENCES §3).
+export const BGP = {
+  mraiMs: 30000,      // MinRouteAdvertisementInterval for eBGP, × jitter U(0.75, 1)
+  sessionDelayMs: 500 // update transmission + processing per session. Assumption
+};
+// BGP time is compressed: 20 s per wall second while updates are in flight,
+// 10 minutes per wall second while only scheduled scenario actions are waiting.
+export const BGP_MS_PER_S = 20000;
+export const BGP_FAST_MS_PER_S = 600000;
+// YouTube traffic in the 2008 scenario (illustrative volumes, not measurements).
+export const YT_WORLD_TBPS = 2;   // world users → YouTube, for the address range PTCL hijacked
+export const YT_PK_TBPS = 0.4;    // Pakistani users → YouTube
+// Share of Pakistani users per AS (assumption; no public split by these ASNs).
+export const PK_USER_SHARE = { 17557: 0.45, 38193: 0.15, 9541: 0.12, 23674: 0.08, 9260: 0.08, 38264: 0.08, 18053: 0.04 };
+
 /* ---------- capacities (Gbps, per direction) ---------- */
 // Active international capacity per cable. PTA presentation via TechJuice
 // (~late 2025): AAE-1 3.58, SMW4 1.98, IMEWE 1.9, TW1 2.6, PEACE 0.8, Pak-China

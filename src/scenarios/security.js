@@ -1,34 +1,47 @@
-// Security scenarios. The attack TRAFFIC is simulated (its effect on queues,
-// loss and latency is measured), but detection and response are STILL SCRIPTED
-// timers; steps 6–8 of docs/PLAN.md replace them with BGP/defence logic and stories.
+// Security scenarios.
+//   Hijack (2008): SIMULATED with BGP (sim/interdomain.js). The timeline only
+//     performs the operator actions of the day; which networks send YouTube
+//     traffic to Pakistan, and how much traffic is black-holed, follows from BGP.
+//   DDoS and compromised phones: the attack TRAFFIC is simulated (queues, loss,
+//     latency are measured), but detection and response are STILL SCRIPTED (step 7).
 import { state } from '../state.js';
+import { on } from '../events.js';
 import { lift } from '../geo/projection.js';
 import { buildPath, concatPaths, reversePath } from '../routing/paths.js';
-import { TIME_SCALE_MS, BUNDLE_GBIT } from '../sim/params.js';
+import { TIME_SCALE_MS, BUNDLE_GBIT, YT_WORLD_TBPS, YT_PK_TBPS } from '../sim/params.js';
 import { ui, setTab, alertFeed } from '../ui/dom.js';
 import { burst, shieldAt, clearShields } from '../render/fx.js';
 
 export function createSecurity(ctx) {
-  const { G, net, traffic } = ctx;
-  const { N, DCS } = G;
+  const { G, net, traffic, interdomain } = ctx;
+  const { N, DCS, CABLES } = G;
   const scen = state.scen;
   const timers = [];
   const later = (ms, fn) => timers.push(setTimeout(fn, ms));
 
-  function stop() { timers.forEach(clearTimeout); timers.length = 0; scen.hijack = scen.ddos = scen.mal = null; clearShields(); }
+  function stop() { timers.forEach(clearTimeout); timers.length = 0; if (scen.hijack) interdomain.stop(); scen.hijack = scen.ddos = scen.mal = null; clearShields(); }
 
+  /* ---------- 2008 hijack, from BGP ---------- */
   function runHijack() {
-    stop(); setTab('security'); ui('alerts').innerHTML = ''; const k = N('Karachi'); scen.hijack = { phase: 1 };
-    alertFeed('AS17557 (PTCL) announces <code>208.65.153.0/24</code> to block YouTube inside Pakistan', 'info'); burst(lift(k.pos, 0.05), '#dc2626', 0.7, 1.4);
-    later(1800, () => { alertFeed('The route leaks to upstream AS3491 (PCCW) and spreads worldwide — the /24 is more specific than YouTube\'s /22', 'crit'); scen.hijack.phase = 2; });
-    later(3500, () => { scen.hijack.phase = 3; alertFeed('YouTube traffic from abroad now flows into Pakistan and is dropped', 'crit'); });
-    if (state.defense) {
-      // What-if: RPKI did not exist in 2008. Today the /22 has ROAs (AS43515, AS36040), so this /24 would be Invalid (REFERENCES §0 #10).
-      later(5600, () => alertFeed('<b>Detected (what-if, with today\'s RPKI):</b> origin conflict — a /24 from AS17557 is <i>Invalid</i> against YouTube\'s ROAs', 'warn'));
-      later(7600, () => { alertFeed('<b>Adapted:</b> upstreams drop the invalid route (route origin validation) — contained', 'ok'); scen.hijack.phase = 4; shieldAt(k, 0.6); });
-      later(12500, () => scen.hijack = null);
-    } else { later(7000, () => alertFeed('No defence — in 2008 the outage lasted about two hours', 'crit')); later(14000, () => scen.hijack = null); }
+    stop(); setTab('security'); ui('alerts').innerHTML = '';
+    scen.hijack = { rov: state.defense, lastReport: '' };
+    burst(lift(N('Karachi').pos, 0.05), '#dc2626', 0.7, 1.4);
+    alertFeed(state.defense
+      ? '<b>What-if, today\'s rules:</b> the large carriers run route origin validation against YouTube\'s RPKI record. (RPKI did not exist in 2008.)'
+      : '<b>2008 rules:</b> no RPKI, and PCCW does not filter what its customer PTCL announces. Switch defence on to replay with today\'s rules.', 'info');
+    interdomain.startHijack({ rov: state.defense });
   }
+  on('bgp:action', ({ label, utc }) => { if (scen.hijack) alertFeed(`<b>${utc} UTC</b> · ${label}`, 'warn'); });
+  // After each wave of updates settles, say what the routes now do.
+  on('bgp:converged', () => {
+    const h = scen.hijack; if (!h) return;
+    const w = interdomain.worldHijackedShare(), pk = interdomain.pkBlockedShare();
+    const report = `${Math.round(w * 100)}|${Math.round(pk * 100)}`; if (report === h.lastReport) return; h.lastReport = report;
+    const kind = w > 0 ? 'crit' : 'ok';
+    alertFeed(`<b>${interdomain.utc()} UTC</b> · Routes settled: <b>${Math.round(w * 100)}%</b> of the world's YouTube users and <b>${Math.round(pk * 100)}%</b> of Pakistan's now send YouTube traffic into PTCL, where it is dropped.`, kind);
+    if (h.rov && w === 0 && !h.shield) { h.shield = true; shieldAt(N('Karachi'), 0.6); alertFeed('<b>Contained:</b> the carriers drop PTCL\'s /24 as RPKI <i>Invalid</i>, so it never spreads. Only Pakistan, which chose the block, loses YouTube.', 'ok'); }
+    if (interdomain.phase === 'over' && !h.done) { h.done = true; alertFeed('In 2008 the worldwide outage lasted about two hours (18:47 to about 21:00 UTC).', 'info'); later(4000, () => { scen.hijack = null; interdomain.stop(); }); }
+  });
 
   function runDDoS() {
     stop(); setTab('security'); ui('alerts').innerHTML = ''; const dc = DCS[1]; scen.ddos = { phase: 1, target: dc, scrub: DCS[3] };
@@ -54,14 +67,21 @@ export function createSecurity(ctx) {
   // Attack traffic for whichever scenario is running. Rates are in Tbps (illustrative
   // volumes), turned into whole bundles per frame, so attacks load the simulated links.
   const bundles = (tbps, dt) => { const x = tbps * TIME_SCALE_MS / BUNDLE_GBIT * dt; return Math.floor(x) + (Math.random() < x % 1 ? 1 : 0); };
-  const RATE = { leakAnnounce: 0.3, hijacked: 3, ddosCables: 8, ddosBots: 0.8, beacons: 0.05, quarantined: 0.03 };
+  const RATE = { ddosCables: 8, ddosBots: 0.8, beacons: 0.05, quarantined: 0.03 };
   function spawn(dt) {
     const { emitPacket, pickCableEdge, pickCity } = traffic; const { route } = net;
     const repeat = (tbps, fn) => { for (let i = bundles(tbps, dt); i > 0; i--) fn(); };
     if (scen.hijack) {
-      const ph = scen.hijack.phase, k = N('Karachi');
-      if (ph === 2) repeat(RATE.leakAnnounce, () => { const ce = pickCableEdge(); if (ce) emitPacket(buildPath(ce.a, [ce]), 'atk'); });
-      if (ph === 3) repeat(RATE.hijacked, () => { const ce = pickCableEdge(); if (ce) emitPacket(reversePath(concatPaths(route(k.id, ce.a), buildPath(ce.a, [ce]))), 'atk', { sink: true, blackhole: true }); });
+      // YouTube traffic black-holed in Pakistan, in proportion to what BGP decided:
+      // from abroad it arrives on PTCL's cables (PTCL is the AS the leak points to)
+      const k = N('Karachi');
+      const ptclCables = CABLES.filter(c => c.op === 'PTCL').flatMap(c => c.edges).filter(e => net.usable(e));
+      repeat(YT_WORLD_TBPS * interdomain.worldHijackedShare(), () => {
+        const ce = ptclCables[Math.floor(Math.random() * ptclCables.length)]; if (!ce) return;
+        emitPacket(reversePath(concatPaths(route(k.id, ce.a), buildPath(ce.a, [ce]))), 'atk', { sink: true, blackhole: true });
+      });
+      // …and Pakistani users' requests end at PTCL's null route in Karachi
+      repeat(YT_PK_TBPS * interdomain.pkBlockedShare(), () => { const p = route(pickCity().id, k.id); if (p) emitPacket(p, 'atk', { sink: true, blackhole: true }); });
     }
     if (scen.ddos) {
       const tgt = scen.ddos.phase === 2 ? scen.ddos.scrub : scen.ddos.target;
