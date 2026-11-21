@@ -16,7 +16,15 @@ export const panelOpen = () => document.body.classList.contains('panel-open');
 
 export function openPanel() { document.body.classList.add('panel-open'); syncRail(); }
 export function closePanel() { document.body.classList.remove('panel-open'); syncRail(); }
-function syncRail() { document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', panelOpen() && b.dataset.tab === currentTab)); }
+function syncRail() {
+  const open = panelOpen();
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', open && b.dataset.tab === currentTab));
+  // the rail's bottom button says what it will do: Hide an open panel, Show a closed one
+  const h = ui('btnHide'); if (!h) return;
+  h.querySelector('span').textContent = open ? 'Hide' : 'Show';
+  h.querySelector('use').setAttribute('href', open ? '#i-collapse' : '#i-expand');
+  h.setAttribute('aria-label', open ? 'Hide panel' : 'Show panel');
+}
 
 // Show a tab and open the panel (scenarios call this too).
 export function setTab(t) {
