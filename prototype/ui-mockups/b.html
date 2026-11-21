@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAKNET mockup B: Status strip</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* B — Status strip: maximum map. An icon rail on the right opens a
+   collapsible panel; KPIs, playback and Stories live in one bottom strip.
+   Story mode turns the panel into a narrative column with a chapter list. */
+:root { --rail-w: 60px; --panel-w: 340px; }
+.brandchip { position: fixed; left: var(--gutter); top: var(--gutter); padding: var(--s2) var(--s3); z-index: 5; }
+.rail { position: fixed; right: var(--gutter); top: var(--gutter); bottom: var(--gutter); width: var(--rail-w); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--s2) 0; z-index: 6; }
+.rail button { width: 46px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 5px; border-radius: 10px; font-size: 10px; font-weight: 600; color: var(--mute); }
+.rail button:hover { background: var(--surface-2); color: var(--ink); }
+.rail button.on { background: var(--acc-soft); color: var(--acc); }
+.rail .sep { width: 28px; height: 1px; background: var(--line); margin: var(--s2) 0; }
+.rail .grow { flex: 1; }
+.panel { position: fixed; right: calc(var(--gutter) + var(--rail-w) + var(--s2)); top: var(--gutter); bottom: 88px; width: var(--panel-w); display: flex; flex-direction: column; overflow: hidden; z-index: 5; transform: translateX(calc(100% + var(--rail-w) + 40px)); transition: transform .3s ease; }
+body.panel-open .panel { transform: none; }
+.panel header { display: flex; align-items: center; justify-content: space-between; padding: var(--s3) var(--s3) var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
+.panel header h2 { margin: 0; }
+.pane { padding: var(--s4) var(--s4) var(--s6); overflow: auto; flex: 1; }
+.strip { position: fixed; left: var(--gutter); right: calc(var(--gutter) + var(--rail-w) + var(--s2)); bottom: var(--gutter); height: 60px; display: flex; align-items: center; gap: var(--s4); padding: 0 var(--s3) 0 var(--s2); z-index: 5; }
+.strip .playback { display: flex; align-items: center; gap: var(--s2); padding-right: var(--s4); border-right: 1px solid var(--line); }
+.strip .playback input[type=range] { width: 120px; }
+.strip .kpis { display: flex; gap: var(--s6); flex: 1; min-width: 0; overflow: hidden; }
+.strip .kpi { flex-direction: row; align-items: center; gap: var(--s2); }
+.strip .kpi > div { display: flex; flex-direction: column; }
+.strip .kpi svg.spark { width: 54px; height: 22px; }
+.toasts { position: fixed; left: 50%; transform: translateX(-50%); top: var(--gutter); z-index: 6; }
+/* story mode: the panel becomes a narrative column */
+.storycol { display: none; }
+body.story .panel { transform: none; }
+body.story .panel .pane, body.story .panel header { display: none; }
+body.story .storycol { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.storycol .beat { padding: var(--s4); border-bottom: 1px solid var(--line); }
+.storycol .chapters { list-style: none; margin: 0; padding: var(--s2); overflow: auto; flex: 1; counter-reset: c; }
+.storycol .chapters li { display: grid; grid-template-columns: 22px 1fr; gap: var(--s2); padding: var(--s2); border-radius: 10px; font-size: var(--t-sm); color: var(--mute); counter-increment: c; }
+.storycol .chapters li::before { content: counter(c); font-weight: 600; font-variant-numeric: tabular-nums; }
+.storycol .chapters li.done { color: var(--ink-2); }
+.storycol .chapters li.now { background: var(--bad-soft); color: var(--ink); font-weight: 600; }
+.storycol .ctl { display: flex; gap: var(--s2); padding: var(--s3); border-top: 1px solid var(--line); }
+.storycol .ctl .btn { flex: 1; }
+body.story .strip .kpi.watch b { color: var(--bad); }
+body.story .strip .kpi.watch { background: var(--bad-soft); border-radius: 10px; padding: 4px 8px; margin: -4px -8px; }
+.callout { left: 40%; top: 44%; }
+
+@media (max-width: 720px) {
+  :root { --gutter: 12px; }
+  .brandchip .brand small { display: none; }
+  .rail { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 62px; flex-direction: row; justify-content: space-around; padding: 0 var(--s2); border-radius: var(--r-lg) var(--r-lg) 0 0; }
+  .rail .sep, .rail .grow, .rail .dockonly { display: none; }
+  .rail button { width: auto; flex: 1; }
+  .panel { left: 0; right: 0; top: auto; bottom: 62px; width: auto; height: 58vh; border-radius: var(--r-lg) var(--r-lg) 0 0; transform: translateY(110%); }
+  body.panel-open .panel, body.story .panel { transform: none; }
+  body.story .panel { bottom: 0; height: 66vh; z-index: 7; }
+  .strip { top: 60px; bottom: auto; left: var(--gutter); right: var(--gutter); height: auto; padding: var(--s2) var(--s3); }
+  .strip .playback { display: none; }
+  .strip .kpis { gap: var(--s4); overflow-x: auto; scrollbar-width: none; }
+  .strip .kpi svg.spark, .strip .storiesbtn span { display: none; }
+  .strip .kpi b { font-size: var(--t-md); }
+  .toasts { top: 124px; left: var(--gutter); right: var(--gutter); transform: none; }
+  .beat h3 { font-size: var(--t-lg); }
+}
+</style>
+</head>
+<body data-view="overview">
+<script src="mock.js"></script>
+
+<div class="brandchip card">
+  <div class="brand">
+    <span class="mark"><svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2" fill="#fff"/><circle cx="3.5" cy="4" r="1.3" fill="#fff" opacity=".85"/><circle cx="12.5" cy="4" r="1.3" fill="#fff" opacity=".85"/><circle cx="8" cy="13.2" r="1.3" fill="#fff" opacity=".85"/><path d="M3.5 4 8 8l4.5-4M8 8v5.2" stroke="#fff" stroke-width="1" opacity=".85" fill="none"/></svg></span>
+    <div><b>PAKNET</b><small>Pakistan's internet, simulated</small></div>
+  </div>
+</div>
+
+<div class="toasts"><div class="toast bad"><span class="dot"></span><b>AAE-1</b>&nbsp;cut — traffic moves to the remaining cables</div></div>
+
+<nav class="rail card" data-tabs>
+  <button data-tab="overview"><svg class="ico"><use href="#i-overview"/></svg>Overview</button>
+  <button data-tab="route"><svg class="ico"><use href="#i-route"/></svg>Route</button>
+  <button data-tab="failures"><svg class="ico"><use href="#i-failures"/></svg>Failures</button>
+  <button data-tab="security"><svg class="ico"><use href="#i-security"/></svg>Security</button>
+  <button data-tab="metrics"><svg class="ico"><use href="#i-metrics"/></svg>Metrics</button>
+  <span class="sep"></span>
+  <button class="dockonly"><svg class="ico"><use href="#i-layers"/></svg>Layers</button>
+  <button class="dockonly"><svg class="ico"><use href="#i-views"/></svg>Views</button>
+  <button class="dockonly"><svg class="ico"><use href="#i-legend"/></svg>Legend</button>
+  <span class="grow"></span>
+  <button class="dockonly" data-collapse aria-label="Collapse panel"><svg class="ico"><use href="#i-collapse"/></svg>Hide</button>
+</nav>
+
+<aside class="panel card">
+  <header><h2>Overview</h2><button class="iconbtn" data-collapse aria-label="Close panel"><svg class="ico"><use href="#i-close"/></svg></button></header>
+  <section class="pane" data-pane="overview">
+    <p class="lead">Each dot is a bundle of traffic. Most international traffic leaves through a few landing stations on Karachi's coast.</p>
+    <div class="mix">
+      <i style="background:var(--intl)"></i><span>International</span><div class="bar"><span style="width:62%;background:var(--intl)"></span></div><em>62%</em>
+      <i style="background:var(--dom)"></i><span>Domestic</span><div class="bar"><span style="width:14%;background:var(--dom)"></span></div><em>14%</em>
+      <i style="background:var(--cdn)"></i><span>Local cache (CDN)</span><div class="bar"><span style="width:12%;background:var(--cdn)"></span></div><em>12%</em>
+    </div>
+    <div class="eyebrow">Stories</div>
+    <button class="story red" data-story><span class="badge"><svg class="ico"><use href="#i-flag"/></svg></span><div><b>The YouTube hijack</b><small>How one route took YouTube offline worldwide</small></div><span class="yr">2008</span></button>
+    <button class="story amber"><span class="badge"><svg class="ico"><use href="#i-cable"/></svg></span><div><b>One cable, twelve days</b><small>Pakistan's only cable, SMW3, is cut</small></div><span class="yr">2005</span></button>
+    <button class="story amber"><span class="badge"><svg class="ico"><use href="#i-cable"/></svg></span><div><b>Red Sea cuts</b><small>SMW4 and IMEWE fail near Jeddah</small></div><span class="yr">2025</span></button>
+    <p class="foot">Representative topology: which ISP runs which route isn't public.</p>
+  </section>
+  <section class="pane hide" data-pane="route"><p class="lead">Route tab content.</p></section>
+  <section class="pane hide" data-pane="failures"><p class="lead">Failures tab content.</p></section>
+  <section class="pane hide" data-pane="security"><p class="lead">Security tab content.</p></section>
+  <section class="pane hide" data-pane="metrics"><p class="lead">Metrics tab content.</p></section>
+  <div class="storycol">
+    <div class="beat">
+      <span class="kicker">The YouTube hijack · 24 Feb 2008</span>
+      <h3>The route leaks to the world</h3>
+      <p>PTCL meant the /24 to stay inside Pakistan. With no export filter, it reached its upstream PCCW, which passed it on. A /24 is more specific than YouTube's /22, so routers everywhere prefer it.</p>
+      <div class="aspath"><span>Rest of world</span><i>›</i><span>AS3491 PCCW</span><i>›</i><span class="hot">AS17557 PTCL</span></div>
+      <span class="src">Source: RIPE NCC; Renesys (2008)</span>
+    </div>
+    <ol class="chapters">
+      <li class="done">YouTube announces 208.65.152.0/22</li>
+      <li class="done">PTCL blocks YouTube with a /24</li>
+      <li class="now">The route leaks to the world</li>
+      <li>YouTube traffic flows into Pakistan</li>
+      <li>YouTube fights back with /25s</li>
+      <li>PCCW withdraws the route</li>
+      <li>What would have stopped it</li>
+    </ol>
+    <div class="ctl"><button class="btn ghost" data-story>Exit</button><button class="btn ghost"><svg class="ico"><use href="#i-prev"/></svg>Back</button><button class="btn">Next<svg class="ico"><use href="#i-next"/></svg></button></div>
+  </div>
+</aside>
+
+<footer class="strip card">
+  <div class="playback">
+    <button class="play" aria-label="Pause"><svg class="ico"><use href="#i-pause"/></svg></button>
+    <div class="speeds"><button class="on">1×</button><button>2×</button><button>4×</button></div>
+    <input type="range" min="0" max="24" step="0.1" value="21" aria-label="Time of day">
+    <span class="clock">21:00</span>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div><label>Intl capacity</label><b>13.0<em>Tbps</em></b></div></div>
+    <div class="kpi"><div><label>Throughput</label><b>9.6<em>Tbps</em></b></div><svg class="spark" viewBox="0 0 54 22"><path d="M0 14 6 13 12 15 18 11 24 12 30 9 36 10 42 7 48 8 54 6" fill="none" stroke="#0f766e" stroke-width="1.6"/></svg></div>
+    <div class="kpi"><div><label>KHI–LHE RTT</label><b>21<em>ms</em></b></div><svg class="spark" viewBox="0 0 54 22"><path d="M0 12 6 12 12 13 18 12 24 12 30 13 36 12 42 12 48 13 54 12" fill="none" stroke="#b45309" stroke-width="1.6"/></svg></div>
+    <div class="kpi watch"><div><label>Packet loss</label><b>0.0<em>%</em></b></div><svg class="spark" viewBox="0 0 54 22"><path d="M0 20 6 20 12 20 18 20 24 20 30 20 36 20 42 20 48 20 54 20" fill="none" stroke="#dc2626" stroke-width="1.6"/></svg></div>
+    <div class="kpi"><div><label>Cables live</label><b>7/9</b></div></div>
+  </div>
+  <button class="btn ghost storiesbtn" data-story><svg class="ico"><use href="#i-stories"/></svg><span>Stories</span></button>
+</footer>
+
+<div class="callout"><i></i>AS17557 announces 208.65.153.0/24</div>
+</body>
+</html>

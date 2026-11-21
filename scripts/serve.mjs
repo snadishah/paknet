@@ -7,7 +7,10 @@ import { readFile } from 'node:fs/promises';
 import { join, extname, normalize, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
+const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
+const root = join(repo, 'dist');
+// /prototype/... is served from the repo's prototype/ folder (design mockups).
+const protoRoot = join(repo, 'prototype');
 const port = +(process.argv.slice(2).find(a => /^\d+$/.test(a)) || process.env.PORT || 5173);
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
 
@@ -15,8 +18,10 @@ export function serve() {
   return createServer(async (req, res) => {
     let p = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     if (p.endsWith('/')) p += 'index.html';
-    const file = normalize(join(root, p));
-    if (file !== root && !file.startsWith(root + sep)) { res.writeHead(403); return res.end(); }
+    const proto = p.startsWith('/prototype/');
+    const base = proto ? protoRoot : root;
+    const file = normalize(join(base, proto ? p.slice('/prototype'.length) : p));
+    if (file !== base && !file.startsWith(base + sep)) { res.writeHead(403); return res.end(); }
     try {
       const body = await readFile(file);
       res.writeHead(200, { 'content-type': types[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });

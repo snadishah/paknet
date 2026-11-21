@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAKNET UI mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+/* Viewer for the three throwaway layout mockups (docs/PLAN.md step 2). */
+body { display: flex; flex-direction: column; background: #d9e1de; }
+.vbar { flex: none; display: flex; align-items: center; gap: var(--s4); padding: 10px var(--s4); background: var(--surface); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.vbar b { letter-spacing: .06em; }
+.seg { display: flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { padding: 6px 12px; border-radius: 8px; font-size: var(--t-sm); font-weight: 600; color: var(--mute); }
+.seg button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.desc { flex: 1; min-width: 240px; color: var(--ink-2); font-size: var(--t-sm); }
+.stage { flex: 1; position: relative; display: grid; place-items: center; overflow: hidden; }
+.stage iframe { border: 0; background: var(--bg); }
+.stage.desktop iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage.phone iframe { width: 390px; height: 844px; border-radius: 28px; box-shadow: 0 0 0 10px #22312b, 0 20px 50px rgba(0,0,0,.25); transform-origin: center; }
+</style>
+</head>
+<body>
+<div class="vbar">
+  <b>PAKNET mockups</b>
+  <div class="seg" id="variant"><button data-v="a" class="on">A · Refined</button><button data-v="b">B · Status strip</button><button data-v="c">C · Left rail</button></div>
+  <div class="seg" id="device"><button data-d="desktop" class="on">Desktop</button><button data-d="phone">Phone</button></div>
+  <div class="seg" id="mode"><button data-m="normal" class="on">Normal</button><button data-m="story">Story mode</button></div>
+  <span class="desc" id="desc"></span>
+</div>
+<div class="stage desktop" id="stage"><iframe id="frame" title="Mockup"></iframe></div>
+<script>
+const DESC = {
+  a: 'Same structure as today with every collision fixed: brand and KPIs share one header card, dock and playback share one bottom bar. Stories open as a card above the bar.',
+  b: 'Maximum map. An icon rail on the right opens a collapsible panel; KPIs with sparklines, playback and Stories sit in one bottom strip. Stories become a narrative column with chapters.',
+  c: 'Desktop-app layout: navigation rail on the left with Stories as its own section, panel beside it, KPIs as chips top-right. Stories play as a lower third with a dated timeline.'
+};
+const st = { v: 'a', d: 'desktop', m: 'normal' };
+const frame = document.getElementById('frame'), stage = document.getElementById('stage');
+function fit() { if (st.d !== 'phone') { frame.style.transform = ''; return; } const s = Math.min(1, (stage.clientHeight - 40) / 864, (stage.clientWidth - 40) / 410); frame.style.transform = `scale(${s})`; }
+function applyMode() { const b = frame.contentDocument?.body; if (!b) return; const on = st.m === 'story'; if (b.classList.contains('story') !== on) b.querySelector('[data-story]')?.click(); }
+function load() { frame.src = `${st.v}.html`; document.getElementById('desc').textContent = DESC[st.v]; stage.className = 'stage ' + st.d; fit(); }
+frame.addEventListener('load', () => setTimeout(applyMode, 300));
+for (const [id, key] of [['variant', 'v'], ['device', 'd'], ['mode', 'm']]) {
+  document.getElementById(id).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll(`#${id} button`).forEach(x => x.classList.toggle('on', x === b));
+    st[key] = b.dataset[key];
+    if (key === 'm') applyMode(); else load();
+  });
+}
+addEventListener('resize', fit);
+load();
+</script>
+</body>
+</html>
