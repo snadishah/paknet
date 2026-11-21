@@ -272,7 +272,13 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
     <div class="fld"><label>Optimise for</label><select id="rmetric"><option value="latency">Lowest latency</option><option value="hops">Fewest hops</option><option value="cost">Lowest cost</option></select></div>
     <div class="row" style="margin-top:12px"><button class="btn" id="btnTrace">Trace route</button><button class="btn ghost sm" id="btnSwap" title="Swap" aria-label="Swap from and to"><svg class="ico"><use href="#i-swap"/></svg></button><button class="btn ghost sm" id="btnClearRoute" title="Clear the route highlight">Clear</button></div>
     <div id="rres"></div>
-    <div id="ctiWrap" style="display:none"><h5>Count-to-infinity</h5><button class="action amber" id="btnCTI"><span class="ic"><svg class="ico"><use href="#i-infinity"/></svg></span><div><b>Break Quetta–Sibi</b><small>Watch two routers count up to 16</small></div><svg class="ico go"><use href="#i-next"/></svg></button><div id="cti"></div></div>
+    <div id="ctiWrap" style="display:none"><h5>Count-to-infinity (real RIP)</h5>
+    <button class="action amber" id="btnCTI"><span class="ic"><svg class="ico"><use href="#i-infinity"/></svg></span><div><b>Cut Nok Kundi–Taftan</b><small>Taftan and the Iran link lose their only path. Watch the routers count to 16.</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
+    <label class="crow"><div><b>Split horizon</b><small>Don't advertise a route back to where it came from</small></div><span class="tog"><input type="checkbox" id="dvSH"><i></i></span></label>
+    <label class="crow"><div><b>Poison reverse</b><small>Advertise it back as 16 instead</small></div><span class="tog"><input type="checkbox" id="dvPR"><i></i></span></label>
+    <div class="row" style="margin-top:10px"><button class="btn ghost sm" id="btnCTIRestore">Restore the link</button><span class="muted" id="dvRound"></span></div>
+    <div id="cti"></div>
+    <p class="foot">One round = RIP's 30-second update, compressed to under a second. Metric: hop count; 16 means unreachable (RFC 2453).</p></div>
   </section>
 
   <section class="pane" id="pane-failures">
@@ -286,7 +292,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
     <button class="btn ghost" data-scen="restore" style="margin-top:10px">Restore everything</button>
     <h5>Submarine cables</h5>
     <div id="cablelist"></div>
-    <div class="fld" style="margin-top:14px"><label>Rerouting protocol for manual cuts</label><select id="falgo"><option value="BGP">BGP · tens of seconds</option><option value="OSPF">OSPF · about a second</option><option value="RIP">RIP · slow</option></select></div>
+    <div class="fld" style="margin-top:14px"><label>Routing protocol</label><select id="falgo"><option value="BGP">BGP · convergence timing mocked</option><option value="OSPF">OSPF · convergence timing mocked</option><option value="RIP">RIP · simulated distance vector</option></select></div>
     <p class="foot">Cable status checked Nov 2026. Africa-1 and 2Africa have landed but aren't confirmed in service; SMW6 is partly active and sources disagree. Hover a cable for details.</p>
   </section>
 

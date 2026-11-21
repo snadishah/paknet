@@ -2,6 +2,7 @@
 import { state } from '../state.js';
 import { on } from '../events.js';
 import { ui, note } from './dom.js';
+import { RIP_UPDATE_S } from '../sim/params.js';
 
 export function initFailures(ctx) {
   const { G, net, failures } = ctx;
@@ -34,7 +35,36 @@ export function initFailures(ctx) {
     }, 50);
   }
 
-  on('topology:changed', ({ cutEdges, algo, T }) => { if (cutEdges.length) showConv(algo, state.lastConv, T); renderCables(); });
+  // RIP is simulated: show the live round count, then how many rounds it really took.
+  let rip = null;
+  function showRip(startRound) {
+    clearInterval(convTimer); rip = { start: startRound };
+    const el = ui('conv'); el.classList.add('on');
+    el.innerHTML = `<span>Rerouting · RIP</span><b>round 0</b><i style="width:4%"></i>`;
+  }
+  on('dv:round', ({ round }) => {
+    if (!rip) return; const n = round - rip.start;
+    ui('conv').innerHTML = `<span>Rerouting · RIP</span><b>round ${n}</b><i style="width:${Math.min(96, n * 6)}%"></i>`;
+  });
+  on('rip:converged', ({ rounds }) => {
+    if (!rip) return; rip = null;
+    const el = ui('conv');
+    el.innerHTML = `<span>Converged · RIP</span><b>${rounds} round${rounds === 1 ? '' : 's'} ≈ ${rounds * RIP_UPDATE_S} s</b><i style="width:100%"></i>`;
+    setTimeout(() => { if (!rip) el.classList.remove('on'); }, 3500);
+  });
+
+  on('topology:changed', ({ cutEdges, algo, T }) => {
+    if (cutEdges.length) { if (algo === 'RIP') showRip(net.dv.round); else showConv(algo, state.lastConv, T); }
+    renderCables();
+  });
   document.querySelectorAll('[data-scen]').forEach(b => b.onclick = () => failures.SCEN[b.dataset.scen]());
+  // the protocol choice drives how traffic is forwarded (RIP) or the mocked timing (OSPF, BGP)
+  ui('falgo').value = state.protocol;
+  ui('falgo').onchange = e => setProtocol(e.target.value);
   renderCables();
+}
+
+export function setProtocol(p) {
+  state.protocol = p;
+  const sel = ui('falgo'); if (sel && sel.value !== p) sel.value = p;
 }

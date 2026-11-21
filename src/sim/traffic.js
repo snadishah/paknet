@@ -53,7 +53,10 @@ export function createTraffic(G, net) {
 
   /* ---------- injecting bundles ---------- */
   function send(path, cls, opt = {}) {
-    if (!path || !path.edges.length) return null;
+    if (!path) return null;
+    const fate = path.fate || 'ok';
+    if (!path.edges.length && fate === 'ok') return null; // already there
+    if (fate !== 'ok') opt = { ...opt, expire: fate }; // routing failed: dropped where the path ends
     const b = eng.inject(path.seq, path.edges, { gbit: BUNDLE_GBIT, ...opt, cls });
     b.color = opt.color || FLOW[VIS_CAT[cls] || 'dom'].c;
     b.size = opt.size || (cls === 'atk' ? 0.12 : 0.085);
@@ -75,50 +78,54 @@ export function createTraffic(G, net) {
     if (!live.length) return null; const tot = live.reduce((a, b) => a + b[1], 0); let r = Math.random() * tot; for (const [e, w] of live) { r -= w; if (r <= 0) return e; } return live[0][0];
   }
 
-  const join = (a, b) => (a && b ? { seq: [...a.seq, ...b.seq.slice(1)], edges: [...a.edges, ...b.edges] } : null);
-  const rev = p => (p ? { seq: [...p.seq].reverse(), edges: [...p.edges].reverse() } : null);
-  const hop = (u, e) => ({ seq: [u, e.a === u ? e.b : e.a], edges: [e] });
+  // Paths are { seq, edges, fate }. A path whose fate isn't 'ok' stops where
+  // routing failed (a loop or no route); the bundle is dropped there.
+  const join = (a, b) => (!a || !b ? null : a.fate && a.fate !== 'ok' ? a : { seq: [...a.seq, ...b.seq.slice(1)], edges: [...a.edges, ...b.edges], fate: b.fate || 'ok' });
+  const rev = p => (p ? { seq: [...p.seq].reverse(), edges: [...p.edges].reverse(), fate: p.fate } : null);
+  const hop = (u, e) => ({ seq: [u, e.a === u ? e.b : e.a], edges: [e], fate: 'ok' });
   const CLASSES = Object.entries(CLASS_SHARE), SHARE_SUM = CLASSES.reduce((a, [, w]) => a + w, 0);
 
   function spawnOne() {
     const now = performance.now();
-    const stale = now < state.convergeUntil && Math.random() < 0.55 * (state.convergeUntil - now) / (state.convergeUntil - state.convergeStart);
-    const route = (a, b, st = false) => net.route(a, b, st);
+    const stale = state.protocol !== 'RIP' && now < state.convergeUntil && Math.random() < 0.55 * (state.convergeUntil - now) / (state.convergeUntil - state.convergeStart);
+    const fwd = (a, b, st = false) => net.forward(a, b, st); // follows the active routing protocol
     let r = Math.random() * SHARE_SUM, cls = CLASSES[CLASSES.length - 1][0];
     for (const [k, w] of CLASSES) { if (r < w) { cls = k; break; } r -= w; }
+    const either = (out, inn) => (Math.random() < 0.5 ? out() : inn());
     if (cls === 'intl') {
-      const src = pickCity(); let ce = pickCableEdge();
+      const city = pickCity(); let ce = pickCableEdge();
       if (stale && state.staleSet.size) { const c = edges[[...state.staleSet][Math.floor(Math.random() * state.staleSet.size)]]; if (c.cable) ce = c; }
-      if (!ce) return send(route(src.id, INTL.N.id), 'intl'); // no cables left: China fibre is the only way out
-      const full = join(route(src.id, ce.a, stale), hop(ce.a, ce));
-      return send(Math.random() < 0.62 ? rev(full) : full, 'intl'); // most international traffic is inbound
+      if (!ce) return send(fwd(city.id, INTL.N.id), 'intl'); // no cables left: China fibre is the only way out
+      const far = G.nodes[ce.a].tier === 'intl' ? ce.a : ce.b, cls_ = ce.a === far ? ce.b : ce.a; // endpoint, landing station
+      return Math.random() < 0.62 // most international traffic is inbound
+        ? send(join(hop(far, ce), fwd(cls_, city.id, stale)), 'intl')
+        : send(join(fwd(city.id, cls_, stale), hop(cls_, ce)), 'intl');
     }
-    if (cls === 'dom') { const a = pickCity(), b = pickCity(); return a !== b && send(route(a.id, b.id, stale), 'dom'); }
+    if (cls === 'dom') { const a = pickCity(), b = pickCity(); return a !== b && send(fwd(a.id, b.id, stale), 'dom'); }
     if (cls === 'cdn') {
       const a = pickCity(); let best = DCS[0], bd = 1e9; for (const d of DCS) { const dd = d.pos.distanceTo(a.pos); if (dd < bd) { bd = dd; best = d; } }
-      return send(rev(route(a.id, best.id)), 'cdn');
+      return send(fwd(best.id, a.id), 'cdn'); // content flows from the cache to the user
     }
     if (cls === 'sat') {
       if (!flags.satellite) return null;
       const v = VSAT[Math.floor(Math.random() * VSAT.length)], g = GW[Math.floor(Math.random() * GW.length)];
       const up = adj.get(v.id).find(e => e.type === 'sat'), down = adj.get(g.id).find(e => e.type === 'sat');
-      const p = { seq: [v.id, G.SAT.id, g.id], edges: [up, down] };
+      const p = { seq: [v.id, G.SAT.id, g.id], edges: [up, down], fate: 'ok' };
       return send(Math.random() < 0.5 ? p : rev(p), 'sat');
     }
     if (cls === 'china') {
       const src = [N('Islamabad'), N('Rawalpindi'), N('Lahore'), N('Gilgit'), N('Peshawar')][Math.floor(Math.random() * 5)];
-      const p = route(src.id, INTL.N.id); return send(Math.random() < 0.5 ? p : rev(p), 'china');
+      return either(() => send(fwd(src.id, INTL.N.id), 'china'), () => send(fwd(INTL.N.id, src.id), 'china'));
     }
     const [a, b] = [[N('Peshawar'), INTL.AF], [N('Quetta'), INTL.AFS], [N('Quetta'), INTL.IR]][Math.floor(Math.random() * 3)];
-    const p = route(a.id, b.id); return send(Math.random() < 0.5 ? p : rev(p), 'border');
+    return either(() => send(fwd(a.id, b.id), 'border'), () => send(fwd(b.id, a.id), 'border'));
   }
 
   /* ---------- latency probes: Karachi ↔ Lahore ---------- */
   const probe = { kl: [], lk: [], last: null, next: 0 };
   function sendProbes() {
     const k = N('Karachi').id, l = N('Lahore').id;
-    const p1 = send(net.route(k, l), 'probe', { gbit: 1e-6, dir: 'kl' }), p2 = send(net.route(l, k), 'probe', { gbit: 1e-6, dir: 'lk' });
-    void p1; void p2;
+    send(net.forward(k, l), 'probe', { gbit: 1e-6, dir: 'kl' }); send(net.forward(l, k), 'probe', { gbit: 1e-6, dir: 'lk' });
   }
 
   /* ---------- delivery and loss ---------- */

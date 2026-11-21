@@ -14,6 +14,7 @@ import { lift } from './geo/projection.js';
 import { buildTopology } from './graph/topology.js';
 import { createNetwork } from './sim/network.js';
 import { createTraffic } from './sim/traffic.js';
+import { DV_ROUND_S } from './sim/params.js';
 import { renderer, labelRenderer, scene, camera, controls, layers } from './render/scene.js';
 import { buildBasemap } from './render/basemap.js';
 import { drawNetwork } from './render/network.js';
@@ -62,8 +63,8 @@ const { SCEN } = ctx.failures, { runHijack, runDDoS, runMalware } = ctx.security
 window.__flyTo = flyTo;
 window.__sim = { SCEN, runHijack, runDDoS, runMalware, setTab, traceRoute: ctx.route.traceRoute, countToInfinity: ctx.demos.countToInfinity, setLayer: ctx.setLayer, inspect: name => ctx.inspector.open(G.N(name)),
   // debug: advance the simulation by `seconds` of wall time without waiting for frames
-  tick: (seconds = 1) => { for (let t = 0; t < seconds; t += 1 / 60) { ctx.security.spawn(state.speed / 60); traffic.advance(state.speed / 60, packetEvents); } },
-  traffic };
+  tick: (seconds = 1) => { for (let t = 0; t < seconds; t += 1 / 60) stepWorld(state.speed / 60); },
+  traffic, net };
 
 /* ---------- main loop ---------- */
 const fmtClock = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
@@ -76,14 +77,22 @@ const packetEvents = {
   arrive: b => { if (b.opt.sink && Math.random() < 0.2) burst(packetPos(b, b.d), '#dc2626', 0.22, 0.6); }
 };
 
+// Advance everything that runs on simulated time by sdt (wall seconds × speed):
+// attack traffic, RIP rounds (on their own compressed clock) and the packet engine.
+let dvClock = 0;
+function stepWorld(sdt) {
+  if (sdt > 0) {
+    ctx.security.spawn(sdt);
+    dvClock += sdt; while (dvClock >= DV_ROUND_S) { dvClock -= DV_ROUND_S; net.dvRound(); }
+  }
+  traffic.advance(sdt, packetEvents);
+}
+
 function frame() {
   const dt = Math.min(0.05, clock.getDelta()); const sdt = state.playing ? dt * state.speed : 0;
   updateCamera();
-  if (state.playing) {
-    state.simHour = (state.simHour + sdt / 30) % 24; ui('tod').value = state.simHour; ui('kClock').textContent = fmtClock(state.simHour);
-    ctx.security.spawn(sdt);
-  }
-  traffic.advance(sdt, packetEvents);
+  if (state.playing) { state.simHour = (state.simHour + sdt / 30) % 24; ui('tod').value = state.simHour; ui('kClock').textContent = fmtClock(state.simHour); }
+  stepWorld(sdt);
   drawPackets(traffic.packets);
   updateFx(dt);
   layers.gateways.children.forEach(m => { if (m.userData.spin) m.userData.spin.rotation.z += dt; });

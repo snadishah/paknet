@@ -34,6 +34,13 @@ export const BUFFER_MS = 5;
 // Latency probes (tiny bundles, Karachi ↔ Lahore) every this many network ms.
 export const PROBE_EVERY_MS = 0.5;
 
+/* ---------- routing protocols ---------- */
+// RIP sends its whole table every 30 s (RFC 2453 §3.8). Routing time is
+// compressed separately from packet time: one RIP round every DV_ROUND_S wall
+// seconds at 1×, so count-to-infinity plays out in ~10 s instead of ~7 minutes.
+export const RIP_UPDATE_S = 30;
+export const DV_ROUND_S = 0.7;
+
 /* ---------- capacities (Gbps, per direction) ---------- */
 // Active international capacity per cable. PTA presentation via TechJuice
 // (~late 2025): AAE-1 3.58, SMW4 1.98, IMEWE 1.9, TW1 2.6, PEACE 0.8, Pak-China

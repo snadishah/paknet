@@ -2,6 +2,7 @@
 // globals that used to live at the top of main.js have a single home.
 export const state = {
   // topology / routing
+  protocol: 'BGP',        // routing protocol for rerouting: 'RIP' (simulated), 'OSPF' | 'BGP' (timing mocked)
   plannedActive: false,   // Gwadar landing + CPEC-II fibre what-if
   epoch: 0,               // bumps on every topology change (route-cache key)
   staleSet: new Set(),    // edge ids routers still believe are up while converging

@@ -72,11 +72,11 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
   - **traffic** (step 3, `src/sim/engine.js` + `traffic.js`): a discrete-event simulation. Every directed link has a capacity, a propagation delay, a FIFO buffer and tail drop. Each moving dot is a 0.1 Gbit bundle. Parameters and sources are in `src/sim/params.js` and `docs/REFERENCES.md` §7.
   - **metrics**, all measured from that simulation: capacity, international throughput (busier direction), Karachi–Lahore RTT (probe bundles), loss on legitimate traffic, link and cable utilisation, router queue rings, link-load layer
   - attack traffic in the security scenarios (it really congests links)
-  - stale-route drops during "convergence"
+  - **RIP** (step 4, `src/routing/dv.js`): distance vector in synchronous rounds, hop count, infinity 16, split horizon and poison reverse toggles. With protocol = RIP (Failures tab), traffic follows the routers' next hops, so loops (TTL drops) and black holes emerge; convergence is measured in rounds. One round = RIP's 30 s timer, compressed to `DV_ROUND_S`. The Route tab's Bellman-Ford view and the count-to-infinity demo (cut Nok Kundi–Taftan) read the real tables.
 - **Mocked:**
-  - convergence durations and the stale-route window (still a timer per protocol)
-  - a bundle's path is fixed at injection (source routing); hop-by-hop forwarding comes with the real protocols
-  - Bellman-Ford and BGP: both use the same Dijkstra paths, with only different animations and AS-path labels
+  - OSPF and BGP convergence: still a timer per protocol, with stale-route drops during the window
+  - under OSPF/BGP a bundle's path is fixed at injection (Dijkstra); hop-by-hop forwarding for those comes with steps 5–6
+  - BGP: uses Dijkstra paths with only AS-path labels
   - security detection and response: timed scripts
 - Debug hook: `window.__sim.tick(seconds)` advances the simulation without animation frames (useful when the browser pane is hidden).
 

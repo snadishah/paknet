@@ -42,7 +42,7 @@ export function createEngine({ capacityGbps, delayMs, usable = () => true, buffe
   const links = new Map();
   const bundles = new Set();
   const hooks = { deliver: null, drop: null };
-  const counters = { offered: 0, delivered: 0, dropped: 0, deliveredGbit: {}, droppedBy: { queue: 0, down: 0, blocked: 0, blackhole: 0 } };
+  const counters = { offered: 0, delivered: 0, dropped: 0, deliveredGbit: {}, droppedBy: { queue: 0, down: 0, blocked: 0, blackhole: 0, ttl: 0, unreachable: 0 } };
 
   const at = (t, type, a, b) => events.push({ t, n: n++, type, a, b });
 
@@ -72,7 +72,9 @@ export function createEngine({ capacityGbps, delayMs, usable = () => true, buffe
   }
 
   function arriveAtNode(b) {
-    if (b.hop >= b.edges.length) return deliver(b);
+    // end of the path: delivered, unless the path ended because routing failed
+    // (opt.expire = 'ttl' for a loop, 'unreachable' for no route)
+    if (b.hop >= b.edges.length) return b.opt.expire ? drop(b, b.opt.expire) : deliver(b);
     const e = b.edges[b.hop], dir = b.seq[b.hop] === e.a ? 0 : 1;
     if (!usable(e)) return drop(b, 'down');
     const L = link(e, dir);

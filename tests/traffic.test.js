@@ -76,6 +76,29 @@ describe('traffic on the full network', () => {
     expect(scrubbed.lossPct).toBeLessThan(hit.lossPct);
   });
 
+  it('under RIP, a cut that triggers count-to-infinity makes traffic loop until its TTL expires', () => {
+    state.protocol = 'RIP';
+    try {
+      const nk = G.N('Nok Kundi').id, taftan = G.N('Taftan').id;
+      const e = G.adj.get(nk).find(x => x.a === taftan || x.b === taftan);
+      runFor(traffic, 10);
+      net.cutEdge(e); traffic.onCut(e); net.topologyChanged([e], 'RIP');
+      // count looping bundles that die: by TTL, or tail-dropped on the link the loop jams
+      let looped = 0; const prev = traffic.engine.hooks.drop;
+      traffic.engine.hooks.drop = b => { if (b.opt.expire === 'ttl') looped++; prev(b); };
+      for (let r = 0; r < 6; r++) { net.dvRound(); runFor(traffic, 40); }
+      traffic.engine.hooks.drop = prev;
+      expect(looped).toBeGreaterThan(0);
+      const nushki = G.N('Nushki').id, kharan = G.N('Kharan').id;
+      traffic.sample(); runFor(traffic, 20); traffic.sample();
+      expect(G.adj.get(nushki).find(x => x.a === kharan || x.b === kharan).util).toBeGreaterThan(0.5); // the loop link is busy
+      for (let r = 0; r < 30; r++) net.dvRound(); // let it reach 16
+      const before = traffic.engine.counters.droppedBy.unreachable;
+      runFor(traffic, 30);
+      expect(traffic.engine.counters.droppedBy.unreachable).toBeGreaterThan(before); // now dropped as unreachable
+    } finally { state.protocol = 'BGP'; }
+  });
+
   it('at night (03:00) the network is lightly loaded', () => {
     state.simHour = 3;
     runFor(traffic, 40); traffic.sample(); runFor(traffic, 40); const m = traffic.sample();

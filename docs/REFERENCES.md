@@ -407,6 +407,12 @@ All values live in `src/sim/params.js`. **Sourced** values cite a section above;
 | Microwave links | 20 Gbps | Assumption (modern multi-carrier / E-band) |
 | Data centre / IXP / scrubbing uplinks | 2.5 / 2 / 10 Tbps | Assumption |
 | Satellite links | 5 Gbps gateway, 1 Gbps terminal | Assumption (no public PakSat-MM1 throughput found) |
+| RIP metric and infinity | hop count, 16 = unreachable | Sourced (§3, RFC 2453) |
+| RIP update timer | 30 s, compressed to one round per 0.7 s on screen | Sourced timer (§3, RFC 2453 §3.8); compression is a modelling choice |
+| RIP split horizon / poison reverse | optional, off by default | Sourced (§3, RFC 2453 §3.4.3) |
+| Link-down detection | at the start of the next round | Simplification (RIP's 180 s timeout replaced by interface-down detection) |
+| Forwarding hop limit (TTL) | 32 router hops | Simplification of the IP TTL |
+| Microwave backup chain | one logical RIP hop | Modelling choice: keeps the network within RIP's 15-hop limit |
 | Peak offered load | 18 Tbps (all classes) | Assumption, chosen so peak international use (~6.6 Tbps busier direction) matches Dawn's 7–8 Tbps used (§0 #9) |
 | Traffic classes | international 62%, domestic 19%, CDN 12%, China 1.5%, land borders 1%, satellite 0.2% | Assumption |
 | Choice of city | ∝ population (gravity model) | Sourced method (§3, Roughan 2005) |

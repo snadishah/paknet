@@ -93,7 +93,8 @@ The `sim/`, `routing/` and `defence/` folders never import three.js or the DOM. 
 - **Tests:** one link at 2× its capacity drops about 50%; latency on an idle path equals its propagation delay; FIFO order is preserved.
 - **Check:** cutting AAE-1 at peak hour produces real congestion and loss on the remaining cables. That loss is measured, not scripted.
 
-### 4 · Real distance-vector / Bellman-Ford (your item 2)
+### 4 · Real distance-vector / Bellman-Ford (your item 2) — done
+**Done (Nov 2026):** `src/routing/dv.js`; RIP drives forwarding when chosen as the routing protocol; split horizon and poison reverse toggles; count-to-infinity demo on Nok Kundi–Taftan; convergence measured in rounds; 8 new tests. What the simulation showed: without split horizon the routers count 3 → 15 → 16 over 14 rounds; with split horizon or poison reverse the two-router bounce stops at once, but a stale route still circles the larger Balochistan loop and counts up before dying (split horizon's known limit for loops of 3+ routers). Looping traffic jams the Nushki–Kharan microwave link before its TTL runs out.
 - Routers exchange distance vectors in timed rounds with a configurable period. The metric is hop count, with infinity = 16 (RIP style).
 - Toggles on the Route tab: **split horizon** and **poison reverse**.
 - Count-to-infinity demo: cut a link that leaves a destination with **no** alternative path (e.g. Nok Kundi–Taftan, which cuts off Taftan and the Iran link). The current Quetta–Sibi demo can't count to 16, because Quetta has other paths. The round-by-round table on the panel is filled from the real vectors.

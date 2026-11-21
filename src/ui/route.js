@@ -12,7 +12,7 @@ export const mediumName = e => ({ fiber: 'fibre', metro: 'metro fibre', subsea: 
 
 const ALGO_TXT = {
   dijkstra: 'Link-state (OSPF): every router knows the whole map and runs Dijkstra. Pulses show nodes settling in order of distance.',
-  bf: 'Distance-vector (RIP): routers only share distances with neighbours, so estimates spread outward in waves.',
+  bf: 'Distance-vector (RIP, simulated): routers only share hop counts with their neighbours, one round at a time. The path shown follows the routers\' real tables.',
   bgp: 'Path-vector (BGP): networks choose routes by business policy. Hops are grouped by the operator (AS) carrying them.'
 };
 
@@ -36,7 +36,14 @@ export function initRoute(ctx) {
     const { algo, metric } = state;
     const s = +ui('rsrc').value, d = +ui('rdst').value; if (s === d) return;
     clearRoute(true);
-    const res = net.shortest(s, d, { metric }); if (!res) { ui('rres').innerHTML = '<p class="muted">No path — destination unreachable.</p>'; return; }
+    let res;
+    if (algo === 'bf') {
+      // the real RIP tables: follow each router's next hop
+      const p = net.dvPath(s, d);
+      if (!p || p.fate !== 'ok') { ui('rres').innerHTML = `<p class="muted">${p?.fate === 'ttl' ? 'Routing loop: the routers\' tables point in a circle (count-to-infinity in progress).' : 'Unreachable: no router has a route (metric 16).'}</p>`; return; }
+      res = { edges: p.edges, order: [], rip: true };
+    } else res = net.shortest(s, d, { metric });
+    if (!res) { ui('rres').innerHTML = '<p class="muted">No path — destination unreachable.</p>'; return; }
     const p = highlightPath(s, res.edges);
     for (let i = 0; i < 5; i++) later(i * 260, () => traffic.emitPacket(p, 'loop', { color: '#b45309', size: 0.12, speed: 1.8 }));
     if (algo === 'dijkstra') res.order.filter(id => nodes[id].tier !== 'access').slice(0, 90).forEach((id, i) => later(i * 22, () => burst(lift(nodes[id].pos, 0.02), '#d97706', 0.1, 0.6)));
@@ -51,7 +58,7 @@ export function initRoute(ctx) {
     seq.forEach((id, i) => { const e = res.edges[i - 1]; if (e) ms += propDelayMs(e.len * KM_PER_UNIT) + 0.06; const n = nodes[id]; if (n.tier === 'tower') return; rows.push(`<li><span>${n.name}</span><em>${e ? mediumName(e) : 'start'}${algo === 'bgp' && e ? ' · ' + (e.cable ? e.cable.op : e.ops[0] || '—') : ''}</em><b>${(ms * 2).toFixed(1)}</b></li>`); });
     let asPath = '';
     if (algo === 'bgp') { const ap = []; res.edges.forEach(e => { const a = e.cable ? e.cable.op : e.ops[0]; if (a && ap[ap.length - 1] !== a) ap.push(a); }); asPath = `<div class="aspath">${ap.map(a => `<span>${a === 'PTCL' ? 'AS17557 PTCL' : a}</span>`).join('<i>›</i>')}</div>`; }
-    ui('rres').innerHTML = `<div class="rsum"><div><b>${seq.length - 1}</b><small>hops</small></div><div><b>${(ms * 2).toFixed(1)}</b><small>ms round trip</small></div><div><b>${res.order.length}</b><small>nodes explored</small></div></div>${asPath}<details><summary>Hop by hop</summary><ol class="hops">${rows.join('')}</ol></details>`;
+    ui('rres').innerHTML = `<div class="rsum"><div><b>${seq.length - 1}</b><small>hops</small></div><div><b>${(ms * 2).toFixed(1)}</b><small>ms round trip</small></div>${res.rip ? `<div><b>${net.dv.round}</b><small>RIP round</small></div>` : `<div><b>${res.order.length}</b><small>nodes explored</small></div>`}</div>${asPath}<details><summary>Hop by hop</summary><ol class="hops">${rows.join('')}</ol></details>`;
   }
 
   const opt = routeNodes.map(n => `<option value="${n.id}">${n.name}</option>`).join('');

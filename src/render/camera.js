@@ -6,7 +6,7 @@ import { camera, controls } from './scene.js';
 export const VIEWS = {
   overview: { p: [0.4, -19.5, 19], t: [0.4, -2.3, 0] }, top: { p: [0.3, -1.6, 27], t: [0.3, -1.4, 0] },
   karachi: { p: [-1.95, -6.55, 3.1], t: [-1.98, -5.3, 0] }, north: { p: [3.6, 1.4, 4.6], t: [4.3, 4.9, 0] },
-  sea: { p: [-1.2, -16.5, 6], t: [-2.3, -7.8, 0] }, sat: { p: [-11, -10, 9], t: [-2.4, 0.4, 1.2] }, cti: { p: [-1.3, -4.4, 3.4], t: [-0.6, -1.9, 0] }
+  sea: { p: [-1.2, -16.5, 6], t: [-2.3, -7.8, 0] }, sat: { p: [-11, -10, 9], t: [-2.4, 0.4, 1.2] }, cti: { p: [-4.0, -6.6, 5.8], t: [-4.0, -1.0, 0] } // Taftan – Nok Kundi – Dalbandin – Nushki, left of the open panel
 };
 const TOUR = ['overview', 'karachi', 'sea', 'north', 'top'];
 
