@@ -38,7 +38,8 @@ const opts = {
 if (watch) {
   const ctx = await esbuild.context(opts);
   await ctx.watch();
-  console.log('watching src/ … open dist/index.html and refresh after each save');
+  if (process.argv.includes('--serve')) { const { serve } = await import('./serve.mjs'); serve(); console.log('watching src/ … refresh the browser after each save'); }
+  else console.log('watching src/ … open dist/index.html and refresh after each save');
 } else {
   await esbuild.build(opts);
 }

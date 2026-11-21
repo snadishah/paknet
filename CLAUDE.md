@@ -9,7 +9,9 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
 
 ## Commands
 - `npm install`, then `npm run build` produces `dist/index.html`, a single self-contained file. Open it in a browser.
-- `npm run dev` rebuilds on every save. Refresh the browser to see changes.
+- `npm run dev` rebuilds on every save and serves `dist/` on http://localhost:5173 (`scripts/serve.mjs`). Refresh the browser to see changes. The Claude preview pane uses the same command via `.claude/launch.json`.
+- `npm test` runs the Vitest unit tests (simulation and routing logic only, no rendering).
+- The working plan is `docs/PLAN.md`; facts, design decisions and their sources live in `docs/REFERENCES.md`.
 - `npm run build:v1` builds the first, neon-styled version into `dist/v1.html` (archived, for reference only).
 - `npm run data` regenerates `data/*.json` from the npm geo packages. Rarely needed.
 - The dev machine is Windows. Keep scripts cross-platform: Node only, no bash.

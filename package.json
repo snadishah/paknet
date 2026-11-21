@@ -5,7 +5,10 @@
   "description": "Pakistan internet traffic & routing simulator (three.js) — Computer Networks course project, proof of concept",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "dev": "node scripts/build.mjs --watch",
+    "dev": "node scripts/build.mjs --watch --serve",
+    "serve": "node scripts/serve.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "build:v1": "node scripts/build.mjs --v1",
     "data": "node scripts/extract-geo.js && node scripts/merge-provinces.js"
   },
@@ -13,12 +16,13 @@
     "three": "^0.160.1"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2",
     "@highcharts/map-collection": "^2.3.3",
     "all-the-cities": "^3.1.0",
+    "esbuild": "^0.28.2",
     "polygon-clipping": "^0.15.7",
     "proj4": "^2.23.0",
     "topojson-client": "^3.1.0",
+    "vitest": "^5.1.1",
     "world-atlas": "^2.0.2"
   }
 }
