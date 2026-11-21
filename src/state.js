@@ -13,5 +13,5 @@ export const state = {
   algo: 'dijkstra', metric: 'latency',
   // security
   defense: true,
-  scen: { hijack: null, ddos: null, mal: null }
+  scen: { hijack: null, ddos: null, mal: null, fb: null }
 };

@@ -71,6 +71,10 @@ export const BGP_FAST_MS_PER_S = 600000;
 // YouTube traffic in the 2008 scenario (illustrative volumes, not measurements).
 export const YT_WORLD_TBPS = 2;   // world users → YouTube, for the address range PTCL hijacked
 export const YT_PK_TBPS = 0.4;    // Pakistani users → YouTube
+// Facebook traffic in the 2021 story (illustrative): cache hits from PKIX Lahore,
+// and the failing DNS retries once Facebook's DNS prefixes are gone.
+export const FB_PK_TBPS = 0.6;
+export const FB_RETRY_TBPS = 0.08;
 // Share of Pakistani users per AS (assumption; no public split by these ASNs).
 export const PK_USER_SHARE = { 17557: 0.45, 38193: 0.15, 9541: 0.12, 23674: 0.08, 9260: 0.08, 38264: 0.08, 18053: 0.04 };
 

@@ -30,6 +30,7 @@ import { initFailures } from './ui/failures.js';
 import { initSecurity } from './ui/security.js';
 import { initInspector } from './ui/inspector.js';
 import { initMetrics } from './ui/metrics.js';
+import { initStories } from './ui/story.js';
 import { createFailures } from './scenarios/failures.js';
 import { createSecurity } from './scenarios/security.js';
 import { createRoutingDemos } from './scenarios/routing-demos.js';
@@ -61,13 +62,14 @@ initFailures(ctx);
 initSecurity(ctx);
 ctx.inspector = initInspector(ctx);
 initMetrics(ctx);
+ctx.stories = initStories(ctx);
 
 const { SCEN } = ctx.failures, { runHijack, runDDoS, runMalware } = ctx.security;
 window.__flyTo = flyTo;
 window.__sim = { SCEN, runHijack, runDDoS, runMalware, setTab, traceRoute: ctx.route.traceRoute, countToInfinity: ctx.demos.countToInfinity, setLayer: ctx.setLayer, inspect: name => ctx.inspector.open(G.N(name)),
   // debug: advance the simulation by `seconds` of wall time without waiting for frames
   tick: (seconds = 1) => { for (let t = 0; t < seconds; t += 1 / 60) stepWorld(state.speed / 60); },
-  traffic, net, interdomain: ctx.interdomain };
+  traffic, net, interdomain: ctx.interdomain, stories: () => ctx.stories };
 
 /* ---------- main loop ---------- */
 const fmtClock = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;

@@ -31,6 +31,14 @@ export function buildLabels(G) {
   CABLES.forEach((c, i) => { if (c.status === 'retired') return; const e = c.edges[0]; const p = e.pts[Math.floor(e.pts.length * (0.5 + (i % 3) * 0.08))]; c.label = label(c.name, p.clone().setZ(0.06), 'cab', 9); });
 }
 
+// Story callouts: a card pinned to a place on the map.
+const callouts = [];
+export function addCallout(pos, html) {
+  const d = document.createElement('div'); d.className = 'callout'; d.innerHTML = `<i></i>${html}`;
+  const o = new CSS2DObject(d); o.position.copy(pos); o.position.z += 0.2; layers.labels.add(o); callouts.push(o); return o;
+}
+export function clearCallouts() { callouts.forEach(o => { layers.labels.remove(o); o.element.remove(); }); callouts.length = 0; }
+
 // Show/hide labels by camera distance; labels bound to a hidden layer stay hidden.
 export function updateLabels(dist) {
   for (const o of labelObjs) { const v = dist >= o.userData.minD && dist <= o.userData.maxD; if (o.visible !== v) o.visible = v; }

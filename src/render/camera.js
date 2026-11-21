@@ -13,8 +13,9 @@ const TOUR = ['overview', 'karachi', 'sea', 'north', 'top'];
 let fly = null;
 const tour = { on: false, idx: 0, next: 0 };
 
+// k: a key of VIEWS, or a pose { p: [x,y,z], t: [x,y,z] }
 export function flyTo(k, dur = 2200) {
-  const v = VIEWS[k];
+  const v = typeof k === 'string' ? VIEWS[k] : k; if (!v) return;
   fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: new THREE.Vector3(...v.p), t1: new THREE.Vector3(...v.t), s: performance.now(), dur };
   emit('view:changed', k);
 }

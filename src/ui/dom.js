@@ -7,7 +7,7 @@ export function note(msg, kind = '') {
   clearTimeout(noteTimer); noteTimer = setTimeout(() => t.className = '', 4200);
 }
 
-const TITLES = { overview: 'Overview', route: 'Route', failures: 'Failures', security: 'Security', metrics: 'Metrics' };
+const TITLES = { story: 'Story', overview: 'Overview', route: 'Route', failures: 'Failures', security: 'Security', metrics: 'Metrics' };
 let currentTab = 'overview';
 const tabListeners = [];
 export const onTabChange = fn => tabListeners.push(fn);

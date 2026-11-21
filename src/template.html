@@ -126,6 +126,23 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 .bgprow { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 6px 0; border-bottom: 1px solid #f0f3f1; font-size: var(--t-sm); } .bgprow em { grid-column: 1; font-style: normal; color: var(--mute); font-size: var(--t-xs); font-variant-numeric: tabular-nums; } .bgprow b { grid-row: 1/3; grid-column: 2; align-self: center; font-size: var(--t-xs); font-weight: 600; padding: 2px 8px; border-radius: 6px; } .bgprow b.ok { background: var(--acc-soft); color: var(--acc); } .bgprow b.bad { background: var(--bad-soft); color: var(--bad); }
 .mapek { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 4px 0 10px; } .mapek span { font-size: var(--t-xs); font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--surface-2); color: var(--mute); transition: background .3s, color .3s; } .mapek span.on { background: var(--acc-soft); color: var(--acc); } .mapek span.hot { background: var(--warn-soft); color: var(--warn); } .mapek i { color: var(--faint); font-style: normal; font-size: var(--t-xs); } .mapek em { flex-basis: 100%; font-style: normal; color: var(--faint); font-size: var(--t-xs); }
 .cmp { border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; margin: 8px 0 4px; } .cmp h6 { margin: 0 0 6px; font-size: var(--t-sm); } .cmp canvas { width: 100%; height: 70px; display: block; } .cmp table { width: 100%; border-collapse: collapse; font-size: var(--t-xs); margin-top: 6px; font-variant-numeric: tabular-nums; } .cmp td, .cmp th { padding: 3px 0; text-align: right; border-bottom: 1px solid #f0f3f1; } .cmp td:first-child, .cmp th:first-child { text-align: left; color: var(--mute); font-weight: 500; } .cmp .k { display: inline-block; width: 10px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+/* stories */
+#pane-story { display: none; flex-direction: column; } #pane-story.on { display: flex; }
+.st-kicker { font-size: var(--t-xs); font-weight: 600; color: var(--bad); text-transform: uppercase; letter-spacing: .08em; }
+.st-title { font-size: var(--t-xl); line-height: 1.25; margin: 2px 0 8px; font-weight: 650; letter-spacing: -.01em; }
+.st-text { color: var(--ink-2); } .st-text code, .st-live code { font-size: var(--t-xs); background: var(--surface-2); padding: 0 4px; border-radius: 4px; }
+.st-live { margin: 10px 0 4px; } .st-live:empty { display: none; }
+.live-kpis { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .live-kpis span { background: var(--surface-2); border-radius: 8px; padding: 5px 8px; font-size: var(--t-xs); color: var(--mute); } .live-kpis b { color: var(--ink); font-size: var(--t-md); font-variant-numeric: tabular-nums; } .live-kpis b.bad { color: var(--bad); }
+.live-beliefs div { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 4px 0; border-bottom: 1px solid #f0f3f1; font-size: var(--t-xs); } .live-beliefs em { font-style: normal; color: var(--mute); grid-column: 1; } .live-beliefs b { grid-row: 1/3; grid-column: 2; align-self: center; padding: 1px 6px; border-radius: 5px; } .live-beliefs b.ok { background: var(--acc-soft); color: var(--acc); } .live-beliefs b.bad { background: var(--bad-soft); color: var(--bad); }
+.live-note { font-size: var(--t-sm); background: var(--surface-2); border-left: 3px solid var(--warn); border-radius: 0 8px 8px 0; padding: 6px 10px; margin: 6px 0; }
+.st-src { font-size: var(--t-xs); color: var(--faint); margin: 8px 0 0; }
+.st-chapters { list-style: none; margin: 12px 0 0; padding: 8px 0 0; border-top: 1px solid var(--line); counter-reset: c; flex: 1; }
+.st-chapters li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; padding: 6px 8px; border-radius: 9px; font-size: var(--t-sm); color: var(--mute); counter-increment: c; cursor: pointer; } .st-chapters li::before { content: counter(c); font-weight: 600; font-variant-numeric: tabular-nums; }
+.st-chapters li:hover { background: var(--surface-2); } .st-chapters li.done { color: var(--ink-2); } .st-chapters li.now { background: var(--bad-soft); color: var(--ink); font-weight: 600; }
+.st-ctl { display: flex; gap: 6px; position: sticky; bottom: -24px; background: var(--surface); padding: 10px 0 2px; margin-top: 8px; } .st-ctl .btn:not(.sm) { flex: 1; } #stAuto.on { border-color: var(--acc); color: var(--acc); }
+.st-timeline { display: none; }
+.callout { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sh); font: 600 var(--t-sm)/1.3 var(--f); color: var(--ink); white-space: nowrap; transform: translateY(-24px); }
+.callout i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 4px var(--bad-soft); }
 .foot { font-size: var(--t-xs); color: var(--mute); margin-top: var(--s4); line-height: 1.5; }
 
 /* bottom strip: playback, trends, stories */
@@ -187,6 +204,16 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
   .pop { right: 64px; top: 128px; width: min(280px, calc(100vw - 88px)); max-height: calc(100vh - 220px); }
   #insp { left: var(--gutter); right: var(--gutter); width: auto; bottom: calc(var(--tab-h) + var(--s3)); }
   body.panel-open #insp { display: none; }
+  body.story-mode #panel { height: auto; max-height: 52vh; bottom: 0; z-index: 7; }
+  body.story-mode #rail, body.story-mode #strip, body.story-mode #mapbtns { display: none; }
+  body.story-mode .st-chapters, body.story-mode .handle { display: none; }
+  body.story-mode .st-timeline { display: flex; position: relative; margin: 0 6px 10px; padding-top: 4px; }
+  .st-timeline::before { content: ''; position: absolute; left: 0; right: 0; top: 9px; height: 2px; background: var(--surface-3); }
+  .st-timeline span { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--mute); }
+  .st-timeline span i { width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-strong); }
+  .st-timeline span.done i { background: var(--ink-2); border-color: var(--ink-2); } .st-timeline span.now i { background: var(--bad); border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); } .st-timeline span.now { color: var(--ink); font-weight: 600; }
+  .st-timeline span:not(.now) b { display: none; } .st-timeline b { font-weight: 600; white-space: nowrap; }
+  .st-title { font-size: var(--t-lg); }
 }
 </style>
 </head>
@@ -261,10 +288,21 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
     <p class="lead">Each dot is a bundle of traffic (0.1 Gbit), queued and forwarded by a simulated network. Most international traffic goes through a few landing stations on Karachi's coast, then out on submarine cables.</p>
     <div id="mix"></div>
     <h5>Stories</h5>
+    <div id="storyList"></div>
+    <h5>Explore</h5>
     <button class="action" data-go="route"><span class="ic"><svg class="ico"><use href="#i-route"/></svg></span><div><b>Trace a route</b><small>Gilgit to Europe, hop by hop</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
-    <button class="action amber" data-go="cut"><span class="ic"><svg class="ico"><use href="#i-cable"/></svg></span><div><b>Cut a submarine cable</b><small>Replay the January 2025 AAE-1 fault</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
-    <button class="action red" data-go="hijack"><span class="ic"><svg class="ico"><use href="#i-flag"/></svg></span><div><b>Replay a BGP hijack</b><small>The 2008 PTCL / YouTube incident</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
     <p class="foot">Borders from Natural Earth; city positions from GeoNames (443 places). Which ISP runs which route isn't public, so the network here is representative, not exact.</p>
+  </section>
+
+  <section class="pane" id="pane-story">
+    <div class="st-timeline" id="stTimeline"></div>
+    <span class="st-kicker" id="stKicker"></span>
+    <h3 class="st-title" id="stTitle"></h3>
+    <div class="st-text" id="stText"></div>
+    <div class="st-live" id="stLive"></div>
+    <p class="st-src" id="stSrc"></p>
+    <ol class="st-chapters" id="stChapters"></ol>
+    <div class="st-ctl"><button class="btn ghost sm" id="stExit">Exit</button><button class="btn ghost sm" id="stPrev" aria-label="Previous">Back</button><button class="btn ghost sm" id="stAuto">Auto</button><button class="btn" id="stNext">Next</button></div>
   </section>
 
   <section class="pane" id="pane-route">

@@ -20,6 +20,7 @@ export const ASES = [
   { asn: 174, name: 'Cogent', kind: 'transit' },
   // content
   { asn: 36561, name: 'YouTube', kind: 'content' },
+  { asn: 32934, name: 'Facebook', kind: 'content' },
   // the rest of the world's access networks, aggregated (private-use ASNs: not real networks)
   { asn: 64601, name: 'Access ISPs · Europe', kind: 'world', share: 0.35 },
   { asn: 64602, name: 'Access ISPs · Americas', kind: 'world', share: 0.4 },
@@ -42,6 +43,8 @@ export const AS_LINKS = [
   { a: 3356, b: 1299, rel: 'p2p' }, { a: 3356, b: 174, rel: 'p2p' }, { a: 1299, b: 174, rel: 'p2p' },
   // YouTube in 2008: multihomed to two carriers (assumption; its 2008 upstreams are not in our sources)
   { a: 3356, b: 36561, rel: 'p2c' }, { a: 1299, b: 36561, rel: 'p2c' },
+  // Facebook (AS32934): connected to the carriers (assumption; in reality it peers very widely)
+  { a: 3356, b: 32934, rel: 'p2c' }, { a: 174, b: 32934, rel: 'p2c' }, { a: 3491, b: 32934, rel: 'p2p' },
   // world access networks buy transit from the carriers (assumption)
   { a: 1299, b: 64601, rel: 'p2c' }, { a: 3356, b: 64601, rel: 'p2c' },
   { a: 3356, b: 64602, rel: 'p2c' }, { a: 174, b: 64602, rel: 'p2c' },
@@ -54,12 +57,16 @@ export const HIJACK_PREFIX = '208.65.153.0/24';  // what PTCL announced to block
 export const YT_25S = ['208.65.153.0/25', '208.65.153.128/25']; // YouTube's counter-move
 export const YT_ADDR = '208.65.153.238';         // an address inside the /24 (youtube.com's then; illustrative)
 
+// Facebook's authoritative DNS prefixes, withdrawn on 4 Oct 2021 (REFERENCES §5.6, Cloudflare)
+export const FB_DNS = ['185.89.218.0/23', '129.134.30.0/23'];
+export const FB_DNS_ADDR = '129.134.30.12'; // an address inside one of them (illustrative)
+
 // What each customer is registered to announce, used by providers that filter
 // their customers' announcements (a prefix filter). PTCL's real list is ~7,000
 // prefixes; one placeholder stands for it.
 export const REGISTERED = {
   17557: ['PTCL-ALLOCATIONS'], 38193: ['TWA-ALLOCATIONS'], 9541: [], 23674: [], 9260: [], 38264: [], 18053: [],
-  36561: [YT_PREFIX, HIJACK_PREFIX, ...YT_25S], 64601: [], 64602: [], 64603: []
+  36561: [YT_PREFIX, HIJACK_PREFIX, ...YT_25S], 32934: [...FB_DNS], 64601: [], 64602: [], 64603: []
 };
 
 // Route Origin Authorisation for YouTube's prefix. RPKI did not exist in 2008:

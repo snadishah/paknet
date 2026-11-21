@@ -11,7 +11,7 @@ import { state } from '../state.js';
 import { on, emit } from '../events.js';
 import { lift } from '../geo/projection.js';
 import { buildPath, concatPaths, reversePath } from '../routing/paths.js';
-import { TIME_SCALE_MS, BUNDLE_GBIT, YT_WORLD_TBPS, YT_PK_TBPS, DEFENCE, SCENARIO_MS, BEACON_EVERY_MS } from '../sim/params.js';
+import { TIME_SCALE_MS, BUNDLE_GBIT, YT_WORLD_TBPS, YT_PK_TBPS, FB_PK_TBPS, FB_RETRY_TBPS, DEFENCE, SCENARIO_MS, BEACON_EVERY_MS } from '../sim/params.js';
 import { AS_BY_ASN } from '../sim/interdomain.js';
 import { createMapeK } from '../defence/mapek.js';
 import { ui, setTab, alertFeed } from '../ui/dom.js';
@@ -47,7 +47,7 @@ export function createSecurity(ctx) {
     emit('defence:phase', e);
   };
   // the BGP feed comes from vantage points outside Pakistan (like public route collectors)
-  on('bgp:best', ({ asn, prefix, best }) => { if (scen.hijack && ['transit', 'world'].includes(AS_BY_ASN.get(asn)?.kind)) defence.observeRoute(asn, prefix, best, now()); });
+  on('bgp:best', ({ asn, prefix, best }) => { if (scen.hijack && !scen.hijack.story && ['transit', 'world'].includes(AS_BY_ASN.get(asn)?.kind)) defence.observeRoute(asn, prefix, best, now()); });
 
   /* ---------- recording runs for the before/after comparison ---------- */
   const runs = {}; // scenario → { off, on }
@@ -89,7 +89,7 @@ export function createSecurity(ctx) {
   }
   on('bgp:action', ({ label, utc }) => { if (scen.hijack && !scen.hijack.shield) alertFeed(`<b>${utc} UTC</b> · ${label}`, 'warn'); });
   on('bgp:converged', () => {
-    const h = scen.hijack; if (!h) return;
+    const h = scen.hijack; if (!h || h.story) return; // stories narrate for themselves
     const w = interdomain.worldHijackedShare(), pk = interdomain.pkBlockedShare();
     const report = `${Math.round(w * 100)}|${Math.round(pk * 100)}`; if (report === h.lastReport) return; h.lastReport = report;
     alertFeed(`<b>${interdomain.utc()} UTC</b> · Routes settled: <b>${Math.round(w * 100)}%</b> of the world's YouTube users and <b>${Math.round(pk * 100)}%</b> of Pakistan's send YouTube traffic into PTCL, where it is dropped.`, w > 0 ? 'crit' : 'ok');
@@ -135,6 +135,13 @@ export function createSecurity(ctx) {
         emitPacket(reversePath(concatPaths(route(k.id, ce.a), buildPath(ce.a, [ce]))), 'atk', { sink: true, blackhole: true });
       });
       repeat(YT_PK_TBPS * interdomain.pkBlockedShare(), () => { const p = route(pickCity().id, k.id); if (p) emitPacket(p, 'atk', { sink: true, blackhole: true }); });
+    }
+    if (scen.fb) {
+      // Facebook: users reach the cache at PKIX Lahore only while their network can
+      // still reach Facebook's DNS servers; otherwise their lookups fail and retry
+      const cache = G.IXP.find(n => n.name === 'PKIX Lahore'), k = N('Karachi'), share = interdomain.fbReachableShare();
+      repeat(FB_PK_TBPS * share, () => { const p = route(cache.id, pickCity().id); if (p) emitPacket(p, 'cdn'); });
+      repeat(FB_RETRY_TBPS * (1 - share), () => { const p = route(pickCity().id, k.id); if (p) emitPacket({ ...p, fate: 'unreachable' }, 'dns', { color: '#94a3b8', size: 0.06 }); });
     }
     if (scen.ddos) {
       const d = scen.ddos;

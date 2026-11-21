@@ -7,7 +7,7 @@
 // ACTIONS that happened (REFERENCES §1.7); where routes go follows from BGP.
 import { emit } from '../events.js';
 import { createBGP } from '../routing/bgp.js';
-import { ASES, AS_LINKS, REGISTERED, ROAS, YT_PREFIX, HIJACK_PREFIX, YT_25S, YT_ADDR } from '../routing/as-topology.js';
+import { ASES, AS_LINKS, REGISTERED, ROAS, YT_PREFIX, HIJACK_PREFIX, YT_25S, YT_ADDR, FB_DNS, FB_DNS_ADDR } from '../routing/as-topology.js';
 import { BGP, BGP_MS_PER_S, BGP_FAST_MS_PER_S, PK_USER_SHARE } from './params.js';
 
 export const AS_BY_ASN = new Map(ASES.map(a => [a.asn, a]));
@@ -25,6 +25,7 @@ export function createInterdomain() {
     // in 2008 PTCL's other upstreams filtered its announcements; PCCW did not
     for (const asn of [3356, 1299, 174]) bgp.AS.get(asn).policy.customerFilter = true;
     bgp.originate(36561, YT_PREFIX);
+    for (const p of FB_DNS) bgp.originate(32934, p);
     while (bgp.busy) bgp.advance(bgp.now + 1000);
     bgp.hooks.best = (asn, prefix, best) => emit('bgp:best', { asn, prefix, best });
     bgp.hooks.converged = r => emit('bgp:converged', r);
@@ -54,9 +55,34 @@ export function createInterdomain() {
     return at;
   }
 
+  /* ---------- step-by-step control, for stories ---------- */
+  // A fresh world whose clock reads `start` (UTC) and which only changes when a story acts.
+  function startManual({ start = T2008.start } = {}) { build(); scenario = { phase: 'manual', start }; t0 = bgp.now; }
+  // Move the clock forward to offset ms after the start (processing whatever is in flight).
+  function jumpTo(offsetMs) { bgp.advance(Math.max(bgp.now, t0 + offsetMs)); }
+  // Let every update in flight arrive.
+  function settle() { let guard = 0; while (bgp.routing && guard++ < 10000) bgp.advance(bgp.now + 1000); }
+  const ACTIONS = {
+    ptclAnnounce: () => bgp.originate(17557, HIJACK_PREFIX, { exportTo: 'all' }),
+    ytSame24: () => bgp.originate(36561, HIJACK_PREFIX),
+    yt25s: () => YT_25S.forEach(p => bgp.originate(36561, p)),
+    pccwFilter: () => bgp.setPolicy(3491, { customerFilter: true }),
+    fbWithdraw: () => FB_DNS.forEach(p => bgp.withdrawOwn(32934, p)),
+    fbReturn: () => FB_DNS.forEach(p => bgp.originate(32934, p))
+  };
+  const act = name => ACTIONS[name]();
+  // Can this AS reach the network that originates the prefix covering ip?
+  function reaches(asn, ip, origin) {
+    let cur = asn;
+    for (let i = 0; i < 12; i++) { const r = bgp.lookup(cur, ip); if (!r) return false; if (r.rel === 'self') return cur === origin; cur = r.path[1]; }
+    return false;
+  }
+  // Share of Pakistani users whose network can still reach Facebook's DNS servers.
+  const fbReachableShare = () => Object.entries(PK_USER_SHARE).reduce((s, [asn, w]) => s + (reaches(+asn, FB_DNS_ADDR, 32934) ? w : 0), 0);
+
   // Scenario clock as UTC on the day, e.g. "18:49:12".
   function utc() {
-    const [h, m, s] = T2008.start.split(':').map(Number);
+    const [h, m, s] = (scenario?.start || T2008.start).split(':').map(Number);
     const secs = h * 3600 + m * 60 + s + Math.floor((bgp.now - t0) / 1000);
     return [Math.floor(secs / 3600) % 24, Math.floor(secs / 60) % 60, secs % 60].map(x => String(x).padStart(2, '0')).join(':');
   }
@@ -88,7 +114,7 @@ export function createInterdomain() {
 
   // What each network believes about YouTube's address right now (for the UI).
   function beliefs() {
-    return ASES.filter(a => a.asn !== 36561).map(a => {
+    return ASES.filter(a => a.kind !== 'content').map(a => {
       const r = bgp.lookup(a.asn, YT_ADDR), d = dataPath(a.asn);
       return { asn: a.asn, name: a.name, kind: a.kind, prefix: r?.prefix, path: r?.path || [], end: d.end };
     });
@@ -96,6 +122,7 @@ export function createInterdomain() {
 
   return {
     get bgp() { return bgp; }, get active() { return !!scenario; }, get phase() { return scenario?.phase; },
-    startHijack, stop, deployRov, advance, utc, dataPath, worldHijackedShare, pkBlockedShare, beliefs
+    startHijack, stop, deployRov, advance, utc, dataPath, worldHijackedShare, pkBlockedShare, beliefs,
+    startManual, jumpTo, settle, act, reaches, fbReachableShare
   };
 }

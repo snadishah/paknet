@@ -432,6 +432,10 @@ All values live in `src/sim/params.js`. **Sourced** values cite a section above;
 | Telemetry window, decision delay | 0.5 ms and 0.5 ms of network time | Assumption |
 | ROV deployment after detection | 5 minutes of BGP time | Assumption |
 | Attack volumes | DDoS 8 Tbps on the cables + 0.8 Tbps botnet; beacons every 0.1 ms of network time | Illustrative |
+| AAE-1 story: spare capacity switched on | IMEWE 1.9 → 2.76 Tbps, SMW4 1.98 → 2.58 Tbps (active → installed) | Sourced figures (§1.1, PTA via TechJuice); that PTCL went exactly to installed capacity is an assumption |
+| Facebook in the AS model | AS32934, customer of Level3 and Cogent, peer of PCCW; DNS prefixes 185.89.218.0/23 and 129.134.30.0/23 | ASN and prefixes sourced (§5.6, Cloudflare); connections are an assumption |
+| Facebook story volumes | 0.6 Tbps from the PKIX Lahore cache; 0.08 Tbps of failing DNS retries | Illustrative; the cache's existence is sourced (§1.4, S31) |
+| Red Sea story: SMW4 and IMEWE back before the PEACE cut | restored in the model | Assumption (repair dates not in our sources) |
 | Microwave backup chain | one logical RIP hop | Modelling choice: keeps the network within RIP's 15-hop limit |
 | Peak offered load | 18 Tbps (all classes) | Assumption, chosen so peak international use (~6.6 Tbps busier direction) matches Dawn's 7–8 Tbps used (§0 #9) |
 | Traffic classes | international 62%, domestic 19%, CDN 12%, China 1.5%, land borders 1%, satellite 0.2% | Assumption |
