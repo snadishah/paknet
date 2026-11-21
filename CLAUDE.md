@@ -17,20 +17,17 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
 - The dev machine is Windows. Keep scripts cross-platform: Node only, no bash.
 
 ## Layout
-- `src/main.js` holds all the logic, in commented sections:
-  - projection and palette
-  - renderer and lights (shadows on, no post-processing)
-  - basemap: extruded province slabs from `data/prov_merged.json`, flat neighbouring countries
-  - graph: nodes and edges for cities, routers, landing stations (CLS), IXPs, data centres, international endpoints, satellite, microwave relays
-  - drawing of each layer
-  - labels (CSS2DRenderer)
-  - routing engine (Dijkstra on the graph, path caching keyed by a topology `epoch`)
-  - packets (one `THREE.Points` with a custom shader and trails)
-  - effects: bursts, route highlight, cut marks, shields
-  - scenarios: cable cuts, convergence, security
-  - UI wiring
-  - metrics
-  - main loop
+- `src/main.js` builds the modules, wires events and runs the main loop. The rest of `src/`:
+  - `state.js`: the one shared mutable state object. `events.js`: a tiny event bus (`edge:cut`, `edge:restore`, `topology:changed`, `view:changed`).
+  - `palette.js`: map, packet and UI colours.
+  - `geo/`: projection and layout constants (`projection.js`), province outlines and `snapToCoast` (`coast.js`).
+  - `graph/topology.js`: `buildTopology()` returns the graph `G` (nodes, edges, adjacency, cables, CLS, IXPs, DCs, international endpoints, satellite, microwave relays).
+  - `routing/`: `dijkstra.js` (Dijkstra, edge weights, heap) and `paths.js` (polyline paths for packets).
+  - `sim/`: `network.js` (usable edges, cached routes keyed by the topology `epoch`, cuts and convergence) and `traffic.js` (traffic generator, packet movement).
+  - `render/`: `scene.js` (renderer, camera, lights, fat lines, layer registry), `basemap.js`, `network.js` (layer drawing and router glyphs), `labels.js`, `packets.js` (one `THREE.Points` with a custom shader and trails), `fx.js` (bursts, route highlight, cut marks, shields), `heat.js`, `camera.js` (views, fly-to, tour).
+  - `ui/`: `dom.js` helpers, `panel.js` (tabs, dock pop-ups, playback), `route.js`, `failures.js`, `security.js`, `metrics.js`, `inspector.js`.
+  - `scenarios/`: failure, security and routing demos. These orchestrate sim, render and UI.
+  - **Rule:** `routing/` and `sim/` never import rendering or the DOM. They emit events and the rest listens, which keeps them testable in Node (`tests/`).
 - `src/template.html` holds the HTML and CSS of the UI. The bundle is inlined at `<script>/*BUNDLE*/</script>`.
 - `data/`:
   - `countries.json`: Natural Earth 10m polygons for Pakistan and its neighbours
