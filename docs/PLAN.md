@@ -155,7 +155,8 @@ Each scenario becomes a short story you can present from, instead of a few alert
 - **`docs/REFERENCES.md`** records each fact, each design decision (link capacities, delay factor, buffer sizing, RIP infinity, OSPF timers, BGP policy model, detection thresholds, the MAPE-K framing) and the source it was taken from.
 - The UI's Sources screen, each story's source lines and the final report all draw from this one document.
 
-### 9 · Detailed coastline (your item 6a)
+### 9 · Detailed coastline (your item 6a) — done
+**Done (Nov 2026):** `scripts/fit-provinces.mjs` → `data/prov_fitted.json`, used by the basemap and coast snapping. The Kashmir risk did not materialise: the Natural Earth outline covers the same territory as the provinces (81.71 vs 81.73 deg²), so no special handling was needed. The method needed no buffering: clip each province to the outline, then give each uncovered sliver to the nearest province; the result tiles the outline exactly (3,336 boundary points instead of 490).
 - Offline data script: fit the 6 coarse province polygons to the detailed Natural Earth 10 m Pakistan outline. Buffer each province slightly outward, intersect with the detailed outline, then resolve overlaps in a fixed order (`polygon-clipping`, plus `@turf/buffer` as a dev dependency). Write the result to `data/prov_fitted.json`, which gets committed.
 - Landing stations re-snap to the new coast, and cable start points follow.
 - **Risk:** the Natural Earth outline and the Highcharts provinces may disagree near Kashmir. I'll check this first and tell you before choosing a fix.

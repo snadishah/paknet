@@ -1,5 +1,7 @@
 // Province outlines and helpers that work on them.
-import PROV from '../../data/prov_merged.json';
+// prov_fitted.json: the 6 provinces fitted to the detailed Natural Earth 10 m
+// outline of Pakistan (scripts/fit-provinces.mjs); prov_merged.json is the coarse source.
+import PROV from '../../data/prov_fitted.json';
 import { P, unP } from './projection.js';
 
 export { PROV };

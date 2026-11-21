@@ -13,7 +13,7 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
 - `npm test` runs the Vitest unit tests (simulation and routing logic only, no rendering).
 - The working plan is `docs/PLAN.md`; facts, design decisions and their sources live in `docs/REFERENCES.md`.
 - `npm run build:v1` builds the first, neon-styled version into `dist/v1.html` (archived, for reference only).
-- `npm run data` regenerates `data/*.json` from the npm geo packages. Rarely needed.
+- `npm run data` regenerates `data/*.json` from the npm geo packages, then fits the provinces to the detailed outline. Rarely needed.
 - The dev machine is Windows. Keep scripts cross-platform: Node only, no bash.
 
 ## Layout
@@ -31,7 +31,8 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
 - `src/template.html` holds the HTML and CSS of the UI. The bundle is inlined at `<script>/*BUNDLE*/</script>`.
 - `data/`:
   - `countries.json`: Natural Earth 10m polygons for Pakistan and its neighbours
-  - `prov_merged.json`: 6 province polygons in lon/lat, with FATA merged into KP and ICT merged into Punjab
+  - `prov_merged.json`: 6 coarse province polygons in lon/lat, with FATA merged into KP and ICT merged into Punjab
+  - `prov_fitted.json` (used by the map): the same provinces fitted to the detailed Natural Earth 10 m outline by `scripts/fit-provinces.mjs` (clip to the outline, give uncovered slivers to the nearest province); they tile the outline exactly
   - `cities.json`: all 443 GeoNames places in Pakistan; 19 relay and border towns are added in code (`EXTRA`)
 - `archive/v1/` holds the first, neon version. Kept only for reference.
 - `scripts/` holds the build script and the data-extraction scripts.

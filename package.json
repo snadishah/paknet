@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:v1": "node scripts/build.mjs --v1",
-    "data": "node scripts/extract-geo.js && node scripts/merge-provinces.js"
+    "data": "node scripts/extract-geo.js && node scripts/merge-provinces.js && node scripts/fit-provinces.mjs"
   },
   "dependencies": {
     "three": "^0.160.1"
