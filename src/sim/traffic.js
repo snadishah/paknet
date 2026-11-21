@@ -14,7 +14,8 @@ import {
   BUNDLE_GBIT, TIME_SCALE_MS, PEAK_OFFERED_TBPS, CLASS_SHARE, BUFFER_MS, PROBE_EVERY_MS, GWADAR_CABLE_GBPS, GRAVITY_EXPONENT, MIN_POP
 } from './params.js';
 
-export const MAXP = 4000; // most bundles drawn at once (the simulation itself has no cap)
+export const MAXP = 4000;
+const SERVICES = 60; // distinct external services in the model // most bundles drawn at once (the simulation itself has no cap)
 
 // Share of peak demand by hour of day (0.3 at night, 1.0 in the evening).
 export function diurnal(h) {
@@ -33,6 +34,10 @@ export function createTraffic(G, net) {
   const { N, INTL, DCS, GW, VSAT, adj, edges, plannedEdges } = G;
   const flags = { satellite: false };
   const stats = { cat: {} }; // delivered bundles per visual category (decays; for the traffic mix)
+  const telemetry = { onInject: null };
+  // International flows go to one of many external services (Zipf-like popularity),
+  // so a single repeated destination stands out only if something keeps calling it.
+  const svc = () => 'svc' + Math.floor(SERVICES * Math.random() ** 2);
   const eng = createEngine({ capacityGbps: e => edgeCapacityGbps(G, e), delayMs: edgeDelayMs, usable: e => net.usable(e), bufferMs: BUFFER_MS });
 
   /* ---------- injecting bundles ---------- */
@@ -45,6 +50,7 @@ export function createTraffic(G, net) {
     b.color = opt.color || FLOW[VIS_CAT[cls] || 'dom'].c;
     b.size = opt.size || (cls === 'atk' ? 0.12 : 0.085);
     b.visible = cls !== 'probe';
+    if (cls !== 'probe') telemetry.onInject?.(b, eng.now); // flow telemetry for the defence (like NetFlow at the edge)
     return b;
   }
   // Compatibility with scenarios: emitPacket(path, category, { color, size, sink, blackhole, blocked, probe }).
@@ -83,7 +89,7 @@ export function createTraffic(G, net) {
       const far = G.nodes[ce.a].tier === 'intl' ? ce.a : ce.b, cls_ = ce.a === far ? ce.b : ce.a; // endpoint, landing station
       return Math.random() < 0.62 // most international traffic is inbound
         ? send(join(hop(far, ce), fwd(cls_, city.id, stale)), 'intl')
-        : send(join(fwd(city.id, cls_, stale), hop(cls_, ce)), 'intl');
+        : send(join(fwd(city.id, cls_, stale), hop(cls_, ce)), 'intl', { dstAddr: svc() });
     }
     if (cls === 'dom') { const a = pickCity(), b = pickCity(); return a !== b && send(fwd(a.id, b.id, stale), 'dom'); }
     if (cls === 'cdn') {
@@ -211,5 +217,5 @@ export function createTraffic(G, net) {
 
   const onCut = e => eng.cut(e);
 
-  return { engine: eng, packets, stats, flags, emitPacket, pickCity, pickCableEdge, advance, sample, intlCapacityTbps, onCut };
+  return { engine: eng, telemetry, packets, stats, flags, emitPacket, pickCity, pickCableEdge, advance, sample, intlCapacityTbps, onCut };
 }

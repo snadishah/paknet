@@ -38,5 +38,5 @@ export function setTab(t) {
 export function alertFeed(html, kind) {
   const box = ui('alerts'); if (box.querySelector('.empty')) box.innerHTML = '';
   const el = document.createElement('div'); el.className = 'alert ' + kind; el.innerHTML = html; box.prepend(el);
-  while (box.children.length > 8) box.lastChild.remove();
+  while (box.children.length > 16) box.lastChild.remove();
 }

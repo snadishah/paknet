@@ -74,6 +74,15 @@ export const YT_PK_TBPS = 0.4;    // Pakistani users → YouTube
 // Share of Pakistani users per AS (assumption; no public split by these ASNs).
 export const PK_USER_SHARE = { 17557: 0.45, 38193: 0.15, 9541: 0.12, 23674: 0.08, 9260: 0.08, 38264: 0.08, 18053: 0.04 };
 
+// Adaptive defence (MAPE-K). Assumptions unless noted.
+export const DEFENCE = {
+  windowMs: 0.5,        // telemetry window, network ms (0.25 s on screen)
+  planMs: 0.5,          // automated decision + execution delay, network ms
+  rovDeployMs: 5 * 60000 // carriers deploy ROV filters 5 min (BGP time) after a hijack is detected
+};
+export const SCENARIO_MS = { ddos: 30, mal: 24 }; // how long the attacks run, network ms (15 s / 12 s on screen)
+export const BEACON_EVERY_MS = 0.1;               // compromised phones call home every 0.1 network ms
+
 /* ---------- capacities (Gbps, per direction) ---------- */
 // Active international capacity per cable. PTA presentation via TechJuice
 // (~late 2025): AAE-1 3.58, SMW4 1.98, IMEWE 1.9, TW1 2.6, PEACE 0.8, Pak-China

@@ -46,6 +46,13 @@ export function createInterdomain() {
     act(T2008.pccwFilter, 'PCCW (AS3491) filters PTCL\'s announcement. The hijack ends.', () => bgp.setPolicy(3491, { customerFilter: true }), 'over');
   }
   function stop() { build(); }
+  // The defence's response to a hijack: carriers start validating route origins
+  // after a deployment delay (BGP time). Returns the UTC time it takes effect.
+  function deployRov(delayMs) {
+    const at = bgp.now + delayMs;
+    bgp.schedule(at, () => { for (const c of CARRIERS) bgp.setPolicy(c, { rov: true }); emit('bgp:action', { label: 'The large carriers now validate route origins (RPKI) and drop Invalid routes.', utc: utc() }); });
+    return at;
+  }
 
   // Scenario clock as UTC on the day, e.g. "18:49:12".
   function utc() {
@@ -89,6 +96,6 @@ export function createInterdomain() {
 
   return {
     get bgp() { return bgp; }, get active() { return !!scenario; }, get phase() { return scenario?.phase; },
-    startHijack, stop, advance, utc, dataPath, worldHijackedShare, pkBlockedShare, beliefs
+    startHijack, stop, deployRov, advance, utc, dataPath, worldHijackedShare, pkBlockedShare, beliefs
   };
 }

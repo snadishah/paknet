@@ -425,6 +425,13 @@ All values live in `src/sim/params.js`. **Sourced** values cite a section above;
 | ROA for the what-if | 208.65.152.0/22, maxLength 22, origin AS36561 | What-if: RPKI did not exist in 2008; today the /22 has ROAs (§0 #10) |
 | YouTube traffic volumes | world 2 Tbps, Pakistan 0.4 Tbps | Illustrative |
 | BGP time compression | 20 s of BGP time per wall second; 10 min per wall second while only scenario actions are waiting | Modelling choice |
+| Defence loop | Monitor → Analyse → Plan → Execute over Knowledge | Sourced framing (§3, Kephart & Chess 2003); see §4 for the link to the instructor's work |
+| Volume detector | EWMA (α 0.1) of each protected destination's inbound rate; alarm at z ≥ 6 and ≥ 200 Gbps; learns only from normal windows | Method sourced (§3, EWMA / z-score); thresholds are assumptions |
+| Source-entropy detector | Shannon entropy of the sources sending to a destination; alarm at a rise ≥ 1 bit over baseline | Method sourced (§3, Lakhina et al. 2005); 1 bit is an assumption (sources are ingress points and cities, not addresses) |
+| Beacon detector | coefficient of variation of the gaps between connections ≤ 0.15 over 12 gaps | Assumption (random arrivals give ≈ 1) |
+| Telemetry window, decision delay | 0.5 ms and 0.5 ms of network time | Assumption |
+| ROV deployment after detection | 5 minutes of BGP time | Assumption |
+| Attack volumes | DDoS 8 Tbps on the cables + 0.8 Tbps botnet; beacons every 0.1 ms of network time | Illustrative |
 | Microwave backup chain | one logical RIP hop | Modelling choice: keeps the network within RIP's 15-hop limit |
 | Peak offered load | 18 Tbps (all classes) | Assumption, chosen so peak international use (~6.6 Tbps busier direction) matches Dawn's 7–8 Tbps used (§0 #9) |
 | Traffic classes | international 62%, domestic 19%, CDN 12%, China 1.5%, land borders 1%, satellite 0.2% | Assumption |

@@ -118,7 +118,8 @@ The `sim/`, `routing/` and `defence/` folders never import three.js or the DOM. 
 - BGP picks the egress AS and cable for international flows; inside Pakistan the IGP carries the traffic.
 - **Tests:** valley-free export holds; the /24 reaches the "world" ASes only when the filter is missing; removing it (or ROV, in step 7) withdraws it.
 
-### 7 · Adaptive defence (your item 5, tied to Ms. Sajjad's research)
+### 7 · Adaptive defence (your item 5, tied to Ms. Sajjad's research) — done
+**Done (Nov 2026):** `src/defence/detectors.js` and `mapek.js`; the scenarios only start attacks and the loop decides; recorded off/on comparison in the Security tab; 10 new tests including a no-false-alarm run on a normal evening. Measured in the live page: DDoS peak legitimate loss 15.0% → 1.0% (average 3.4% → 0.3%), detected 0.4 ms of network time after the flood began; hijack contained at 18:53 UTC (≈5 min) instead of ≈2 h; beaconing caught at a 103 µs period with 8% gap variation. Seeded runs for identical replays were not added: off/on runs are statistically comparable (same rates), not identical; the headless experiment script (step 10) will produce the report's numbers.
 - Framed as a **MAPE-K loop** (Monitor, Analyse, Plan, Execute, over shared Knowledge), the standard model for self-adaptive security systems. That is the link to her adaptive-security work.
 - **Monitor/Analyse:** a per-destination rate EWMA with z-score spike detection; Shannon entropy of the source distribution (catching a DDoS from many unusual sources); periodic-beacon detection for the compromised-phones scenario.
 - **RPKI-style origin validation:** a ROA table; announcements are classed valid / invalid / not-found; route-origin validation (ROV) at chosen ASes drops invalid ones, so the hijack is stopped *by BGP itself*.

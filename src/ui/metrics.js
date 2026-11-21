@@ -7,7 +7,7 @@
 //   utilisation = share of time a link was transmitting
 // Convergence time is measured for OSPF and RIP (routing/ls.js, routing/dv.js); BGP is still mocked (step 6).
 import { state } from '../state.js';
-import { on } from '../events.js';
+import { on, emit } from '../events.js';
 import { FLOW } from '../palette.js';
 import { diurnal } from '../sim/traffic.js';
 import { ui } from './dom.js';
@@ -43,6 +43,7 @@ export function initMetrics(ctx) {
     const cap = updateCapacity();
     const m = traffic.sample(); if (!m) return; // paused: keep the last values on screen
     smooth.thr = ewma(smooth.thr, m.intlTbps); smooth.loss = ewma(smooth.loss, m.lossPct);
+    emit('metrics:sample', { lossPct: m.lossPct, rttMs: m.rttMs, intlTbps: m.intlTbps });
     const thr = smooth.thr, loss = smooth.loss, lat = m.rttMs;
     // convergence: BGP shows its mocked window; OSPF and RIP show the measured time for a few seconds after they settle
     const nowMs = performance.now();
