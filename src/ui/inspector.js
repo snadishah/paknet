@@ -5,7 +5,7 @@ import { tierName, mediumName } from './route.js';
 import { camera, renderer } from '../render/scene.js';
 
 export function initInspector(ctx) {
-  const { G, net, view, route } = ctx;
+  const { G, net, view, route, traffic } = ctx;
   const { nodes, adj, edges, accessNodes } = G;
   const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
   let hoverNode = null, inspectNode = null, hoverPending = null, downAt = null;
@@ -45,13 +45,16 @@ export function initInspector(ctx) {
     const n = pick(); hoverNode = n; tip(n, ...hoverPending); renderer.domElement.style.cursor = n ? 'pointer' : ''; hoverPending = null;
   }
 
-  // Called on each metrics tick with the current diurnal load.
-  function refresh(load) {
+  // Called on each metrics tick with the measured sample: queue = fullest
+  // outgoing buffer, load = traffic leaving this node, links = utilisation.
+  function refresh(m) {
     if (!inspectNode || !ui('iq')) return;
-    let l = 0; adj.get(inspectNode.id).forEach(e => l += e.load);
-    ui('iq').style.width = ((inspectNode.qf ?? Math.min(0.9, 0.05 + l / 200)) * 100) + '%';
-    ui('ipps').textContent = Math.round(l * 2400 * load).toLocaleString() + ' pkt/s';
-    document.querySelectorAll('#insp [data-e]').forEach(b => { const e = edges[+b.dataset.e]; b.textContent = e.cut ? 'down' : Math.min(99, 4 + e.load * 3).toFixed(0) + '%'; });
+    const q = m.nodeQ.get(inspectNode.id) || 0;
+    let gbps = 0;
+    for (const L of traffic.engine.links.values()) if ((L.dir === 0 ? L.e.a : L.e.b) === inspectNode.id) gbps += (L.e.util || 0) * L.cap;
+    ui('iq').style.width = (q * 100).toFixed(0) + '%';
+    ui('ipps').textContent = gbps >= 1000 ? (gbps / 1000).toFixed(2) + ' Tbps' : gbps.toFixed(1) + ' Gbps';
+    document.querySelectorAll('#insp [data-e]').forEach(b => { const e = edges[+b.dataset.e]; b.textContent = !net.usable(e) ? 'down' : ((e.util || 0) * 100).toFixed(0) + '%'; });
   }
 
   return { frame, refresh, open, close };

@@ -126,6 +126,7 @@ export function buildTopology() {
   const IXP = [['PKIX Islamabad', 'Islamabad', 0.08, 0.06], ['PKIX Karachi', 'Karachi', 0.12, 0.1], ['PKIX Lahore', 'Lahore', 0.09, 0.06]].map(([n, c, dx, dy]) => Object.assign(attach(n, c, dx, dy, 'ixp'), { note: PKIX_NOTE }));
   IXP.push(Object.assign(attach('PIE Karachi (DE-CIX / PTCL)', 'Karachi', 0.2, 0.02, 'ixp'), { note: 'Run by DE-CIX with PTCL. 9 member networks in PeeringDB (Nov 2026).' }));
   const DCS = [['Cloudflare edge · Karachi', 'Karachi', -0.02, 0.15], ['Cloudflare edge · Lahore', 'Lahore', -0.09, 0.06], ['Cloudflare edge · Islamabad', 'Islamabad', -0.09, 0.04], ['TWA Tier III data centre', 'Karachi', -0.15, 0.08]].map(([n, c, dx, dy]) => attach(n, c, dx, dy, 'dc'));
+  DCS[3].scrub = true; // acts as the scrubbing centre in the DDoS scenario (illustrative)
 
   // international endpoints
   const INTL = {

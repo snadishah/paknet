@@ -67,13 +67,18 @@ A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajja
 - Internal ISP topology is **not public**. Corridors follow motorways and national highways, and the operator per corridor is illustrative. Say so in any presentation.
 
 ## What is real vs mocked right now
-- **Real:** the geography; the facts above; Dijkstra paths on the graph; stale-route packet drops during "convergence".
+- **Real:**
+  - the geography; the facts above; Dijkstra paths on the graph
+  - **traffic** (step 3, `src/sim/engine.js` + `traffic.js`): a discrete-event simulation. Every directed link has a capacity, a propagation delay, a FIFO buffer and tail drop. Each moving dot is a 0.1 Gbit bundle. Parameters and sources are in `src/sim/params.js` and `docs/REFERENCES.md` §7.
+  - **metrics**, all measured from that simulation: capacity, international throughput (busier direction), Karachi–Lahore RTT (probe bundles), loss on legitimate traffic, link and cable utilisation, router queue rings, link-load layer
+  - attack traffic in the security scenarios (it really congests links)
+  - stale-route drops during "convergence"
 - **Mocked:**
-  - throughput, latency, loss and convergence numbers (formulas plus noise)
-  - convergence durations
+  - convergence durations and the stale-route window (still a timer per protocol)
+  - a bundle's path is fixed at injection (source routing); hop-by-hop forwarding comes with the real protocols
   - Bellman-Ford and BGP: both use the same Dijkstra paths, with only different animations and AS-path labels
-  - security scenarios: timed scripts
-  - cable utilisation bars
+  - security detection and response: timed scripts
+- Debug hook: `window.__sim.tick(seconds)` advances the simulation without animation frames (useful when the browser pane is hidden).
 
 ## Roadmap (suggested order)
 1. Give every edge a capacity (Gbps), a propagation delay (km × 5 µs × route factor 1.5, see `src/sim/params.js`) and a FIFO queue. Move packets as discrete events, with queueing delay and tail drop. Then derive the real metrics.

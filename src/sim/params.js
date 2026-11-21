@@ -1,17 +1,62 @@
 // Model parameters and representative figures. Every value here has an entry
-// in docs/REFERENCES.md; keep the two in sync.
+// in docs/REFERENCES.md (section numbers in the comments); keep the two in sync.
+// "Assumption" means no public figure exists and the value is a labelled guess.
 
-// Propagation in fibre: ~5 µs per km (refractive index ≈ 1.47). REFERENCES §3.
+/* ---------- propagation ---------- */
+// ~5 µs per km in fibre (refractive index ≈ 1.47). REFERENCES §3.
 export const FIBRE_US_PER_KM = 5;
-
-// Fibre route length ÷ straight-line distance. Singla et al. (HotNets 2014)
-// found 1.5–2× road distance; 1.5 is a labelled assumption. REFERENCES §0 #12, §3.
+// Fibre route length ÷ straight-line distance. Singla et al. (HotNets 2014):
+// 1.5–2× road distance. 1.5 is a labelled assumption. REFERENCES §0 #12, §3.
 export const ROUTE_FACTOR = 1.5;
-
-// One-way propagation delay in ms for a path length in km.
 export const propDelayMs = km => km * ROUTE_FACTOR * FIBRE_US_PER_KM / 1000;
+// Geostationary hop: ~35,786 km up and down at the speed of light ≈ 120 ms each way.
+export const GEO_HOP_MS = 120;
 
-// Representative lit international capacity in Tbps. Sources range from about
-// 13 Tbps active (PTA, ~late 2025) to 7.7 active / 17.7 total (PACRA, FY23).
-// REFERENCES §0 #9 and §1.1.
-export const INTL_CAPACITY_TBPS = 13;
+/* ---------- traffic model ---------- */
+// Each moving dot is a BUNDLE of traffic, not one IP packet: simulating Tbps
+// packet by packet is impossible in a browser. The KPIs scale bundles back up.
+export const BUNDLE_GBIT = 0.1;
+// Slow motion: network milliseconds that pass per wall-clock second at 1×.
+// Karachi → Lahore (~8 ms one way) then takes ~4 s on screen.
+export const TIME_SCALE_MS = 2;
+// Offered load at the evening peak (all classes). Chosen so peak international
+// demand (~62%) uses ~70% of lit cable capacity. Assumption.
+export const PEAK_OFFERED_TBPS = 18;
+// Share of bundles per traffic class (sums to 1). Assumption, see REFERENCES §3 (gravity model).
+export const CLASS_SHARE = { intl: 0.62, dom: 0.193, cdn: 0.12, sat: 0.002, china: 0.015, border: 0.01 };
+// Gravity model: traffic between places ∝ the product of their populations
+// (Roughan 2005, REFERENCES §3), so each end is picked in proportion to population.
+export const GRAVITY_EXPONENT = 1;
+export const MIN_POP = 15000; // floor for places without a population figure
+// Router buffers: B = RTT × C / √n (Appenzeller et al. 2004, REFERENCES §3) with a
+// reference RTT of 100 ms and n ≈ 400 flows per bundle stream → 5 ms of line rate.
+export const BUFFER_MS = 5;
+// Latency probes (tiny bundles, Karachi ↔ Lahore) every this many network ms.
+export const PROBE_EVERY_MS = 0.5;
+
+/* ---------- capacities (Gbps, per direction) ---------- */
+// Active international capacity per cable. PTA presentation via TechJuice
+// (~late 2025): AAE-1 3.58, SMW4 1.98, IMEWE 1.9, TW1 2.6, PEACE 0.8, Pak-China
+// OFC 0.45 Tbps; total 13.01 Tbps active. SMW5 is not itemised: 1.7 is the
+// remainder of that total (inferred). SMW6: 4 Tbps reported active by MoITT,
+// Nov 2025 (sources conflict). Africa-1 / 2Africa / Gwadar: what-if values
+// (assumption). REFERENCES §0 #3 #9, §1.1.
+export const CABLE_GBPS = { AAE1: 3580, SMW4: 1980, IMEWE: 1900, TW1: 2600, PEACE: 800, SMW5: 1700, SMW6: 4000, AFR1: 2000, '2AFR': 2000, SMW3: 0 };
+export const OFC_GBPS = 450;           // Pak-China OFC active (PTA). REFERENCES §1.1.
+export const GWADAR_CABLE_GBPS = 2000; // planned Gwadar landing, what-if. Assumption.
+// Domestic links: no public figures (internal topology is not public). Assumption.
+// A fibre corridor's capacity scales with the operators drawn on it: the
+// Karachi–Lahore corridor (4 operators) carries ~10 Tbps, enough for the
+// international traffic that leaves Karachi northwards.
+export const FIBRE_GBPS_PER_OPERATOR = { trunk: 2500, regional: 1000 }; // trunk = ≥3 operators
+export const ACCESS_GBPS_PER_PERSON = 1 / 2500; // a city of 1 million gets 400 Gbps of last mile
+export const EDGE_GBPS = {
+  metro: 10000,    // landing stations and satellite gateways to their city
+  dc: 2500,        // a data centre / CDN edge's uplink (serves ~1/4 of CDN traffic)
+  scrub: 10000,    // the scrubbing centre (TWA Tier III, Karachi) used by the DDoS defence
+  ixp: 2000,       // an internet exchange's fabric uplink
+  access: 100,     // a city's aggregate last mile (minimum; grows with population below)
+  mwaccess: 20, microwave: 20, mwbackup: 20, // modern multi-carrier / E-band microwave
+  aerial: OFC_GBPS, xborder: 100, planned: 4000,
+  satGateway: 5, satTerminal: 1 // PakSat-MM1 per link; no public figure. Assumption.
+};

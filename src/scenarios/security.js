@@ -1,8 +1,10 @@
-// Security scenarios. STILL SCRIPTED (timed alerts + attack packets); steps 6–8
-// of docs/PLAN.md replace these with BGP/defence logic and guided stories.
+// Security scenarios. The attack TRAFFIC is simulated (its effect on queues,
+// loss and latency is measured), but detection and response are STILL SCRIPTED
+// timers; steps 6–8 of docs/PLAN.md replace them with BGP/defence logic and stories.
 import { state } from '../state.js';
 import { lift } from '../geo/projection.js';
 import { buildPath, concatPaths, reversePath } from '../routing/paths.js';
+import { TIME_SCALE_MS, BUNDLE_GBIT } from '../sim/params.js';
 import { ui, setTab, alertFeed } from '../ui/dom.js';
 import { burst, shieldAt, clearShields } from '../render/fx.js';
 
@@ -31,7 +33,7 @@ export function createSecurity(ctx) {
   function runDDoS() {
     stop(); setTab('security'); ui('alerts').innerHTML = ''; const dc = DCS[1]; scen.ddos = { phase: 1, target: dc, scrub: DCS[3] };
     alertFeed('Volumetric DDoS against the Lahore CDN edge (illustrative)', 'info');
-    later(1500, () => alertFeed('Lahore queues full · loss 12% · latency +140 ms', 'crit'));
+    later(1500, () => alertFeed('8 Tbps flood arriving on the cables · Lahore queues filling — watch packet loss and RTT in the header', 'crit'));
     if (state.defense) {
       later(4000, () => alertFeed('<b>Detected:</b> traffic 40× normal from three cable entry points', 'warn'));
       later(6000, () => { scen.ddos.phase = 2; alertFeed('<b>Adapted:</b> attack traffic diverted to scrubbing in Karachi, clean traffic forwarded', 'ok'); shieldAt(dc.city, 0.5); });
@@ -49,23 +51,28 @@ export function createSecurity(ctx) {
     } else later(11000, () => scen.mal = null);
   }
 
-  // Attack packets for whichever scenario is running.
+  // Attack traffic for whichever scenario is running. Rates are in Tbps (illustrative
+  // volumes), turned into whole bundles per frame, so attacks load the simulated links.
+  const bundles = (tbps, dt) => { const x = tbps * TIME_SCALE_MS / BUNDLE_GBIT * dt; return Math.floor(x) + (Math.random() < x % 1 ? 1 : 0); };
+  const RATE = { leakAnnounce: 0.3, hijacked: 3, ddosCables: 8, ddosBots: 0.8, beacons: 0.05, quarantined: 0.03 };
   function spawn(dt) {
     const { emitPacket, pickCableEdge, pickCity } = traffic; const { route } = net;
+    const repeat = (tbps, fn) => { for (let i = bundles(tbps, dt); i > 0; i--) fn(); };
     if (scen.hijack) {
       const ph = scen.hijack.phase, k = N('Karachi');
-      if (ph === 2 && Math.random() < dt * 30) { const ce = pickCableEdge(); if (ce) emitPacket(buildPath(ce.a, [ce]), 'atk', { speed: 3 }); }
-      if (ph === 3 && Math.random() < dt * 60) { const ce = pickCableEdge(); if (ce) emitPacket(reversePath(concatPaths(route(k.id, ce.a), buildPath(ce.a, [ce]))), 'atk', { speed: 2.6, sink: true }); }
+      if (ph === 2) repeat(RATE.leakAnnounce, () => { const ce = pickCableEdge(); if (ce) emitPacket(buildPath(ce.a, [ce]), 'atk'); });
+      if (ph === 3) repeat(RATE.hijacked, () => { const ce = pickCableEdge(); if (ce) emitPacket(reversePath(concatPaths(route(k.id, ce.a), buildPath(ce.a, [ce]))), 'atk', { sink: true, blackhole: true }); });
     }
     if (scen.ddos) {
       const tgt = scen.ddos.phase === 2 ? scen.ddos.scrub : scen.ddos.target;
-      if (Math.random() < dt * 80) { const ce = pickCableEdge(); if (ce) emitPacket(reversePath(concatPaths(route(tgt.id, ce.a), buildPath(ce.a, [ce]))), 'atk', { speed: 2.6, sink: true }); }
-      if (Math.random() < dt * 15) { const a = pickCity(); const p = route(a.id, tgt.id); if (p) emitPacket(p, 'atk', { sink: true }); }
+      repeat(RATE.ddosCables, () => { const ce = pickCableEdge(); if (ce) emitPacket(reversePath(concatPaths(route(tgt.id, ce.a), buildPath(ce.a, [ce]))), 'atk', { sink: true }); });
+      repeat(RATE.ddosBots, () => { const a = pickCity(); const p = route(a.id, tgt.id); if (p) emitPacket(p, 'atk', { sink: true }); });
     }
     if (scen.mal) {
       const c = scen.mal.city;
-      if (scen.mal.phase === 1 && Math.random() < dt * 25) { const ce = pickCableEdge(); if (ce) emitPacket(concatPaths(route(c.id, ce.a), buildPath(ce.a, [ce])), 'atk', { color: '#be185d' }); }
-      if (scen.mal.phase === 2 && Math.random() < dt * 10) { const p = route(c.id, N('Peshawar').id); if (p) { const pk = emitPacket(p, 'atk', { color: '#be185d' }); if (pk) pk.dropAt = 0.1; } }
+      if (scen.mal.phase === 1) repeat(RATE.beacons, () => { const ce = pickCableEdge(); if (ce) emitPacket(concatPaths(route(c.id, ce.a), buildPath(ce.a, [ce])), 'atk', { color: '#be185d' }); });
+      // quarantined devices: their traffic is blocked at the source
+      if (scen.mal.phase === 2) repeat(RATE.quarantined, () => { const p = route(c.id, N('Peshawar').id); if (p) emitPacket(p, 'atk', { color: '#be185d', blocked: true }); });
     }
   }
 

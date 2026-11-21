@@ -387,6 +387,32 @@ See §1.6. **CONFIRMED** (news plus PTA statement) [S20, S21].
 
 ---
 
+## 7. Simulation parameters used in the app (step 3)
+
+All values live in `src/sim/params.js`. **Sourced** values cite a section above; **assumption** values have no public figure and are labelled as such in the app and the report.
+
+| Parameter | Value | Basis |
+|---|---|---|
+| Fibre propagation | 5 µs/km × route factor 1.5 | Sourced (§3; Singla et al. 2014, §0 #12) |
+| Geostationary hop | 120 ms each way (~35,786 km at c) | Physics |
+| Bundle size (one moving dot) | 0.1 Gbit | Modelling choice: per-packet simulation of Tbps is impossible in a browser |
+| Slow motion | 2 ms of network time per wall second at 1× | Modelling choice (Karachi → Lahore ≈ 4 s on screen) |
+| Router buffers | 5 ms of line rate | Sourced rule B = RTT × C / √n (§3, Appenzeller et al. 2004) with RTT 100 ms, n ≈ 400: assumption on RTT and n |
+| Cable capacity (Gbps, per direction) | AAE-1 3580, SMW4 1980, IMEWE 1900, TW1 2600, PEACE 800, Pak-China OFC 450 | Sourced: PTA active figures via TechJuice (§1.1, §0 #9) |
+| SMW5 | 1700 | Inferred: remainder of PTA's 13.01 Tbps active total (SMW5 not itemised) |
+| SMW6 | 4000 | Sourced but conflicting: MoITT Nov 2025 (§0 #3) |
+| Africa-1, 2Africa, Gwadar cable (what-ifs) | 2000 each | Assumption |
+| Domestic fibre | 2.5 Tbps per operator on trunks (≥3 operators), 1 Tbps per operator on regional routes | Assumption (internal topology is not public). Sized so the Karachi–Lahore corridor can carry the international traffic that leaves Karachi |
+| Last mile | max(100 Gbps, population ÷ 2500) | Assumption |
+| Microwave links | 20 Gbps | Assumption (modern multi-carrier / E-band) |
+| Data centre / IXP / scrubbing uplinks | 2.5 / 2 / 10 Tbps | Assumption |
+| Satellite links | 5 Gbps gateway, 1 Gbps terminal | Assumption (no public PakSat-MM1 throughput found) |
+| Peak offered load | 18 Tbps (all classes) | Assumption, chosen so peak international use (~6.6 Tbps busier direction) matches Dawn's 7–8 Tbps used (§0 #9) |
+| Traffic classes | international 62%, domestic 19%, CDN 12%, China 1.5%, land borders 1%, satellite 0.2% | Assumption |
+| Choice of city | ∝ population (gravity model) | Sourced method (§3, Roughan 2005) |
+
+**What the step-3 model measured** (headless test runs, `tests/traffic.test.js`): at 21:00, about 6.6 Tbps of international traffic in the busier direction, ~0.2% loss (rural microwave hops), and a Karachi–Lahore–Karachi RTT of about 17 ms. With every Karachi cable cut, only the 0.45 Tbps China fibre and the land borders remain and loss exceeds 30%. An 8 Tbps flood saturates a data-centre uplink and raises loss to about 11%; diverting it to the scrubbing centre relieves the uplink.
+
 ## Source list
 
 All web pages were accessed 21 Nov 2026. "(live)" means a database or API that changes over time.

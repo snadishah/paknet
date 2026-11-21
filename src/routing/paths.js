@@ -10,21 +10,21 @@ export function buildPath(src, pe) {
   const arr = new Float32Array(pts.length * 3), cum = new Float32Array(pts.length); let L = 0;
   pts.forEach((p, i) => { arr[i * 3] = p.x; arr[i * 3 + 1] = p.y; arr[i * 3 + 2] = p.z + 0.03; if (i) L += p.distanceTo(pts[i - 1]); cum[i] = L; });
   const edgeStarts = []; let acc = 0; for (const e of pe) { edgeStarts.push([acc, e]); acc += e.len; }
-  return { arr, cum, total: L, edges: pe, edgeStarts, n: pts.length };
+  return { arr, cum, total: L, edges: pe, edgeStarts, n: pts.length, seq: nodeSeq(src, pe) };
 }
 
 export function concatPaths(a, b) {
   if (!a) return b; if (!b) return a;
   const arr = new Float32Array((a.n + b.n - 1) * 3); arr.set(a.arr); arr.set(b.arr.subarray(3), a.n * 3);
   const cum = new Float32Array(a.n + b.n - 1); cum.set(a.cum); for (let i = 1; i < b.n; i++) cum[a.n - 1 + i] = a.total + b.cum[i];
-  return { arr, cum, total: a.total + b.total, edges: [...a.edges, ...b.edges], edgeStarts: [...a.edgeStarts, ...b.edgeStarts.map(([d, e]) => [d + a.total, e])], n: a.n + b.n - 1 };
+  return { arr, cum, total: a.total + b.total, edges: [...a.edges, ...b.edges], edgeStarts: [...a.edgeStarts, ...b.edgeStarts.map(([d, e]) => [d + a.total, e])], n: a.n + b.n - 1, seq: [...a.seq, ...b.seq.slice(1)] };
 }
 
 export function reversePath(p) {
   const n = p.n, arr = new Float32Array(n * 3), cum = new Float32Array(n);
   for (let i = 0; i < n; i++) { arr.set(p.arr.subarray((n - 1 - i) * 3, (n - i) * 3), i * 3); cum[i] = p.total - p.cum[n - 1 - i]; }
   const es = []; let acc = 0; for (const e of [...p.edges].reverse()) { es.push([acc, e]); acc += e.len; }
-  return { arr, cum, total: p.total, edges: [...p.edges].reverse(), edgeStarts: es, n };
+  return { arr, cum, total: p.total, edges: [...p.edges].reverse(), edgeStarts: es, n, seq: [...p.seq].reverse() };
 }
 
 // Position at distance d along path p, written into out[0..2].

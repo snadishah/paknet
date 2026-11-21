@@ -85,7 +85,8 @@ The `sim/`, `routing/` and `defence/` folders never import three.js or the DOM. 
 4. **Small screens (<768 px):** the panel becomes a bottom sheet with tabs and a drag handle; KPIs become 2–3 chips you can scroll sideways; the dock shows icons only; tap targets are at least 44 px; the shadow map is smaller and the pixel ratio capped for performance.
 - **Check:** desktop at 1440 and 1024 px, tablet at 768 px, phone at 375 px. No overlaps.
 
-### 3 · Real traffic simulation (your item 1)
+### 3 · Real traffic simulation (your item 1) — done
+**Done (Nov 2026):** `src/sim/engine.js` (event queue, links, FIFO, tail drop) and `src/sim/traffic.js` (generator, probes, measurement); parameters in `src/sim/params.js`, sources in REFERENCES §7; 14 engine and traffic tests. Two things the simulation exposed and that were fixed: the Karachi → Hyderabad corridor was the national bottleneck until fibre capacity scaled with the number of operators, and a share bug sent 4% of traffic to the land borders. Remaining from this step: a bundle's path is fixed at injection; hop-by-hop forwarding arrives with steps 4–6.
 - Capacities by edge type, e.g. subsea per cable, trunk fibre, regional fibre, microwave, satellite. These are **representative values**, listed in an assumptions table that appears in the UI and the report.
 - Traffic generator: a gravity model on population for domestic traffic, plus international, CDN, satellite and border flows. Volume scales with time of day.
 - Measured metrics replace the formulas: throughput = bundles delivered per second; latency = real end-to-end time of Karachi→Lahore probe bundles (propagation + queueing); loss = tail drops ÷ offered; cable utilisation = busy time ÷ window; the queue rings and the link-load layer read the real buffers.

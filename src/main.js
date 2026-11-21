@@ -13,7 +13,7 @@ import { on } from './events.js';
 import { lift } from './geo/projection.js';
 import { buildTopology } from './graph/topology.js';
 import { createNetwork } from './sim/network.js';
-import { createTraffic, diurnal } from './sim/traffic.js';
+import { createTraffic } from './sim/traffic.js';
 import { renderer, labelRenderer, scene, camera, controls, layers } from './render/scene.js';
 import { buildBasemap } from './render/basemap.js';
 import { drawNetwork } from './render/network.js';
@@ -42,9 +42,9 @@ const net = createNetwork(G);
 const traffic = createTraffic(G, net);
 
 /* ---------- simulation → rendering ---------- */
-on('edge:cut', e => { markCut(e); burst(lift(e.cutPos, 0.06), '#dc2626', 0.5, 1); });
+on('edge:cut', e => { markCut(e); burst(lift(e.cutPos, 0.06), '#dc2626', 0.5, 1); traffic.onCut(e); });
 on('edge:restore', unmarkCut);
-on('topology:changed', ({ cutEdges }) => { if (hasHighlight() && cutEdges.length) clearHighlight(); traffic.markInFlightDrops(); });
+on('topology:changed', ({ cutEdges }) => { if (hasHighlight() && cutEdges.length) clearHighlight(); });
 
 /* ---------- scenarios + UI ---------- */
 const ctx = { G, net, traffic, view, flyTo };
@@ -60,20 +60,20 @@ initMetrics(ctx);
 
 const { SCEN } = ctx.failures, { runHijack, runDDoS, runMalware } = ctx.security;
 window.__flyTo = flyTo;
-window.__sim = { SCEN, runHijack, runDDoS, runMalware, setTab, traceRoute: ctx.route.traceRoute, countToInfinity: ctx.demos.countToInfinity, setLayer: ctx.setLayer, inspect: name => ctx.inspector.open(G.N(name)) };
+window.__sim = { SCEN, runHijack, runDDoS, runMalware, setTab, traceRoute: ctx.route.traceRoute, countToInfinity: ctx.demos.countToInfinity, setLayer: ctx.setLayer, inspect: name => ctx.inspector.open(G.N(name)),
+  // debug: advance the simulation by `seconds` of wall time without waiting for frames
+  tick: (seconds = 1) => { for (let t = 0; t < seconds; t += 1 / 60) { ctx.security.spawn(state.speed / 60); traffic.advance(state.speed / 60, packetEvents); } },
+  traffic };
 
 /* ---------- main loop ---------- */
 const fmtClock = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
 const clock = new THREE.Clock();
-let lastNF = -1, spawnAcc = 0;
+let lastNF = -1;
 
+// Bursts where bundles are lost (tail drop, cut link, blocked) or swallowed by a sink.
 const packetEvents = {
-  drop: pk => { if (Math.random() < 0.3) burst(packetPos(pk, pk.dropAt), '#dc2626', 0.1, 0.5); },
-  arrive: pk => {
-    if (!pk.sink) return;
-    if (Math.random() < 0.2) burst(packetPos(pk, pk.path.total), '#dc2626', 0.22, 0.6);
-    if (state.scen.hijack) traffic.stats.dropped++;
-  }
+  drop: b => { if (Math.random() < 0.3) burst(packetPos(b, b.d), '#dc2626', 0.1, 0.5); },
+  arrive: b => { if (b.opt.sink && Math.random() < 0.2) burst(packetPos(b, b.d), '#dc2626', 0.22, 0.6); }
 };
 
 function frame() {
@@ -81,7 +81,6 @@ function frame() {
   updateCamera();
   if (state.playing) {
     state.simHour = (state.simHour + sdt / 30) % 24; ui('tod').value = state.simHour; ui('kClock').textContent = fmtClock(state.simHour);
-    spawnAcc += sdt * 150 * diurnal(state.simHour); while (spawnAcc > 1) { spawnAcc--; traffic.spawnNormal(); }
     ctx.security.spawn(sdt);
   }
   traffic.advance(sdt, packetEvents);

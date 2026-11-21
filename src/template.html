@@ -254,7 +254,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
   <div class="phead"><h2 id="panelTitle">Overview</h2><button class="iconbtn" id="panelClose" aria-label="Close panel"><svg class="ico"><use href="#i-close"/></svg></button></div>
 
   <section class="pane on" id="pane-overview">
-    <p class="lead">Each dot is a packet. Most international traffic goes through a few landing stations on Karachi's coast, then out on submarine cables.</p>
+    <p class="lead">Each dot is a bundle of traffic (0.1 Gbit), queued and forwarded by a simulated network. Most international traffic goes through a few landing stations on Karachi's coast, then out on submarine cables.</p>
     <div id="mix"></div>
     <h5>Stories</h5>
     <button class="action" data-go="route"><span class="ic"><svg class="ico"><use href="#i-route"/></svg></span><div><b>Trace a route</b><small>Gilgit to Europe, hop by hop</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
@@ -306,7 +306,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
       <div class="chart"><label>Convergence</label><b id="mConv">—</b><canvas id="cConv"></canvas></div>
     </div>
     <h5>Cable utilisation</h5><div id="cutil"></div>
-    <p class="foot">Simulated placeholder values, not measurements.</p>
+    <p class="foot">Measured from the simulation: bundles of 0.1 Gbit on links with representative capacities, FIFO queues and tail drop. Convergence time is still mocked.</p>
   </section>
 </aside>
 
