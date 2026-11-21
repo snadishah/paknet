@@ -43,9 +43,11 @@ export function initMetrics(ctx) {
     series.thr.push(thr); series.lat.push(lat); series.loss.push(loss); series.conv.push(performance.now() < state.convergeUntil ? state.lastConv : 0);
     for (const k in series) if (series[k].length > 120) series[k].shift();
     ui('kThr').textContent = thr.toFixed(1); ui('kLat').textContent = lat.toFixed(0); ui('kLoss').textContent = loss.toFixed(1);
-    ui('kLoss').parentElement.classList.toggle('bad', loss > 1);
+    ui('kLossBox').classList.toggle('bad', loss > 1);
     ui('mThr').textContent = thr.toFixed(1) + ' Tbps'; ui('mLat').textContent = lat.toFixed(0) + ' ms'; ui('mLoss').textContent = loss.toFixed(2) + ' %'; ui('mConv').textContent = series.conv.at(-1) ? series.conv.at(-1).toFixed(1) + ' s' : 'stable';
     spark('cThr', series.thr, '#0f766e', INTL_CAPACITY_TBPS * 1.1); spark('cLat', series.lat, '#b45309'); spark('cLoss', series.loss, '#dc2626'); spark('cConv', series.conv, '#6d28d9');
+    // bottom-strip trends (same series, no numbers: the header shows those)
+    spark('sThr', series.thr, '#0f766e', INTL_CAPACITY_TBPS * 1.1); spark('sLat', series.lat, '#b45309'); spark('sLoss', series.loss, '#dc2626', Math.max(2, ...series.loss) * 1.2);
     const tot = Object.values(stats.cableLoad).reduce((a, b) => a + b, 0) || 1;
     ui('cutil').innerHTML = CABLES.filter(c => c.status !== 'retired').map(c => { const dead = c.edges.every(e => e.cut) || (c.status === 'landed' && !c.forceLive); const u = dead ? 0 : Math.min(98, (stats.cableLoad[c.id] || 0) / tot * 100 / Math.max(0.03, c.share) * 0.42 * load + 8); return `<div class="cu"><span>${c.name}</span><div class="bar"><i style="width:${u}%;background:${u > 85 ? '#dc2626' : u > 65 ? '#d97706' : '#0f766e'}"></i></div><em>${dead ? '—' : u.toFixed(0) + '%'}</em></div>`; }).join('');
     stats.cableLoad = {}; stats.sent = 0; stats.dropped = 0;

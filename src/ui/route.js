@@ -4,8 +4,8 @@ import { state } from '../state.js';
 import { KM_PER_UNIT, lift } from '../geo/projection.js';
 import { nodeSeq } from '../routing/paths.js';
 import { propDelayMs } from '../sim/params.js';
-import { ui, setTab } from './dom.js';
-import { burst, highlightPath } from '../render/fx.js';
+import { ui, setTab, onTabChange } from './dom.js';
+import { burst, highlightPath, clearHighlight } from '../render/fx.js';
 
 export const tierName = n => ({ core: 'Core router', agg: 'Aggregation router', access: 'City (access network)', cls: 'Cable landing station', ixp: 'Internet exchange', dc: 'Data centre / CDN', intl: 'International destination', sat: 'Satellite', gw: 'Satellite gateway', vsat: 'VSAT terminal', tower: 'Microwave relay' }[n.tier] || n.tier);
 export const mediumName = e => ({ fiber: 'fibre', metro: 'metro fibre', subsea: 'submarine cable', access: 'last mile', mwaccess: 'microwave', microwave: 'microwave', mwbackup: 'microwave', aerial: 'aerial fibre', xborder: 'cross-border fibre', sat: 'satellite', planned: 'planned fibre' }[e.type] || e.type);
@@ -23,18 +23,28 @@ export function initRoute(ctx) {
   const routeNodes = nodes.filter(n => (n.kind === 'city' && n.tier !== 'access' && !/Pass/.test(n.name)) || (n.tier === 'intl' && !n.hideLabel) || (n.tier === 'cls' && !n.planned) || n.tier === 'dc' || n.tier === 'ixp')
     .sort((a, b) => (a.tier === 'intl') - (b.tier === 'intl') || a.name.localeCompare(b.name));
 
+  // Timers started by a trace (marker packets, settle pulses), cancelled on clear.
+  let traceTimers = [];
+  const later = (ms, fn) => traceTimers.push(setTimeout(fn, ms));
+  function clearRoute(keepResult = false) {
+    traceTimers.forEach(clearTimeout); traceTimers = [];
+    clearHighlight();
+    if (!keepResult) ui('rres').innerHTML = '';
+  }
+
   function traceRoute() {
     const { algo, metric } = state;
     const s = +ui('rsrc').value, d = +ui('rdst').value; if (s === d) return;
+    clearRoute(true);
     const res = net.shortest(s, d, { metric }); if (!res) { ui('rres').innerHTML = '<p class="muted">No path — destination unreachable.</p>'; return; }
     const p = highlightPath(s, res.edges);
-    for (let i = 0; i < 5; i++) setTimeout(() => traffic.emitPacket(p, 'loop', { color: '#b45309', size: 0.12, speed: 1.8 }), i * 260);
-    if (algo === 'dijkstra') res.order.filter(id => nodes[id].tier !== 'access').slice(0, 90).forEach((id, i) => setTimeout(() => burst(lift(nodes[id].pos, 0.02), '#d97706', 0.1, 0.6), i * 22));
+    for (let i = 0; i < 5; i++) later(i * 260, () => traffic.emitPacket(p, 'loop', { color: '#b45309', size: 0.12, speed: 1.8 }));
+    if (algo === 'dijkstra') res.order.filter(id => nodes[id].tier !== 'access').slice(0, 90).forEach((id, i) => later(i * 22, () => burst(lift(nodes[id].pos, 0.02), '#d97706', 0.1, 0.6)));
     else if (algo === 'bf') {
       const seen = new Set([d]); let fr = [d];
       for (let k = 1; k < 9 && fr.length; k++) {
         const nf = []; for (const u of fr) for (const e of adj.get(u)) { if (!net.usable(e)) continue; const v = e.a === u ? e.b : e.a; if (!seen.has(v) && nodes[v].tier !== 'access') { seen.add(v); nf.push(v); } }
-        fr = nf; nf.forEach(v => setTimeout(() => burst(lift(nodes[v].pos, 0.02), '#d97706', 0.12, 0.7), k * 380));
+        fr = nf; nf.forEach(v => later(k * 380, () => burst(lift(nodes[v].pos, 0.02), '#d97706', 0.12, 0.7)));
       }
     }
     const seq = nodeSeq(s, res.edges); let ms = 0; const rows = [];
@@ -54,6 +64,9 @@ export function initRoute(ctx) {
   ui('rmetric').onchange = e => state.metric = e.target.value;
   ui('btnTrace').onclick = traceRoute; ui('btnCTI').onclick = demos.countToInfinity;
   ui('btnSwap').onclick = () => { const a = ui('rsrc').value; ui('rsrc').value = ui('rdst').value; ui('rdst').value = a; };
+  ui('btnClearRoute').onclick = () => clearRoute();
+  // a highlight belongs to the Route tab: leaving the tab clears it
+  onTabChange((t, prev) => { if (prev === 'route') clearRoute(true); });
 
-  return { traceRoute, routeNodes, openRouteFrom: n => { if (routeNodes.includes(n)) ui('rsrc').value = n.id; setTab('route'); } };
+  return { traceRoute, clearRoute, routeNodes, openRouteFrom: n => { if (routeNodes.includes(n)) ui('rsrc').value = n.id; setTab('route'); } };
 }

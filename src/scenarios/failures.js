@@ -12,7 +12,14 @@ export function createFailures(ctx) {
     else { c.edges.forEach(net.restoreEdge); note(`<b>${c.name}</b> restored`, 'good'); net.topologyChanged([], algo); }
   }
 
-  function restoreAll() { edges.forEach(net.restoreEdge); net.resetConvergence(); note('Everything restored', 'good'); net.topologyChanged([]); }
+  // Back to the real network: no cuts, no what-ifs (Gwadar, activated cables), no route highlight.
+  function restoreAll() {
+    edges.forEach(net.restoreEdge); net.resetConvergence();
+    if (state.plannedActive) { state.plannedActive = false; setLayer('planned', false); ui('scGwadar').classList.remove('on'); }
+    for (const c of CABLES) if (c.forceLive) { c.forceLive = false; c.edges.forEach(e => { e.line.material.dashed = true; e.line.material.opacity = 0.5; }); }
+    ctx.route?.clearRoute();
+    note('Everything restored', 'good'); net.topologyChanged([]);
+  }
 
   const SCEN = {
     aae1: () => { cutCable(cable('AAE1'), true, 'BGP'); flyTo('karachi'); },

@@ -16,7 +16,7 @@ export function burst(pos, color = '#dc2626', s = 0.2, life = 0.8) {
 
 let hiLines = [];
 export const hasHighlight = () => hiLines.length > 0;
-export function clearHighlight() { hiLines.forEach(l => gFX().remove(l)); hiLines = []; }
+export function clearHighlight() { hiLines.forEach(l => { gFX().remove(l); l.geometry.dispose(); l.material.dispose(); }); hiLines = []; }
 export function highlightPath(src, pe) {
   clearHighlight(); const p = buildPath(src, pe); const pts = []; for (let i = 0; i < p.n; i++) pts.push(new THREE.Vector3(p.arr[i * 3], p.arr[i * 3 + 1], p.arr[i * 3 + 2] - 0.005));
   const a = fatLine(pts, { color: 0xffffff, linewidth: 8, opacity: 0.9 }); const b = fatLine(pts, { color: 0xd97706, linewidth: 4, opacity: 1, dashed: true, dashSize: 0.12, gapSize: 0.05 });
@@ -29,9 +29,14 @@ export function markCut(e) {
   g.add(fatLine(e.pts.map(p => lift(p, 0.004)), { color: 0xdc2626, linewidth: 2.6, opacity: 1, dashed: true, dashSize: 0.05, gapSize: 0.04 }));
   const x = new THREE.Group(); const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.03), mRed); b1.rotation.z = 0.78; const b2 = b1.clone(); b2.rotation.z = -0.78;
   const disc = new THREE.Mesh(new THREE.CircleGeometry(0.16, 32), mWhite); disc.position.z = -0.01; x.add(disc, b1, b2); x.position.copy(mid).setZ(mid.z + 0.05); g.add(x);
+  x.scale.setScalar(markScale); g.userData.x = x;
   gFX().add(g); cutMarks.set(e.id, g); e.cutPos = mid;
 }
 export function unmarkCut(e) { const g = cutMarks.get(e.id); if (g) { gFX().remove(g); cutMarks.delete(e.id); } }
+
+// Cut marks scale with zoom like the router glyphs, so they stay a readable size.
+let markScale = 1;
+export function setMarkScale(f) { markScale = f; for (const g of cutMarks.values()) g.userData.x.scale.setScalar(f); }
 
 const shields = [];
 export function shieldAt(node, r = 0.42) {

@@ -2,7 +2,7 @@
 import { state } from '../state.js';
 import { on } from '../events.js';
 import { FLOW } from '../palette.js';
-import { ui, setTab } from './dom.js';
+import { ui, setTab, closePanel, panelOpen, activeTab } from './dom.js';
 import { layers, labelRenderer } from '../render/scene.js';
 import { flyTo, setTour, tourOn } from '../render/camera.js';
 
@@ -18,7 +18,13 @@ const LEGEND_SHAPES = `<hr><div class="lg"><svg width="16" height="16"><circle c
 export function initPanel(ctx) {
   const { G, traffic } = ctx;
 
-  document.querySelectorAll('.tab').forEach(b => b.onclick = () => setTab(b.dataset.tab));
+  // rail tabs: clicking the open tab again closes the panel
+  document.querySelectorAll('.tab').forEach(b => b.onclick = () => (panelOpen() && activeTab() === b.dataset.tab ? closePanel() : setTab(b.dataset.tab)));
+  ui('panelClose').onclick = closePanel; ui('sheetHandle').onclick = closePanel;
+  ui('btnHide').onclick = () => (panelOpen() ? closePanel() : setTab(activeTab()));
+  ui('btnStories').onclick = () => { setTab('overview'); ui('pane-overview').querySelector('h5')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
+  // panel starts open on desktop, closed on phones
+  if (matchMedia('(min-width: 721px)').matches) setTab('overview'); else closePanel();
 
   // layers
   ui('layerList').innerHTML = LAYER_UI.map(([g, items]) => `<h5>${g}</h5>` + items.map(([k, t]) => `<label class="chk"><input type="checkbox" data-k="${k}" ${layers[k].visible ? 'checked' : ''}><i></i>${t}</label>`).join('')).join('');
@@ -33,7 +39,14 @@ export function initPanel(ctx) {
 
   // pop-ups
   const closePops = () => { document.querySelectorAll('.pop').forEach(x => x.classList.remove('on')); document.querySelectorAll('[data-pop]').forEach(x => x.classList.remove('on')); };
-  document.querySelectorAll('[data-pop]').forEach(b => b.onclick = (ev) => { ev.stopPropagation(); const p = ui(b.dataset.pop); const open = !p.classList.contains('on'); closePops(); if (open) { p.classList.add('on'); b.classList.add('on'); } });
+  document.querySelectorAll('[data-pop]').forEach(b => b.onclick = (ev) => {
+    ev.stopPropagation(); const p = ui(b.dataset.pop); const open = !p.classList.contains('on'); closePops();
+    if (!open) return;
+    p.classList.add('on'); b.classList.add('on');
+    // desktop: line the pop-up up with the rail button that opened it
+    if (b.closest('#rail')) { const r = b.getBoundingClientRect(); p.style.top = Math.max(16, Math.min(r.top, innerHeight - p.offsetHeight - 88)) + 'px'; }
+    else p.style.top = '';
+  });
   document.addEventListener('click', ev => { if (!ev.target.closest('.pop')) closePops(); });
 
   // legend

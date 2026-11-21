@@ -19,7 +19,7 @@ import { buildBasemap } from './render/basemap.js';
 import { drawNetwork } from './render/network.js';
 import { buildLabels, updateLabels } from './render/labels.js';
 import { initPackets, drawPackets, packetPos } from './render/packets.js';
-import { burst, markCut, unmarkCut, clearHighlight, hasHighlight, updateFx } from './render/fx.js';
+import { burst, markCut, unmarkCut, clearHighlight, hasHighlight, updateFx, setMarkScale } from './render/fx.js';
 import { flyTo, updateCamera } from './render/camera.js';
 import { ui, setTab } from './ui/dom.js';
 import { initPanel } from './ui/panel.js';
@@ -90,7 +90,7 @@ function frame() {
   layers.gateways.children.forEach(m => { if (m.userData.spin) m.userData.spin.rotation.z += dt; });
   const dist = camera.position.distanceTo(controls.target);
   const nf = Math.min(1.3, Math.max(0.28, dist / 14));
-  if (Math.abs(nf - lastNF) > 0.01) { lastNF = nf; for (const n of G.nodes) if (n.mesh && n.tier !== 'sat') n.mesh.scale.setScalar(nf); view.setAccScale(Math.max(0.4, nf)); }
+  if (Math.abs(nf - lastNF) > 0.01) { lastNF = nf; for (const n of G.nodes) if (n.mesh && n.tier !== 'sat') n.mesh.scale.setScalar(nf); view.setAccScale(Math.max(0.4, nf)); setMarkScale(nf); }
   updateLabels(dist);
   ctx.inspector.frame();
   renderer.render(scene, camera); labelRenderer.render(scene, camera);
