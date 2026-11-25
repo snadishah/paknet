@@ -1,98 +1,60 @@
 # PAKNET — project context for Claude Code
 
 ## What this is
-A Computer Networks course project (SEECS, NUST). Instructor: **Ms. Maryam Sajjad** (Lecturer), whose research is adaptive security, mobile computing and network security (self-protecting mobile devices, adaptive access control). She approved the idea.
+Computer Networks course project (SEECS, NUST), instructor **Ms. Maryam Sajjad** (adaptive security, mobile and network security). A three.js (v0.160) simulation of how Pakistan's internet traffic travels: cities, ISPs, exchanges, submarine cables, satellites, routing (RIP, OSPF, BGP), failures and an adaptive defence (MAPE-K).
 
-**Goal:** a three.js simulation of Pakistan's internet: how data travels between cities, ISPs, exchanges and the submarine cables, and how routing algorithms pick paths. It should include failure injection, metrics, and a security extension that links to the instructor's research.
-
-**Current state:** a *visual proof of concept*. The look, the layout and the feature mockups are done. Most behaviour is scripted. The final project should replace the scripted parts with a real simulation (see Roadmap).
+**Direction (Nov 2026 redesign):** feel like NASA's *Eyes on the Solar System*, but for Pakistan's internet. A realistic Earth seen from space, one smooth zoom from space to a city, real satellites, five illustrative offices with a visual traceroute driven by the real simulator, a first-run tour and presentation mode, one distinct animation per scenario. **Layman-first**: the first screen is the Earth, a title and Start. Numbers and engine controls live in the **Expert** drawer; never delete the engine. Full design, phases, acceptance criteria and asset list: `docs/REDESIGN.md`. State of the last phase: `docs/HANDOFF.md`.
 
 ## Commands
-- `npm install`, then `npm run build` produces `dist/index.html`, a single self-contained file. Open it in a browser.
-- `npm run dev` rebuilds on every save and serves `dist/` on http://localhost:5173 (`scripts/serve.mjs`). Refresh the browser to see changes. The Claude preview pane uses the same command via `.claude/launch.json`.
-- `npm test` runs the Vitest unit tests (simulation and routing logic only, no rendering).
-- `npm run experiment` runs the seeded headless experiments (`scripts/experiments.js`, bundled by `scripts/experiment.mjs`) → `docs/results/results.json`.
-- `npm run report` = experiments + charts (`scripts/report_charts.py`, needs Python with matplotlib) + the Word report (`scripts/report.mjs`, npm `docx`) → `docs/PAKNET-report.docx`. `npm run report:doc` rebuilds only the .docx. Open it in Word and update fields to fill the table of contents.
-- The build injects the source list from `docs/REFERENCES.md` into the About & sources dialog (`scripts/build.mjs`, `src/ui/sources.js`).
-- The working plan is `docs/PLAN.md`; facts, design decisions and their sources live in `docs/REFERENCES.md`.
-- `npm run build:v1` builds the first, neon-styled version into `dist/v1.html` (archived, for reference only).
-- `npm run data` regenerates `data/*.json` from the npm geo packages, then fits the provinces to the detailed outline. Rarely needed.
-- The dev machine is Windows. Keep scripts cross-platform: Node only, no bash.
+- `npm install`, then `npm run build` → `dist/index.html` + `dist/assets/`. Serve it with `npm run preview` (http://localhost:4173); opening the file directly is not supported because textures and the worker load over HTTP.
+- `npm run dev`: rebuild on save and serve `dist/` on http://localhost:5173 (also used by `.claude/launch.json`).
+- `npm test` (Vitest, logic only). Use `npx vitest run --reporter=dot` for short output.
+- `npm run verify`: build, serve, headless Chromium at 1440×900 and 390×844, screenshots + `.verify/report.json` (checks, p50/p95 frame ms, draw calls, console errors, dist size). Prints a 10-line summary. Headless uses software GL: frame times are a smoke test only.
+- `npm run orbits` (CelesTrak → `src/data/satellites.json`), `npm run buildings` (Overpass → `src/data/cities/*.json`). Rarely needed; both keep the committed snapshot if offline.
+- `npm run experiment`, `npm run report` (experiments, charts with Python/matplotlib, Word report → `docs/PAKNET-report.docx`).
+- `npm run data`: regenerate `data/*.json` from the npm geo packages. Rarely needed.
+- Dev machine is a **Mac**; keep scripts cross-platform (Node only, no bash-only or Windows-only commands).
+- Debug hooks: `window.__sim.tick(seconds)`, `window.__paknetReady`, `window.__paknetStats`, `?perf=1` overlay.
 
 ## Layout
-- `src/main.js` builds the modules, wires events and runs the main loop. The rest of `src/`:
-  - `state.js`: the one shared mutable state object. `events.js`: a tiny event bus (`edge:cut`, `edge:restore`, `topology:changed`, `view:changed`).
-  - `palette.js`: map, packet and UI colours.
-  - `geo/`: projection and layout constants (`projection.js`), province outlines and `snapToCoast` (`coast.js`).
-  - `graph/topology.js`: `buildTopology()` returns the graph `G` (nodes, edges, adjacency, cables, CLS, IXPs, DCs, international endpoints, satellite, microwave relays).
-  - `routing/`: `dijkstra.js` (Dijkstra, edge weights, heap) and `paths.js` (polyline paths for packets).
-  - `sim/`: `network.js` (usable edges, cached routes keyed by the topology `epoch`, cuts and convergence) and `traffic.js` (traffic generator, packet movement).
-  - `render/`: `scene.js` (renderer, camera, lights, fat lines, layer registry), `basemap.js`, `network.js` (layer drawing and router glyphs), `labels.js`, `packets.js` (one `THREE.Points` with a custom shader and trails), `fx.js` (bursts, route highlight, cut marks, shields), `heat.js`, `camera.js` (views, fly-to, tour).
-  - `ui/`: `dom.js` helpers, `panel.js` (tabs, dock pop-ups, playback), `route.js`, `failures.js`, `security.js`, `metrics.js`, `inspector.js`.
-  - `scenarios/`: failure, security and routing demos. These orchestrate sim, render and UI.
-  - **Rule:** `routing/` and `sim/` never import rendering or the DOM. They emit events and the rest listens, which keeps them testable in Node (`tests/`).
-- `src/template.html` holds the HTML and CSS of the UI. The bundle is inlined at `<script>/*BUNDLE*/</script>`.
-- `data/`:
-  - `countries.json`: Natural Earth 10m polygons for Pakistan and its neighbours
-  - `prov_merged.json`: 6 coarse province polygons in lon/lat, with FATA merged into KP and ICT merged into Punjab
-  - `prov_fitted.json` (used by the map): the same provinces fitted to the detailed Natural Earth 10 m outline by `scripts/fit-provinces.mjs` (clip to the outline, give uncovered slivers to the nearest province); they tile the outline exactly
-  - `cities.json`: all 443 GeoNames places in Pakistan; 19 relay and border towns are added in code (`EXTRA`)
-- `archive/v1/` holds the first, neon version. Kept only for reference.
-- `scripts/` holds the build script and the data-extraction scripts.
+- `src/main.js` wires everything (one `ctx` object) and runs the frame loop.
+- **Pure (no three.js, no DOM): `src/routing/`, `src/sim/`, `src/defence/`, `src/geo/globe.js`, `src/sat/` (except the worker glue).** They emit events (`src/events.js`); render and UI listen. Tested in Node (`tests/`).
+- `graph/topology.js`: the graph in the **flat** map plane (`geo/projection.js`, 1 unit ≈ 111 km). Edge lengths drive routing weights and delays, so the topology stays flat; the **renderer maps flat → globe** at draw time (`geo/globe.js`). Never move the topology itself onto the sphere.
+- `render/`: `scene.js` (renderer, layers, fat lines), `globe.js` (Earth shader, stars), `globecam.js` (camera, fly-to, deep links), `tiles.js` (Sentinel-2 close-ups), `network.js`, `packets.js`, `fx.js`, `heat.js`, `labels.js` (label manager), `satellites.js`, `city.js`.
+- `ui/`: `shell.js` (first screen, time bar, search, info card, layers, credits, Expert drawer) plus the original Expert panels (`panel.js`, `route.js`, `failures.js`, `security.js`, `metrics.js`, `inspector.js`, `story.js`, `sources.js`) and the tour / presentation / traceroute modules.
+- `scenarios/` orchestrate sim + render + UI; `stories/` are the guided stories (beats act on the live sim via `kit.js`).
+- `src/template.html`: HTML + CSS. `scripts/build.mjs` bundles with esbuild and copies `assets/` into `dist/assets/`.
+- `data/`: geo inputs (Natural Earth, provinces, GeoNames cities). `src/data/`: orbit and building snapshots.
+- `archive/v1/`: the first neon version, reference only.
 
-## Design direction (from the user's feedback — keep to this)
-- Style reference: a stylised 3D map of Pakistan with **each province as an extruded slab**, flat colours (greens) and a light background.
-- **No neon, no bloom, nothing that looks AI-generated.** Clean, cartographic and calm.
-- **Declutter.** By default show only the backbone, cables, core routers, gateways and packets. Everything else is a toggle in the Layers pop-up, or switched on by the scenario that needs it.
-- Keep the animated packets. They are the signature visual. Four colours: orange international, blue domestic, teal CDN, purple satellite. Red is reserved for cuts and attacks.
-- UI layout (chosen from the mockups in `prototype/ui-mockups/`, Nov 2026):
-  - **Desktop, normal:** mockup B with A's header. A floating header card at top left (brand + the five KPIs), with notifications stacked under it. An icon rail on the right (Overview, Route, Failures, Security, Metrics, then Layers, Views, Legend) opens a collapsible side panel. A bottom status strip holds playback, small trend charts (throughput, latency, loss) and the Stories button. KPI numbers appear only in the header.
-  - **Desktop, story mode:** B's narrative column. The panel shows the current beat on top and the chapter list below.
-  - **Phone, normal:** B. The rail becomes a bottom tab bar, the KPIs a row you can scroll sideways at the top, and the panel a bottom sheet.
-  - **Phone, story mode:** C's lower third with the dated timeline.
-- Light cards, one consistent line-icon set, an 8 px spacing grid, progressive disclosure, short copy.
+## Design rules (short; details in docs/REDESIGN.md)
+- Realistic and calm: real day/night terminator, Black Marble city lights, thin atmosphere rim, subtle stars. **No neon, no bloom, no cartoon colours.** Thin elegant lines; small softly glowing dots.
+- Packet colours: orange international, blue domestic, teal CDN, purple satellite; red only for cuts and attacks.
+- Progressive disclosure: controls appear when useful; labels fade by distance, ≤ 12 on screen, never overlapping.
+- Every camera move is an eased fly-to (1.5–3 s) the user can interrupt; zoom is continuous from ~40,000 km to ~300 m.
+- Plain English everywhere outside Expert; captions ≤ 25 words; technical words get glossary tooltips.
+- Accessibility: keyboard, visible focus, `prefers-reduced-motion`, text ≥ 14 px, works at 390×844 and 1440×900.
+- Performance budget (every phase): ≤ 100 draw calls, p95 ≤ 20 ms on the Mac, textures ≤ 4096 px, assets ≤ 25 MB, no per-frame allocations in hot loops, dispose what you leave.
 
-## Facts used (checked 21 Nov 2026; sources and full detail in `docs/REFERENCES.md`)
-`docs/REFERENCES.md` is the source of truth. Update it first when a fact changes, then the code and this list. Re-check the cable statuses within a week of any demo.
-- All of Pakistan's international submarine cables land in **Karachi**, a single point of failure. Nine have landed: SMW4, IMEWE, AAE-1, Africa-1 (PTCL); SMW5, TW1, SMW6, 2Africa (TWA); PEACE (Cybernet). SMW3 is retired. SMW3, SMW4 and IMEWE land at Hawke's Bay, AAE-1 at Clifton beach, Africa-1 at the adjacent Sea View beach.
-  - **Africa-1:** landed 22 Feb 2025, **not in service** (TeleGeography: RFS 2027).
-  - **2Africa:** landed (announced Feb 2025); **service unconfirmed**.
-  - **SMW6:** landed Nov 2025; MoITT reported 4 of 13.2 Tbps active, but TeleGeography still lists RFS 2027. Sources conflict; show "partial".
-  - **PEACE:** Karachi only. One source claims a Gwadar landing; don't draw it.
-  - **Total international capacity:** sources range from about 13 to 17.7 Tbps. The app uses **13 Tbps lit, labelled representative**.
-- **Pak-China OFC (SCO):** about 820 km from Rawalpindi to Khunjerab. **26 microwave links** (backup) between Rawalpindi and Karimabad, plus **about 171–172 km** of aerial fibre from Karimabad to Khunjerab. Phase II (approved Jan 2021) plans Karachi, Gwadar and a Gwadar landing station; its progress is unverified.
-- **Exchanges:** PKIX sites in Islamabad, Karachi and Lahore (opened 2017–2021); current activity unverified. **PIE Karachi** (DE-CIX with PTCL) is the only Pakistani IX with listed members (9 networks).
-- **PakSat-MM1:** geostationary at 38.2°E, launched 30 May 2024, with gateways over Lahore, Karachi and Islamabad and 11 Ka-band spot beams.
-- **AAE-1** fault near Qatar, Jan 2025: PTCL moved about 1.8 Tbps to IMEWE and 1.5 Tbps to SMW4.
-- **Sep 2025:** SMW4 and IMEWE cut near Jeddah (SMW5, AAE-1, PEACE unaffected). **20 Oct 2025:** PEACE cut near Sudan. These are two separate events.
-- **2008 YouTube hijack:** AS17557 (PTCL) announced 208.65.153.0/24, which leaked through AS3491 (PCCW). YouTube was AS36561 with 208.65.152.0/22. The outage lasted about 2 hours. **Today** the /22 is originated by AS43515 and has ROAs, so the same /24 would be RPKI Invalid. Any RPKI defence in the 2008 scenario is a what-if.
-- **ASNs:** PTCL 17557, TWA 38193, Cybernet/StormFiber 9541, Nayatel 23674, Multinet 9260, Wateen 38264, SCO 18053, PCCW 3491. Inter-AS relationships are inferred (CAIDA).
-- **Model parameters:** fibre delay 5 µs/km × route factor **1.5** (Singla et al. 2014; a labelled assumption, set in `src/sim/params.js`).
-- Internal ISP topology is **not public**. Corridors follow motorways and national highways, and the operator per corridor is illustrative. Say so in any presentation.
+## Facts (source of truth: `docs/REFERENCES.md`; update it first)
+Anything made up for teaching (offices, example servers, onward cable paths, operator per corridor) is labelled **"illustrative"** in the UI and in REFERENCES.md.
+- All international submarine cables land in **Karachi** (single point of failure): SMW4, IMEWE, AAE-1, Africa-1 (PTCL); SMW5, TW1, SMW6, 2Africa (TWA); PEACE (Cybernet). SMW3 retired. Africa-1 landed, not in service; 2Africa service unconfirmed; SMW6 partial. App uses **13 Tbps lit (representative)**.
+- **Pak-China OFC**: ~820 km Rawalpindi–Khunjerab, 26 microwave backup links, ~171 km aerial fibre Karimabad–Khunjerab.
+- **IXPs**: PKIX Islamabad / Karachi / Lahore (activity unverified); PIE Karachi (DE-CIX + PTCL, 9 members).
+- **Satellites**: only **PakSat-MM1** (GEO 38.2°E, NORAD 59915, launched 30 May 2024, operational 18 Sep 2024) carries Pakistani traffic. **PakSat-1R** (38°E, NORAD 37779) is greyed, "retired Aug 2026". Starlink, OneWeb, Amazon Kuiper/Leo, Shanghai Spacecom (Qianfan) and Telesat: "Coming soon — not yet licensed in Pakistan (as of late 2026)". PRSS-1 and PRSC satellites: optional "Pakistan's eyes in space" (pictures, not internet). GPS/BeiDou: "navigation, not internet".
+- Incidents: AAE-1 fault near Qatar Jan 2025; Sep 2025 SMW4 + IMEWE cut near Jeddah; 20 Oct 2025 PEACE cut near Sudan; 2008 YouTube hijack (AS17557 → 208.65.153.0/24 via AS3491); 2021 Facebook withdrawal.
+- Model parameter: fibre delay 5 µs/km × route factor 1.5 (`src/sim/params.js`). Internal ISP topology is not public; corridors are illustrative.
+- Credits line (always visible): NASA Blue Marble / Black Marble (public domain; no NASA logo, no implied endorsement), Sentinel-2 cloudless by EOX (CC BY 4.0, 2016 layer), Orbital data: CelesTrak, © OpenStreetMap contributors (ODbL).
 
-## What is real vs mocked right now
-- **Real:**
-  - the geography; the facts above; Dijkstra paths on the graph
-  - **traffic** (step 3, `src/sim/engine.js` + `traffic.js`): a discrete-event simulation. Every directed link has a capacity, a propagation delay, a FIFO buffer and tail drop. Each moving dot is a 0.1 Gbit bundle. Parameters and sources are in `src/sim/params.js` and `docs/REFERENCES.md` §7.
-  - **metrics**, all measured from that simulation: capacity, international throughput (busier direction), Karachi–Lahore RTT (probe bundles), loss on legitimate traffic, link and cable utilisation, router queue rings, link-load layer
-  - attack traffic in the security scenarios (it really congests links)
-  - **RIP** (step 4, `src/routing/dv.js`): distance vector in synchronous rounds, hop count, infinity 16, split horizon and poison reverse toggles. With protocol = RIP (Failures tab), traffic follows the routers' next hops, so loops (TTL drops) and black holes emerge; convergence is measured in rounds. One round = RIP's 30 s timer, compressed to `DV_ROUND_S`. The Route tab's Bellman-Ford view and the count-to-infinity demo (cut Nok Kundi–Taftan) read the real tables.
-  - **OSPF** (step 5, `src/routing/ls.js`; the default protocol): per-router link-state databases, failure detection (loss of light ~50 ms, or the 40 s dead interval, time-lapsed on screen), LSA flooding with per-hop delay, SPF throttle, the two-way check. Traffic follows each router's own table, so routers that haven't heard yet black-hole traffic into the cut. Convergence is measured from the failure to the last install, with a breakdown (Failures tab). LSA arrivals draw the flooding wave. Costs = 100 Tbps ÷ link capacity. OSPF time is compressed separately (`OSPF_MS_PER_S`).
-  - Both protocols run on `src/routing/routergraph.js` (routers, stubs, grouped parallel links, the microwave chain as one link). Link capacity and delay live in `src/sim/links.js`.
-  - **BGP and the 2008 hijack** (step 6, `src/routing/bgp.js`, `as-topology.js`, `src/sim/interdomain.js`): 15 ASes (7 Pakistani, 4 carriers, YouTube, 3 aggregated world regions) with CAIDA-inferred relationships; Gao–Rexford preference and valley-free export; shortest AS path; MRAI; customer prefix filters; RPKI origin validation; longest-prefix-match forwarding. The hijack scenario only performs the day's operator actions (PTCL's announcement, YouTube's /24 and /25s, PCCW's filter) on a compressed, time-lapsed BGP clock; which networks are hijacked, and how much YouTube traffic is black-holed in Karachi, follows from BGP. Defence on = what-if ROV at the carriers (today's rules). The Security tab shows what each network believes.
-  - **Adaptive defence** (step 7, `src/defence/`): a MAPE-K loop. Monitor = flow telemetry of every bundle as it enters (`traffic.telemetry.onInject`) and BGP routes seen from carriers and world regions. Analyse = detectors (`detectors.js`: EWMA z-score on volume, source entropy, beacon periodicity) plus RPKI origin validation. Plan/Execute = divert to the scrubbing centre, quarantine and step-up authentication, deploy ROV at the carriers (`mapek.js`). No timers decide anything; switching defence off leaves the same attack unanswered. Each run is recorded; the Security tab compares off vs on (detection time, response time, peak and average loss of legitimate traffic).
-  - **Stories** (step 8, `src/stories/`): six guided presentations (`library.js`): the 2008 YouTube hijack, the Jan 2025 AAE-1 fault, the Sep–Oct 2025 Red Sea cuts, the 2021 Facebook withdrawal, and two illustrative defence stories (DDoS, compromised phones). Beats act on the live simulation through `kit.js` (cut cables, step BGP to the historical times, start attacks, set capacities) and show live measurements; every beat cites a source. `player.js` moves between beats; going back resets the world and replays earlier beats instantly. UI: `src/ui/story.js` (desktop narrative column, phone lower third with a dated timeline, map callouts). Historical stories run with defence off.
-- **Mocked:**
-  - BGP convergence after cable cuts: still a timer when protocol = BGP (the AS model doesn't map sessions onto cables)
-  - a bundle's international cable: its operator is drawn from market shares, then one of that operator's live cables by capacity (a stand-in for BGP egress choice); the Route tab's BGP view still labels Dijkstra hops with operators
-  - model artefact: YouTube's /25s also override PTCL's own internal /24 null route, so Pakistani users "recover" at 20:18 in the model
-  - security detection and response: timed scripts
-- Debug hook: `window.__sim.tick(seconds)` advances the simulation without animation frames (useful when the browser pane is hidden).
+## Working rules
+- Do not change routing/sim/defence behaviour. New data for the UI comes through small read-only APIs (e.g. `getPath`, `getFlowsFrom`) with tests.
+- Never claim something works without evidence (test output, verify report, screenshots).
+- One commit per completed step, message `phaseN: <what>`; push to `origin` (private GitHub repo `snadishah/paknet`, branch `redesign`). Never force-push or rewrite history.
+- End of every phase: Verification Checklist (`docs/REDESIGN.md` §8: tests, build size, verify summary, screenshots looked at, acceptance ✅/❌, `git diff --stat`), commit, update `docs/HANDOFF.md` (≤ 30 lines).
 
-## Roadmap (suggested order)
-1. Give every edge a capacity (Gbps), a propagation delay (km × 5 µs × route factor 1.5, see `src/sim/params.js`) and a FIFO queue. Move packets as discrete events, with queueing delay and tail drop. Then derive the real metrics.
-2. Write proper Bellman-Ford / distance-vector with timed update rounds, so count-to-infinity happens naturally. Add split horizon and poison reverse as options.
-3. Link-state with flooding delay. Measure convergence time from the moment of failure.
-4. Simplified BGP between ISP ASes: customer > peer > provider preference, valley-free export, AS-path length tie-break. Make the hijack scenario emerge from the BGP logic instead of a script.
-5. Adaptive defence: anomaly detection on flows (rate, source entropy), RPKI-style origin validation, automatic reroute or scrubbing. Tie this to the instructor's adaptive-security work.
-6. Optional: split `main.js` into modules (geo, graph, routing, sim, render, ui) once the simulation logic grows.
+## Token rules
+- Never open `data/*.json`, `src/data/**/*.json`, `dist/`, `node_modules/`, lockfiles or the generated .docx. Grep first; read only the line ranges you need.
+- Use subagents for broad exploration and reviews; they return short summaries.
+- Edit in place with small diffs; don't rewrite a whole file to change a few lines; don't re-read unchanged files.
+- Keep command output short (`--reporter=dot`, `| tail`). Read `.verify/report.json`, not raw logs; open screenshots only to check acceptance.
+- If a library API is uncertain, check current docs once rather than trial and error.

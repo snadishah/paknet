@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./src/geo/data/**)",
+      "Read(./data/**/*.json)",
+      "Read(./src/data/**/*.json)",
+      "Read(./dist/**)",
+      "Read(./node_modules/**)",
+      "Read(./**/*.docx)",
+      "Read(./package-lock.json)"
+    ]
+  }
+}

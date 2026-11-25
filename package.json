@@ -13,9 +13,14 @@
     "data": "node scripts/extract-geo.js && node scripts/merge-provinces.js && node scripts/fit-provinces.mjs",
     "experiment": "node scripts/experiment.mjs",
     "report": "node scripts/experiment.mjs && python scripts/report_charts.py && node scripts/report.mjs",
-    "report:doc": "node scripts/report.mjs"
+    "report:doc": "node scripts/report.mjs",
+    "preview": "node scripts/serve.mjs 4173",
+    "verify": "node scripts/verify.mjs",
+    "orbits": "node scripts/fetch-orbits.mjs",
+    "buildings": "node scripts/fetch-buildings.mjs"
   },
   "dependencies": {
+    "satellite.js": "^7.2.0",
     "three": "^0.160.1"
   },
   "devDependencies": {
@@ -23,6 +28,7 @@
     "all-the-cities": "^3.1.0",
     "docx": "^9.16.0",
     "esbuild": "^0.28.2",
+    "playwright": "^1.65.1",
     "polygon-clipping": "^0.15.7",
     "proj4": "^2.23.0",
     "topojson-client": "^3.1.0",

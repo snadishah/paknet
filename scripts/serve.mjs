@@ -12,10 +12,10 @@ const root = join(repo, 'dist');
 // /prototype/... is served from the repo's prototype/ folder (design mockups).
 const protoRoot = join(repo, 'prototype');
 const port = +(process.argv.slice(2).find(a => /^\d+$/.test(a)) || process.env.PORT || 5173);
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.map': 'application/json' };
 
-export function serve() {
-  return createServer(async (req, res) => {
+export function serve(p0 = port, quiet = false) {
+  const srv = createServer(async (req, res) => {
     let p = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     if (p.endsWith('/')) p += 'index.html';
     const proto = p.startsWith('/prototype/');
@@ -27,7 +27,8 @@ export function serve() {
       res.writeHead(200, { 'content-type': types[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
       res.end(body);
     } catch { res.writeHead(404); res.end('not found'); }
-  }).listen(port, () => console.log(`serving dist/ on http://localhost:${port}`));
+  });
+  return new Promise(res => srv.listen(p0, () => { if (!quiet) console.log(`serving dist/ on http://localhost:${p0}`); res(srv); }));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === normalize(process.argv[1])) serve();
