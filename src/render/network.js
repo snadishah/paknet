@@ -8,7 +8,7 @@ import { PROV } from '../geo/coast.js';
 import { latLonToFlat, greatCircle, GEO_ALT } from '../geo/globe.js';
 import { layer, fatLine, fatSegs, camera, renderer, disposeLine, onResize } from './scene.js';
 import { toGlobe, fromLatLon, edgeGlobe, mapPolyline, setRoadGeometry } from './geo3.js';
-import { routeCable, drawOnward } from './onward.js';
+import { routeCable, routeBorder, drawOnward } from './onward.js';
 
 // PakSat-MM1's position (ECEF km). Phase 2's satellite module updates it from the orbit data.
 export const paksatPos = fromLatLon(0, 38.2, GEO_ALT);
@@ -62,6 +62,9 @@ export function drawNetwork(G, ROADS = null) {
   // then sit mid-route, so they are not drawn: each cable visibly carries on to its destination instead
   for (const e of cableEdges) routeCable(e, nodes);
   for (const k of ['W', 'E', 'SW']) if (cableEdges.some(e => e.dir === k && e.onward)) G.INTL[k].hideLabel = true;
+  // links across the land borders carry on by road to Kashgar, Kabul, Kandahar and Zahedan
+  const landEdges = [];
+  for (const [k, n] of Object.entries(G.INTL)) for (const e of edges) if (e.b === n.id && e.type !== 'subsea' && routeBorder(e, nodes, k)) { landEdges.push(e); n.hideLabel = true; }
   const gBorders = layer('borders'), gCables = layer('cables'), gBackbone = layer('backbone'), gMW = layer('microwave', false), gSat = layer('satellite', false),
     gPlanned = layer('planned', false), gCities = layer('cities', false), gLastMile = layer('lastmile', false), gRouters = layer('routers'), gGate = layer('gateways'), gOff = layer('offices');
   layer('packets'); layer('heat', false); layer('fx'); layer('labels');
@@ -112,7 +115,7 @@ export function drawNetwork(G, ROADS = null) {
     gCables.add(e.line);
   }
   // each cable carries on along its real route to a real landing abroad (render/onward.js)
-  drawOnward(cableEdges, gCables);
+  drawOnward(cableEdges, gCables, landEdges, gBackbone);
   for (const e of plannedEdges) gPlanned.add(fatLine(edgeGlobe(e), { color: 0xe98b3a, linewidth: 1.6, opacity: 0.9, dashed: true, dashSize: 6, gapSize: 5 }));
 
   // satellite links: straight from each ground station up to PakSat-MM1

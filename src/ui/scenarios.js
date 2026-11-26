@@ -90,7 +90,7 @@ export function initScenarios(ctx) {
     phones: {
       camera: { lat: 34.15, lon: 72.1, range: 260, tilt: 38, heading: 0 }, dur: 34, phases: [0, 7, 18],
       before: s => { kit().setDefence(true); const m = N('Mardan'); s.phones = Array.from({ length: 12 }, (_, i) => fromLatLon(m.lat + Math.sin(i * 2.4) * 0.12 * (0.4 + (i % 4) / 4), m.lon + Math.cos(i * 2.4) * 0.14 * (0.4 + (i % 3) / 3), 0.5)); },
-      beats: [[1, s => fx.lightUp(s.phones)], [4, s => { security.runMalware(); s.t0 = s.t; }], [6, s => { s.lines = fx.signalLines(s.phones, G.INTL.W.gpos); }]],
+      beats: [[1, s => fx.lightUp(s.phones)], [4, s => { security.runMalware(); s.t0 = s.t; }], [6, s => { const srv = fromLatLon(25.2, 55.27); fx.serverMark(srv, 'Command server (illustrative, abroad)'); s.lines = fx.signalLines(s.phones, srv); }]],
       onDefence: (s, e) => { if (e.kind === 'beacon' && e.phase === 'execute' && !s.found) { s.found = s.t; if (s.lines) s.lines.found = true; fx.bubble(N('Mardan').gpos, 'Spotted! Phones blocked', 'bub ok'); } },
       metric: s => (s.found ? `The guard spotted the secret calls ${f1(s.found - s.t0)} s after they began, and blocked the phones.` : 'The guard is still listening for the secret calls.'),
       expert: () => [['Signal', 'Beacon periodicity: calls to one server at a fixed rhythm'], ['Respond', 'Quarantine + step-up authentication (adaptive access control)'], ['Note', 'Illustrative scenario']]

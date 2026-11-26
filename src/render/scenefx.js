@@ -2,10 +2,10 @@
 // when it ends or when the scenario stops. They decorate what the simulation
 // does (a cut, a reroute, an alarm); they never decide anything themselves.
 import * as THREE from 'three';
-import { scene, layers, fatLine, fatSegs, disposeLine } from './scene.js';
+import { scene, layers, camera, fatLine, fatSegs, disposeLine } from './scene.js';
 import { fromLatLon, faceUp } from './geo3.js';
 import { burst } from './fx.js';
-import { addCallout, removeCallout } from './labels.js';
+import { addCallout, removeCallout, addLabel, removeLabel } from './labels.js';
 import { altitudeKm } from './globecam.js';
 
 const live = new Set(); // { update(dt) → false when done, dispose() }
@@ -95,6 +95,19 @@ export function signalLines(from, to, { color = 0xe5484d } = {}) {
     update(dt) { t += dt; l.material.dashOffset -= dt * 30; l.material.opacity = 0.4 + 0.3 * (0.5 + 0.5 * Math.sin(t * 6)); if (a.found) l.material.color.set(0x3fb27f); return true; },
     dispose() { layers.fx.remove(l); disposeLine(l); }
   }));
+}
+
+// An illustrative server abroad: a small rack that keeps ~18 px on screen, with a label. Fades in.
+export function serverMark(pos, text) {
+  const g = new THREE.BoxGeometry(0.55, 0.55, 1).translate(0, 0, 0.5);
+  const m = new THREE.MeshStandardMaterial({ color: 0x2b3238, roughness: 0.45, metalness: 0.5, emissive: 0xe5484d, emissiveIntensity: 0.35, transparent: true, opacity: 0 });
+  const mesh = faceUp(new THREE.Mesh(g, m), pos); mesh.renderOrder = 6; layers.fx.add(mesh);
+  const lab = addLabel(text, pos, { cls: 'intl', minR: 0, maxR: 1e9, prio: 0 });
+  let t = 0;
+  return add({
+    update(dt) { t += dt; m.opacity = Math.min(1, t / 0.5); mesh.scale.setScalar(camera.position.distanceTo(pos) * 2 * Math.tan(camera.fov * Math.PI / 360) / innerHeight * 18); return true; },
+    dispose() { layers.fx.remove(mesh); g.dispose(); m.dispose(); removeLabel(lab); }
+  });
 }
 
 // Devices lighting up one by one (phones on the map). Returns their positions.

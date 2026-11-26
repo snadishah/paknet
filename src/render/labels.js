@@ -9,7 +9,7 @@ import { camera, scene } from './scene.js';
 import { fromLatLon, G3 } from './geo3.js';
 import { pose, altitudeKm } from './globecam.js';
 
-const MAX_LABELS = 12;
+const MAX_LABELS = 14; // calm, but room for the destinations abroad
 const layerEl = document.createElement('div'); layerEl.id = 'maplabels'; document.getElementById('app').appendChild(layerEl);
 export const labelState = { enabled: true, extra: null }; // extra: (label) => bool overrides
 const labels = [];

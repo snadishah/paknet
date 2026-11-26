@@ -1,4 +1,4 @@
-// Submarine cables, drawn along their real routes (scripts/fetch-cables.mjs, TeleGeography)
+// Submarine cables (and the links across the land borders), drawn along their real routes (scripts/fetch-cables.mjs, TeleGeography)
 // all the way to a real landing point abroad: Marseille, Singapore, Hong Kong, Mombasa …
 // The simulator's cable hop ends at a sea point off Oman / India / Somalia; here the drawn hop
 // follows the real route up to that point, and the rest of the route continues from it in the
@@ -54,21 +54,44 @@ function onward(ll, dest, approx) {
   return { gpts: g, cum: cumOf(g), dest: DESTS.get(dest.name), approx: approx || null };
 }
 
+// Border links carry on along the main road to the first big city across the border, where the
+// neighbour's exchange is. Hand-traced along the roads (approximate; REFERENCES §9.5).
+const LAND = {
+  N: { dest: 'Kashgar, China', pts: [[75.43, 36.85], [75.47, 37.10], [75.23, 37.77], [75.05, 38.40], [75.02, 38.70], [75.45, 39.05], [75.70, 39.30], [75.99, 39.47]] }, // Karakoram Highway
+  AF: { dest: 'Kabul, Afghanistan', pts: [[71.10, 34.10], [70.80, 34.25], [70.45, 34.43], [69.95, 34.58], [69.76, 34.58], [69.45, 34.50], [69.17, 34.53]] }, // via Jalalabad
+  AFS: { dest: 'Kandahar, Afghanistan', pts: [[66.45, 30.92], [66.40, 31.02], [66.05, 31.30], [65.71, 31.61]] },
+  IR: { dest: 'Zahedan, Iran', pts: [[61.60, 28.97], [61.45, 29.02], [61.20, 29.20], [60.86, 29.50]] }
+};
+// Called by drawNetwork for each link that ends at a neighbour (e: border town → country end point).
+export function routeBorder(e, nodes, key) {
+  const L = LAND[key]; if (!L) return false;
+  const a = flatToLatLon(nodes[e.a].pos.x, nodes[e.a].pos.y), b = flatToLatLon(nodes[e.b].pos.x, nodes[e.b].pos.y);
+  const pts = densify([[a.lon, a.lat], ...L.pts.slice(1)]);
+  const s = closest(pts, b);
+  setRoadGeometry(e, pts.slice(0, s + 1).flat());
+  const end = L.pts.at(-1); e.onward = onward(pts.slice(s), { name: L.dest, lon: end[0], lat: end[1] }, null);
+  return true;
+}
+
 // The onward lines (three draw calls: live, landed, retired) and the destinations (one instanced mesh).
+
 let marks = null; const markPos = [];
-export function drawOnward(cableEdges, group) {
+export function drawOnward(cableEdges, group, landEdges = [], landGroup = group) {
   const style = { live: [[], { color: 0x8fc3e6, linewidth: 1.4, opacity: 0.8 }], landed: [[], { color: 0x8fc3e6, linewidth: 1.0, opacity: 0.45, dashed: true, dashSize: 8, gapSize: 6 }], retired: [[], { color: 0x8a949a, linewidth: 1.0, opacity: 0.45, dashed: true, dashSize: 8, gapSize: 6 }] };
   for (const e of cableEdges) {
     const segs = style[e.cable.status]?.[0] || style.live[0];
     for (const o of [e.onward, e.onwardGulf]) if (o) for (let i = 1; i < o.gpts.length; i++) segs.push({ a: o.gpts[i - 1], b: o.gpts[i] });
   }
   for (const [segs, o] of Object.values(style)) if (segs.length) group.add(fatSegs(segs, o));
+  // across the borders: the same dashed style as the cross-border links they continue
+  const land = []; for (const e of landEdges) if (e.onward) for (let i = 1; i < e.onward.gpts.length; i++) land.push({ a: e.onward.gpts[i - 1], b: e.onward.gpts[i] });
+  if (land.length) landGroup.add(fatSegs(land, { color: 0xe6ebee, linewidth: 1.0, opacity: 0.55, dashed: true, dashSize: 6, gapSize: 5 }));
   // a small landing station at each destination: a low hall with a mast (Phase 3 brings detailed models)
   const hall = new THREE.BoxGeometry(1, 0.62, 0.42).translate(0, 0, 0.21), mast = new THREE.CylinderGeometry(0.05, 0.07, 1.1, 6).rotateX(Math.PI / 2).translate(0.32, 0.12, 0.55);
   const geo = mergeTwo(hall, mast);
   marks = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0xdfe8ee, roughness: 0.55, metalness: 0.15, emissive: 0x24465a, emissiveIntensity: 0.6, transparent: true }), DESTS.size);
   marks.frustumCulled = false; marks.renderOrder = 6;
-  for (const d of DESTS.values()) { markPos.push(d.pos); addLabel(d.name, d.pos, { cls: 'intl', minR: 1500, maxR: 30000, prio: 4, key: 'dest:' + d.name }); }
+  for (const d of DESTS.values()) { markPos.push(d.pos); addLabel(d.name, d.pos, { cls: 'intl', minR: 1500, maxR: 30000, prio: 2, key: 'dest:' + d.name }); }
   group.add(marks); placeMarks(1);
 }
 function mergeTwo(a, b) {
