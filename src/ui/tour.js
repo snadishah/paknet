@@ -56,8 +56,10 @@ export function initTour(ctx) {
     if (run.i >= 0) steps[run.i]?.leave?.();
     if (i >= steps.length) { finish(); return; }
     run.i = Math.max(0, i); const s = steps[run.i];
-    if (s.camera) flyTo(typeof s.camera === 'function' ? s.camera() : s.camera, run.mode === 'present' ? 2600 : 2200);
-    s.enter?.();
+    const fl = s.camera ? flyTo(typeof s.camera === 'function' ? s.camera() : s.camera, run.mode === 'present' ? 2600 : 2200) : null;
+    // the step starts once the camera has arrived (a newer step cancels this one)
+    const token = run.token = (run.token || 0) + 1;
+    Promise.resolve(fl).then(() => { if (run.token === token && run.steps === steps) s.enter?.(); });
     render();
   }
   function render() {

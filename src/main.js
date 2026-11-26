@@ -37,7 +37,7 @@ import { flyTo, updateCamera, altitudeKm, pose, setPose, spin } from './render/g
 import { updateTour } from './render/camera.js';
 import { watchFrame, qualityState } from './render/quality.js';
 import { layers } from './render/scene.js';
-import { ui, setTab } from './ui/dom.js';
+import { ui, setTab, note } from './ui/dom.js';
 import { initPanel } from './ui/panel.js';
 import { initRoute } from './ui/route.js';
 import { initFailures } from './ui/failures.js';
@@ -185,10 +185,18 @@ const VERIFY = new URLSearchParams(location.search).has('verify'); let peakCalls
 // Only in Expert mode, where the loss numbers are shown too; for everyone else these
 // unexplained red rings were noise (they come back, explained, in the stories that need them).
 const expertOn = () => document.body.classList.contains('expert');
+const lastFx = {}, rate = (k, ms) => { const t = performance.now(); if (t - (lastFx[k] || 0) < ms) return false; lastFx[k] = t; return true; };
+let dropExplained = false;
 const packetEvents = {
-  drop: b => { if (expertOn() && Math.random() < 0.3) burst(packetPos(b, b.d), '#e5484d', 0.1, 0.5); },
+  drop: b => {
+    if (!expertOn() || !rate('drop', 120)) return;
+    burst(packetPos(b, b.d), '#e5484d', 0.1, 0.5);
+    if (!dropExplained) { dropExplained = true; note('<b>Red flash</b>: a parcel was dropped here (the link was full, or cut). The loss numbers count these.'); }
+  },
   arrive: b => {
     if (expertOn() && b.opt.sink && Math.random() < 0.2) burst(packetPos(b, b.d), '#e5484d', 0.22, 0.6);
+    // an office's parcel reaching a place in Pakistan: a soft pulse where it arrives (never more than a few a second)
+    else if (b.opt.office && !b.edges.at(-1)?.onward && rate('arrive', 250)) burst(packetPos(b, b.d), b.color, 0.035, 0.6);
     // leaving Pakistan by cable: carry on along the same cable to its landing abroad, at the hop's own speed
     const e = b.edges.at(-1);
     if (e?.onward && b.seq.at(-1) === e.b) sendOnward(e, b.color, e.gcum.at(-1) / Math.max(1e-6, edgeDelayMs(e)), b.opt.dest === 'whatsapp'); // km per ms of network time

@@ -26,6 +26,25 @@ const lon2x = (lon, z) => (lon + 180) / 360 * 2 ** z;
 const x2lon = (x, z) => x / 2 ** z * 360 - 180;
 
 // One shared request queue for both layers: at most MAX_CONCURRENT requests in flight.
+// Brightness matching: imagery providers stitch different satellite sources at different zoom levels
+// (Esri's sharpest Karachi photos are darker than the level above). Each new tile gets a gain so that
+// its average brightness matches the same patch of ground in the coarser tile it replaces (0.6–1.8×).
+const SAMP = 16, sampler = document.createElement('canvas'); sampler.width = sampler.height = SAMP;
+const sctx = sampler.getContext('2d', { willReadFrequently: true });
+function balance(t, img) {
+  try { sctx.drawImage(img, 0, 0, SAMP, SAMP); } catch { return; }
+  const d = sctx.getImageData(0, 0, SAMP, SAMP).data, lum = new Float32Array(SAMP * SAMP); let sum = 0;
+  for (let i = 0; i < lum.length; i++) { lum[i] = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]; sum += lum[i]; }
+  t.lum = lum; t.gain = 1;
+  for (let zz = t.z - 1, k = 1; zz >= Math.max(4, t.z - 6); zz--, k++) { // nearest loaded ancestor
+    const a = t.layer.cache.get(`${t.src.id}/${zz}/${t.x >> k}/${t.y >> k}`); if (!a?.lum) continue;
+    const n = 2 ** k, size = Math.max(1, SAMP / n), x0 = Math.floor(((t.x - (t.x >> k) * n) / n) * SAMP), y0 = Math.floor(((t.y - (t.y >> k) * n) / n) * SAMP);
+    let s2 = 0, c = 0; for (let y = y0; y < y0 + size; y++) for (let x = x0; x < x0 + size; x++) { s2 += a.lum[y * SAMP + x]; c++; }
+    t.gain = THREE.MathUtils.clamp((s2 / c) * (a.gain ?? 1) / Math.max(4, sum / lum.length), 0.6, 1.8);
+    break;
+  }
+}
+
 let inflight = 0; const queue = []; const cTmp = [0, 0, 0];
 let pauseUntil = 0; // offline back-off: after repeated failures with no provider left, wait before retrying
 
@@ -33,8 +52,8 @@ let pauseUntil = 0; // offline back-off: after repeated failures with no provide
 // uC: the view centre on the ground (ECEF km); each level's tiles fade out towards the edge of the area they cover
 const shared = { uC: { value: new THREE.Vector3() }, uK: { value: 1 }, uFloor: { value: 0 }, uMask: pakMask.uniform, uDim: globeUniforms.uDim, uSun: globeUniforms.uSun, uFlood: globeUniforms.uFlood };
 const imgVS = `attribute vec2 muv; varying vec2 vUv; varying vec2 vM; varying vec3 vN; varying vec3 vP; void main(){ vUv=uv; vM=muv; vP=position; vN=normalize((modelMatrix*vec4(position,1.)).xyz); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`;
-const imgFS = `uniform sampler2D map; uniform float uOpacity; uniform float uK; uniform float uFloor; uniform vec3 uSun; uniform float uFlood; uniform sampler2D uMask; uniform float uDim; uniform vec3 uC; uniform vec2 uFe; varying vec2 vUv; varying vec2 vM; varying vec3 vN; varying vec3 vP;
-  void main(){ vec3 c = texture2D(map, vUv).rgb * uK;
+const imgFS = `uniform sampler2D map; uniform float uOpacity; uniform float uK; uniform float uFloor; uniform vec3 uSun; uniform float uFlood; uniform sampler2D uMask; uniform float uDim; uniform vec3 uC; uniform vec2 uFe; uniform float uGain; varying vec2 vUv; varying vec2 vM; varying vec3 vN; varying vec3 vP;
+  void main(){ vec3 c = texture2D(map, vUv).rgb * uK * uGain;
     // the same day / night as the globe shader, per pixel from the real sun; a low 'dusk' floor close to the ground
     float ndl = dot(normalize(vN), uSun);
     vec3 lit = c * (0.12 + 1.05 * max(ndl, 0.0));
@@ -63,7 +82,7 @@ class TileLayer {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('muv', new THREE.Float32BufferAttribute(muv, 2)); g.setIndex(idx);
     const m = this.overlay
       ? new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthTest: false, depthWrite: false })
-      : new THREE.ShaderMaterial({ uniforms: { map: { value: tex }, uOpacity: { value: 0 }, uFe: { value: new THREE.Vector2(1e9, 2e9) }, ...shared }, vertexShader: imgVS, fragmentShader: imgFS, transparent: true, depthTest: false, depthWrite: true });
+      : new THREE.ShaderMaterial({ uniforms: { map: { value: tex }, uOpacity: { value: 0 }, uFe: { value: new THREE.Vector2(1e9, 2e9) }, uGain: { value: t.gain ?? 1 }, ...shared }, vertexShader: imgVS, fragmentShader: imgFS, transparent: true, depthTest: false, depthWrite: true });
     const mesh = new THREE.Mesh(g, m); mesh.renderOrder = this.order + t.z * 0.001; mesh.userData.key = t.key; g.computeBoundingSphere(); return mesh;
   }
   request(z, x, y) {
@@ -162,6 +181,7 @@ function pump() {
       img.onload = () => {
         inflight--; URL.revokeObjectURL(u); tileState.online = true; t.layer.fails = 0;
         if (!t.layer.cache.has(t.key)) return;
+        if (!t.layer.overlay) balance(t, img);
         const tex = new THREE.Texture(img); tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
         tex.minFilter = THREE.LinearMipmapLinearFilter; t.tex = tex; t.mesh = t.layer.mesh(t, tex); t.mesh.visible = false; /* the next pass decides (and keeps the draw cap) */ t.status = 'ready'; t.born = performance.now(); t.layer.group.add(t.mesh); tileState.loaded++;
       };
@@ -195,7 +215,7 @@ function enforceCap(L) {
 }
 
 export function initTiles() { scene.add(imagery.group, labels.group); useProvider(0); }
-export function tileDebug() { const by = {}; for (const t of imagery.cache.values()) if (t.mesh?.visible) { const b = by[t.z] ||= [0, 0]; b[0]++; b[1] += t.mesh.material.uniforms.uOpacity.value; } return Object.entries(by).map(([z, [n, o]]) => `${z}:${n}@${(o / n).toFixed(2)}`).join(' ') + ` src=${tileState.provider} labels=${tileState.labels}` + strays(); }
+export function tileDebug() { const by = {}; for (const t of imagery.cache.values()) if (t.mesh?.visible) { const b = by[t.z] ||= [0, 0, 0]; b[0]++; b[1] += t.mesh.material.uniforms.uOpacity.value; b[2] += t.gain ?? 1; } return Object.entries(by).map(([z, [n, o, g]]) => `${z}:${n}@${(o / n).toFixed(2)}${Math.abs(g / n - 1) > 0.01 ? '×' + (g / n).toFixed(2) : ''}`).join(' ') + ` src=${tileState.provider} labels=${tileState.labels}` + strays(); }
 function strays() { const o = imagery.group.children.filter(m => m.visible && imagery.cache.get(m.userData.key)?.mesh !== m); return o.length ? ` strays=${o.length}:${o.slice(0, 3).map(m => m.userData.key + (imagery.cache.has(m.userData.key) ? '(other)' : '(gone)')).join(',')}` : ''; }
 
 let last = 0;

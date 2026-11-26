@@ -171,6 +171,7 @@ export function initScenarios(ctx) {
     reset(); ui('scen').classList.remove('on'); document.body.classList.remove('scenario');
     if (!silent) flyTo('pakistan');
   }
+  let lastStep = 0;
   function stepNext() { // jump to the next beat (or the end)
     if (!cur) return; const b = cur.def.beats[cur.i];
     cur.t = b ? Math.max(cur.t, b[0]) : cur.def.dur; fire();
@@ -194,8 +195,10 @@ export function initScenarios(ctx) {
     const key = html.replace(/width:[^%]+%/, '');
     if (key !== lastHtml) {
       lastHtml = key; patchHtml(ui('scen'), html); // details keep their open state
-      ui('scX').onclick = () => stop(); ui('scStop').onclick = () => stop(); ui('scAgain').onclick = () => start(cur.id);
-      ui('scPlay').onclick = () => { shell.setPlaying(!state.playing); render(); }; ui('scStep').onclick = stepNext;
+      ui('scX').onclick = () => stop(); ui('scStop').onclick = () => stop();
+      // Again: the old run fades out first; Next step: at most one step every 0.7 s (each step's animation gets to start)
+      ui('scAgain').onclick = () => { const id = cur.id; stop(true); setTimeout(() => start(id), 350); };
+      ui('scPlay').onclick = () => { shell.setPlaying(!state.playing); render(); }; ui('scStep').onclick = () => { if (performance.now() - lastStep < 700) return; lastStep = performance.now(); stepNext(); };
     } else ui('scen').querySelector('.bar i').style.width = Math.min(100, cur.t / cur.def.dur * 100).toFixed(1) + '%';
     ui('scMetric').textContent = cur.t > 1 ? cur.def.metric(cur) : '';
     ui('scen').classList.add('on'); document.body.classList.add('scenario');
