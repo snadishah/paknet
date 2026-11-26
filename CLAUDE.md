@@ -28,6 +28,18 @@ Computer Networks course project (SEECS, NUST), instructor **Ms. Maryam Sajjad**
 - `data/`: geo inputs (Natural Earth, provinces, GeoNames cities). `src/data/`: orbit and building snapshots.
 - `archive/v1/`: the first neon version, reference only.
 
+## THE QUALITY BAR (permanent rule: applies to every phase and every future change)
+1. EVERYTHING IS 3D. Every important place is a real 3D object: buildings, landing stations, exchanges, data centres, router sites, towers, satellites, offices. Nothing is a flat icon, dot or 2D badge when the camera is close to it.
+2. EVERYTHING IS DETAILED. Up close, objects have real-world detail: windows, doors, roof equipment, air conditioners, antennas, satellite dishes, fences, gates, cable trenches, car parks, trees, lamp posts, signs. Physically based materials (concrete, glass, metal, asphalt) with proper lighting, soft shadows, reflections, and an environment map. The look is photographic and calm, like Google Earth or NASA Eyes. Never cartoonish, never toy-like, no flat primary colours.
+3. EVERYTHING IS CONTINUOUS. Nothing starts, stops or disappears abruptly:
+   - No line, cable or path ends in empty space or at the edge of the map. Every path ends at a real 3D destination.
+   - Nothing pops in or out. Objects, labels and panels fade or grow in and out (at least 250 ms, eased).
+   - The camera never cuts. Every move is a smooth eased flight, and moves chain into each other without a stop-start jolt.
+   - Parcels never vanish mid-air. They arrive at a building and are absorbed with a small arrival effect, or they are visibly dropped with an explained effect.
+   - Steps in tours and stories blend into each other. The previous animation finishes or fades before the next one starts.
+4. EVERYTHING IS BEAUTIFUL AND CLEAN. A minimal, elegant UI in the NASA Eyes style: dark glass panels, generous spacing, one clean font, soft shadows, smooth hover and press states. Nothing on screen that a layman would not understand. No debug text, fps counters or stats visible to the user, ever.
+5. HONEST. A model of a real place whose real look we do not know is labelled "representative 3D model" in its info card. Made-up places (the offices) say "illustrative".
+
 ## Design rules (short; details in docs/REDESIGN.md)
 - Realistic and calm: real day/night terminator, Black Marble city lights, thin atmosphere rim, subtle stars. **No neon, no bloom, no cartoon colours.** Thin elegant lines; small softly glowing dots.
 - Packet colours: orange international, blue domestic, teal CDN, purple satellite; red only for cuts and attacks.
