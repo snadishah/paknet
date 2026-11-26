@@ -4,7 +4,6 @@
 // Worker (SGP4, ≤ 5 Hz) and are interpolated every frame. PakSat-MM1 also gets
 // an "approximate coverage" disc, and the network's PakSat links follow it.
 import * as THREE from 'three';
-import SNAP from '../data/satellites.json';
 import { GROUPS, SAT_INFO, GROUP_INFO, decodeSnapshot } from '../sat/catalog.js';
 import { makeRecords, positionsAt, orbitRing } from '../sat/propagate.js';
 import { R, GEO_ALT, ecefToLatLon } from '../geo/globe.js';
@@ -14,32 +13,36 @@ import { addLabel } from './labels.js';
 import { fromLatLon } from './geo3.js';
 
 export const satLayers = { far: true, soon: false, eyes: false, nav: false };
-export const satMeta = { fetched: SNAP.fetched, groups: {} };
+export const satMeta = { fetched: null, groups: {} };
+let SNAP = { fetched: null };
 const ROLE_STYLE = { pk: ['#f2d8a7', 11], retired: ['#8a949a', 8], soon: ['#cfd6db', 3.2], eyes: ['#9fe0c4', 6], nav: ['#a9c4f0', 4.5] };
 
-const groups = decodeSnapshot(SNAP);
-const list = []; // { key, g, omm, norad }
-for (const [key, g] of Object.entries(GROUPS)) {
-  const d = groups[key]; if (!d) continue;
-  satMeta.groups[key] = { total: d.total, shown: d.sats.length, sampled: d.sampled };
-  for (const omm of d.sats) list.push({ key, g, omm, norad: omm.NORAD_CAT_ID, name: omm.OBJECT_NAME });
-}
-const N = list.length;
-const iMM1 = list.findIndex(s => s.norad === 59915), i1R = list.findIndex(s => s.norad === 37779);
-
-// ---------- the points ----------
-const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), size = new Float32Array(N), kind = new Float32Array(N), vis = new Float32Array(N);
+// The orbit snapshot (src/data/satellites.json, copied to assets/) is loaded after
+// the first screen is up, so it doesn't slow the start. Until then there are no satellites.
+let list = [], N = 0, iMM1 = -1, i1R = -1; // list: { key, g, omm, norad, name, role }
+let pos = new Float32Array(0), vis = new Float32Array(0);
 const geo = new THREE.BufferGeometry();
-geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
-geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3)); geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
-geo.setAttribute('aKind', new THREE.BufferAttribute(kind, 1)); geo.setAttribute('aVis', new THREE.BufferAttribute(vis, 1));
-const c = new THREE.Color();
-list.forEach((s, i) => {
-  const role = s.norad === 37779 ? 'retired' : s.g.role; const [hex, sz] = ROLE_STYLE[role];
-  c.set(hex); col.set([c.r, c.g, c.b], i * 3); size[i] = sz;
-  kind[i] = role === 'soon' ? 1 : role === 'retired' ? 2 : 0; // 1: hollow ring ("not yet"), 2: grey dot
-  s.role = role;
-});
+function setup(snap) {
+  SNAP = snap; satMeta.fetched = snap.fetched;
+  const groups = decodeSnapshot(snap); list = [];
+  for (const [key, g] of Object.entries(GROUPS)) {
+    const d = groups[key]; if (!d) continue;
+    satMeta.groups[key] = { total: d.total, shown: d.sats.length, sampled: d.sampled };
+    for (const omm of d.sats) list.push({ key, g, omm, norad: omm.NORAD_CAT_ID, name: omm.OBJECT_NAME });
+  }
+  N = list.length; iMM1 = list.findIndex(s => s.norad === 59915); i1R = list.findIndex(s => s.norad === 37779);
+  pos = new Float32Array(N * 3); vis = new Float32Array(N);
+  const col = new Float32Array(N * 3), size = new Float32Array(N), kind = new Float32Array(N), c = new THREE.Color();
+  list.forEach((s, i) => {
+    const role = s.norad === 37779 ? 'retired' : s.g.role; const [hex, sz] = ROLE_STYLE[role];
+    c.set(hex); col.set([c.r, c.g, c.b], i * 3); size[i] = sz;
+    kind[i] = role === 'soon' ? 1 : role === 'retired' ? 2 : 0; // 1: hollow ring ("not yet"), 2: grey dot
+    s.role = role;
+  });
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3)); geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  geo.setAttribute('aKind', new THREE.BufferAttribute(kind, 1)); geo.setAttribute('aVis', new THREE.BufferAttribute(vis, 1));
+}
 export const satUniforms = { uPR: { value: renderer.getPixelRatio() }, uScale: { value: 1 } };
 const mat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, uniforms: satUniforms,
@@ -128,14 +131,17 @@ function askRings(t) {
 
 export function initSatellites(clock, onMove) {
   scene.add(group);
-  try {
-    worker = new Worker(new URL('satworker.js', import.meta.url), { type: 'module' });
-    worker.onmessage = ({ data: m }) => { if (m.type === 'pos') onPos(m.t0, m.t1, m.a, m.b); else if (m.type === 'rings') setTracks(m.rings); };
-    worker.onerror = () => { worker = null; pending = false; };
-    worker.postMessage({ type: 'init', omms: list.map(s => s.omm) });
-  } catch { worker = null; }
   satState.clock = clock; satState.onMove = onMove;
-  applyLayers();
+  fetch('assets/satellites.json').then(r => r.json()).then(snap => {
+    setup(snap);
+    try {
+      worker = new Worker(new URL('satworker.js', import.meta.url), { type: 'module' });
+      worker.onmessage = ({ data: m }) => { if (m.type === 'pos') onPos(m.t0, m.t1, m.a, m.b); else if (m.type === 'rings') setTracks(m.rings); };
+      worker.onerror = () => { worker = null; pending = false; };
+      worker.postMessage({ type: 'init', omms: list.map(s => s.omm) });
+    } catch { worker = null; }
+    applyLayers(); satState.ready = true;
+  }).catch(() => { satState.failed = true; });
   // labels that follow their satellite
   satState.mm1Label = addLabel('PakSat-MM1', new THREE.Vector3(), { cls: 'sat', minR: 4000, maxR: 1e9, prio: 1, key: 'sat:mm1', layer: null });
   satState.r1Label = addLabel('PakSat-1R (retired)', new THREE.Vector3(), { cls: 'sat dim', minR: 30000, maxR: 1e9, prio: 6, key: 'sat:1r' });
@@ -146,6 +152,7 @@ export function initSatellites(clock, onMove) {
 export const satState = { clock: null, onMove: null, ringT: -1e15, mm1Label: null, r1Label: null };
 
 export function applyLayers() {
+  if (!N) { geoRing.visible = satLayers.far; return; }
   list.forEach((s, i) => { vis[i] = satLayers[s.g.layer] ? 1 : 0; });
   geo.attributes.aVis.needsUpdate = true;
   geoRing.visible = satLayers.far; cap.visible = satLayers.far; satState.capOn = satLayers.far;
@@ -154,6 +161,7 @@ export function applyLayers() {
 
 const p0 = new THREE.Vector3(), p1 = new THREE.Vector3();
 export function updateSatellites() {
+  if (!N) return; // snapshot not loaded yet
   const t = satState.clock.t, rate = satState.clock.rate;
   if (!pending && (performance.now() - lastAsk > 200 || !A || t < tA || t > tB + 5000)) ask(t, rate);
   if (A) {

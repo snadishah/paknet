@@ -11,6 +11,7 @@ import { setSun, setFlood, globeUniforms } from '../render/globe.js';
 import { layers, renderer, sunLight, netRoot } from '../render/scene.js';
 import { tileState } from '../render/tiles.js';
 import { labelState } from '../render/labels.js';
+import { gloss } from './glossary.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const PKT = 5; // Pakistan Standard Time = UTC+5
@@ -35,9 +36,9 @@ export function initShell(ctx) {
     if (sh.started) return; sh.started = true; spin.on = false;
     ui('intro').classList.add('gone'); setTimeout(() => ui('intro').style.display = 'none', 650);
     body.classList.add('started'); labelState.enabled = true; netRoot.visible = true;
-    if (skip) setPose({ ...poseOf('pakistan') }); else flyTo('pakistan', 3000);
+    if (skip) setPose({ ...poseOf('pakistan') }); // Start: the tour (ui/tour.js) takes the camera from here
     emit('shell:started', { skip });
-    hint(skip ? '' : 'Drag to move · scroll or pinch to zoom · click anything to learn what it is', 6000);
+
   }
   ui('btnStart').onclick = () => start(false);
   ui('btnSkip').onclick = () => start(true);
@@ -98,12 +99,14 @@ export function initShell(ctx) {
   // ---------- info card ----------
   // info: { kick, title, tags: [[text, cls]], what, why, showMe: fn, expert: () => [[k, v]] , extraHtml }
   let expertFn = null;
+  // plain text gets glossary tooltips; text that is already HTML is used as is
+  const fmtText = t => (/[<&]/.test(t) ? t : gloss(t));
   function showInfo(info) {
     const c = ui('infocard'); expertFn = info.expert || null;
     c.innerHTML = `<button class="sbtn x" id="icX" aria-label="Close"><svg class="ico2"><use href="#s-close"/></svg></button>
       ${info.kick ? `<p class="kick">${esc(info.kick)}</p>` : ''}<h3>${esc(info.title)}</h3>
       ${(info.tags || []).map(([t, cl]) => `<span class="tag ${cl || ''}">${esc(t)}</span>`).join('')}
-      ${info.what ? `<p><b>What it is:</b> ${info.what}</p>` : ''}${info.why ? `<p class="why"><b>Why it matters:</b> ${info.why}</p>` : ''}
+      ${info.what ? `<p><b>What it is:</b> ${fmtText(info.what)}</p>` : ''}${info.why ? `<p class="why"><b>Why it matters:</b> ${fmtText(info.why)}</p>` : ''}
       ${info.extraHtml || ''}
       <div class="row">${info.showMe ? '<button class="chipbtn" id="icShow">Show me</button>' : ''}${(info.buttons || []).map((b, i) => `<button class="chipbtn ghost" data-ib="${i}">${esc(b[0])}</button>`).join('')}</div>
       ${expertFn ? `<details id="icExp" ${sh.expert ? 'open' : ''}><summary>Expert details</summary><dl id="icDl"></dl></details>` : ''}`;
@@ -143,7 +146,7 @@ export function initShell(ctx) {
     const tags = []; if (n.planned) tags.push(['Planned, not built']); if (n.note && /unverified|illustrative/i.test(n.note)) tags.push(['Unverified', 'grey']);
     if (['core', 'agg', 'access'].includes(n.tier) || n.kind === 'tower') tags.push(['Network inside Pakistan is illustrative', 'grey']);
     showInfo({
-      kick: tierName(n), title: n.name, what: esc(what), why: esc(why), tags, showMe,
+      kick: tierName(n), title: n.name, what, why, tags, showMe,
       expert: () => {
         const links = G.adj.get(n.id).filter(e => e.type !== 'access' || n.tier === 'access');
         const rows = [['Node id', `#${n.id} (${n.tier})`]];

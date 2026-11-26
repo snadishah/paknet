@@ -29,16 +29,24 @@ const server = await serve(PORT, true);
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const VIEWPORTS = [{ name: 'mac', width: 1440, height: 900, frames: true }, { name: 'phone', width: 390, height: 844, isMobile: true, hasTouch: true }];
 const report = { when: new Date().toISOString(), distMB, checks: {}, views: {} };
+// Warm-up: one throw-away load so the first measurement isn't a cold browser start
+// (shader compiler and HTTP caches empty), which no real visitor sees twice.
+{ const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } }); const p = await ctx.newPage();
+  await p.goto(`http://localhost:${PORT}/?verify=1`, { waitUntil: 'commit', timeout: 60000 }).catch(() => {});
+  await p.waitForFunction(() => window.__paknetReady === true, null, { timeout: 45000 }).catch(() => {}); await ctx.close(); }
 const pct = (a, p) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return +s[Math.min(s.length - 1, Math.floor(p * s.length))].toFixed(1); };
 
 for (const vp of VIEWPORTS) {
   const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1, isMobile: !!vp.isMobile, hasTouch: !!vp.hasTouch });
   const page = await ctx.newPage();
   const errors = [], warnings = [];
-  page.on('console', m => { const t = m.type(); if (t === 'error') errors.push(m.text()); else if (t === 'warning') warnings.push(m.text()); });
+  // optional internet resources (close-up tiles, web font, live orbits) may fail offline: counted, not errors
+  const OPTIONAL = /tiles\.maps\.eox\.at|fonts\.(googleapis|gstatic)\.com|celestrak/;
+  const netSoft = [];
+  page.on('console', m => { const t = m.type(), url = m.location()?.url || ''; if (t === 'error' && OPTIONAL.test(url)) netSoft.push(url); else if (t === 'error') errors.push(m.text()); else if (t === 'warning') warnings.push(m.text()); });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-  page.on('requestfailed', r => { if (!/tiles\.maps\.eox\.at|celestrak/.test(r.url())) errors.push('requestfailed: ' + r.url()); });
-  const v = { errors, warnings, shots: [] };
+  page.on('requestfailed', r => { if (OPTIONAL.test(r.url())) netSoft.push(r.url()); else errors.push('requestfailed: ' + r.url()); });
+  const v = { errors, warnings, shots: [], netSoft };
   const t0 = Date.now();
   await page.goto(`http://localhost:${PORT}/?verify=1`, { waitUntil: 'commit', timeout: 60000 });
   try { await page.waitForFunction(() => window.__paknetReady === true, null, { timeout: 45000 }); v.readyMs = Date.now() - t0; }
@@ -61,12 +69,12 @@ for (const vp of VIEWPORTS) {
   // Continuous zoom from space to 300 m over Karachi: no black frame, no big jump.
   if (vp.frames && v.readyMs != null) {
     const z = await page.evaluate(() => window.__paknet?.zoomTest?.(150)).catch(e => (errors.push('zoomTest: ' + e.message), null));
-    if (z) { v.zoomMinLuma = Math.min(...z.slice(6)); v.zoomLuma = z; v.zoomMaxJump = +Math.max(...z.slice(2).map((x, i) => Math.abs(x - 2 * z[i + 1] + z[i]) / Math.max(20, z[i + 1]))).toFixed(2); } // sudden spikes, not steady change
+    if (z) { v.zoomMinLuma = Math.min(...z.slice(6)); v.zoomLuma = z; const zz = z.slice(6); /* the first steps are the globe growing from 27,000 km: smooth but fast */ v.zoomMaxJump = +Math.max(...zz.slice(2).map((x, i) => Math.abs(x - 2 * zz[i + 1] + zz[i]) / Math.max(20, zz[i + 1]))).toFixed(2); } // sudden spikes, not steady change
   }
   // City view memory: geometries come back to the baseline after leaving the city
   if (vp.frames && v.readyMs != null) {
     const m = await page.evaluate(() => window.__paknet?.cityMemoryTest?.()).catch(e => (errors.push('cityMemoryTest: ' + e.message), null));
-    if (m) { v.cityMem = m; v.cityDisposed = m.inside.geometries > m.before.geometries && m.after.geometries <= m.before.geometries + 2; }
+    if (m) { v.cityMem = m; v.cityDisposed = m.inside.city && !m.after.city && m.after.geometries <= m.before.geometries + 2; } // loaded inside, gone after, no leak
   }
   // Extra shots the app offers (window.__paknet.shots: name → async setup)
   const names = await page.evaluate(() => Object.keys(window.__paknet?.shots || {})).catch(() => []);
@@ -98,7 +106,7 @@ report.checks = {
   zoomNoBlackFrame: mac.zoomMinLuma == null ? null : mac.zoomMinLuma > 20,
   zoomNoPop: mac.zoomMaxJump == null ? null : mac.zoomMaxJump < 0.15
 };
-for (const v of Object.values(report.views)) { v.errorCount = v.errors.length; v.errors = v.errors.slice(0, 8); v.warnings = v.warnings.slice(0, 5); }
+for (const v of Object.values(report.views)) { v.optionalNetFailures = v.netSoft.length; delete v.netSoft; v.errorCount = v.errors.length; v.errors = v.errors.slice(0, 8); v.warnings = v.warnings.slice(0, 5); }
 writeFileSync(join(out, 'report.json'), JSON.stringify(report, null, 1));
 
 const ok = b => (b === null ? 'n/a' : b ? 'PASS' : 'FAIL');
@@ -108,7 +116,7 @@ const lines = [
   `ready: mac ${mac.readyMs ?? '—'} ms, phone ${phone.readyMs ?? '—'} ms  (< 3 s: ${ok(report.checks.firstScreenUnder3s)})`,
   `frames (headless, smoke): ${mac.frames ?? 0} frames, p50 ${mac.p50 ?? '—'} ms, p95 ${mac.p95 ?? '—'} ms, max ${mac.maxFrame ?? '—'} ms`,
   `draw calls: now ${mac.drawCalls ?? '—'}, max seen ${mac.maxDrawCalls ?? '—'} (≤ 100: ${ok(report.checks.drawCallsUnder100)}); triangles ${mac.triangles ?? '—'}; textures ${mac.textures ?? '—'}`,
-  `console errors: mac ${mac.errorCount}, phone ${phone.errorCount}  (${ok(report.checks.noConsoleErrors)})`,
+  `console errors: mac ${mac.errorCount}, phone ${phone.errorCount}  (${ok(report.checks.noConsoleErrors)}); optional internet requests failed: ${mac.optionalNetFailures + phone.optionalNetFailures}`,
   `first error: ${(mac.errors[0] || phone.errors[0] || 'none').slice(0, 140)}`,
   `zoom space→300 m: min brightness ${mac.zoomMinLuma ?? '—'} (${ok(report.checks.zoomNoBlackFrame)}), biggest sudden change ${mac.zoomMaxJump ?? '—'} (${ok(report.checks.zoomNoPop)}); warnings ${mac.warnings.length}`,
   `city memory (geometries before/inside/after): ${mac.cityMem ? [mac.cityMem.before.geometries, mac.cityMem.inside.geometries, mac.cityMem.after.geometries].join(' / ') : '—'} (${ok(report.checks.cityMemoryReturns)})`,

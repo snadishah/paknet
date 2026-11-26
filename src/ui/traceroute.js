@@ -4,6 +4,7 @@
 // hop is clickable (the camera flies there). The hops are the routing module's
 // path (sim/offices.js traceroute), so cutting a cable changes them live.
 import { ui } from './dom.js';
+import { gloss } from './glossary.js';
 import { DESTS } from '../sim/offices.js';
 import { mediumName } from './route.js';
 import { flyTo } from '../render/globecam.js';
@@ -64,7 +65,7 @@ export function initTraceroute(ctx) {
     const total = last.cum, measured = t.measuredMs;
     ui('trace').innerHTML = `<div class="th"><div><p class="kick">Following parcels from</p><h3>${esc(t.office.name)}</h3><span class="tag grey">Illustrative office</span></div><button class="sbtn x" id="trX" aria-label="Close"><svg class="ico2"><use href="#s-close"/></svg></button></div>
       <div class="dests" role="group" aria-label="What is the office sending?">${Object.entries(DESTS).map(([k, d]) => `<button class="chipbtn ${k === tr.dest ? '' : 'ghost'}" data-dest="${k}" aria-pressed="${k === tr.dest}">${esc(t.office.key === 'lahore' && k === 'email' ? 'Email to a friend in Karachi' : d.label)}</button>`).join('')}</div>
-      <p class="why">${esc(t.office.key === 'lahore' && tr.dest === 'email' ? EXPLAIN.email : EXPLAIN[tr.dest])}</p>
+      <p class="why">${gloss(t.office.key === 'lahore' && tr.dest === 'email' ? EXPLAIN.email : EXPLAIN[tr.dest])}</p>
       ${changed ? '<p class="alert">The road just changed: a link on the old road is down, so the routers picked another one.</p>' : ''}
       ${t.fate !== 'ok' ? '<p class="alert">The parcels cannot get through right now: the routers have no working road yet.</p>' : ''}
       <ol class="trhops">${rows.join('')}</ol>
@@ -117,7 +118,7 @@ export function initTraceroute(ctx) {
       buttons: [['Follow its traffic', () => { goInside(o); open(o.key); }]],
       expert: () => [['Node id', `#${o.id} (host)`], ['Attached to', `${o.parent.name} router #${o.parent.id}`], ['Buildings', cityState.loaded[o.key] ? `${cityState.loaded[o.key]} from OpenStreetMap` : cityState.failed[o.key] ? 'not available' : 'load when you zoom in'], ['Parcels in the network now', offices.getFlowsFrom(o.key).length]]
     });
-    addLabel(o.name, o.gpos, { cls: 'office', minR: 0.2, maxR: 2500, prio: 0, node: o, key: 'office:' + o.key });
+    addLabel(o.name, o.gpos, { cls: 'office', minR: 0.2, maxR: 700, prio: 0, node: o, key: 'office:' + o.key });
     shell.addSearch({ name: o.name, alt: o.parent.name + ' office', sub: 'Illustrative office', go: () => { shell.showNode(o); goInside(o); } });
   }
   shell.addSearch({ name: 'Offices', sub: 'Five illustrative offices', go: () => flyTo('pakistan') });

@@ -18,6 +18,8 @@ import { createInterdomain } from './sim/interdomain.js';
 import { addOffices, createOffices } from './sim/offices.js';
 import { updateCity, cityState } from './render/city.js';
 import { initTraceroute } from './ui/traceroute.js';
+import { initGlossary } from './ui/glossary.js';
+import { initTour } from './ui/tour.js';
 import { DV_ROUND_S } from './sim/params.js';
 import { renderer, labelRenderer, scene, camera, setLift } from './render/scene.js';
 import { buildGlobe, updateGlobe } from './render/globe.js';
@@ -85,6 +87,8 @@ initSatellites(shellClock, () => { if (performance.now() - satLinksAt > 5000) { 
 ctx.setLayer('satellite', true);
 ctx.satui = initSatelliteUI(ctx);
 ctx.trace = initTraceroute(ctx);
+initGlossary();
+ctx.tour = initTour(ctx);
 on('metrics:sample', m => { ctx.lastSample = m; });
 
 const { SCEN } = ctx.failures, { runHijack, runDDoS, runMalware } = ctx.security;
@@ -105,7 +109,11 @@ window.__paknet = { ctx, debug: { scene, cityState }, shots: {
   'sat-near': async () => { shell.start(true); shell.closeInfo(); shell.searchGo('Starlink'); await settle(4500); },
   'traceroute': async () => { shell.start(true); const o = offices.byKey.karachi; ctx.trace.open('karachi', 'youtube'); await flyTo({ lat: o.lat, lon: o.lon, range: 1.1, tilt: 58, heading: 25 }, 10); await settle(9000); },
   'traceroute-pk': async () => { shell.start(true); ctx.trace.open('karachi', 'whatsapp'); await flyTo('pakistan', 10); await settle(3000); },
-  'expert': async () => { shell.closeInfo(); shell.setExpert(true); await flyTo('pakistan', 10); await settle(1500); shell.setExpert(false); }
+  'tour-1': async () => { shell.closeInfo(); ctx.trace.close(); ctx.tour.startTour(); await settle(3500); },
+  'tour-3': async () => { ctx.tour.go(2); await settle(3500); },
+  'tour-8': async () => { ctx.tour.go(7); await settle(3500); ctx.tour.finish(); },
+  'present': async () => { ctx.tour.startPresent(); ctx.tour.go(1); await settle(3500); },
+  'expert': async () => { ctx.tour.finish(); shell.closeInfo(); shell.setExpert(true); await flyTo('pakistan', 10); await settle(1500); shell.setExpert(false); }
 } };
 
 // Zoom check for verify: from 27,000 km down to 300 m over Karachi in 48 steps,
@@ -122,8 +130,8 @@ function probeLuma() {
 window.__paknet.cityMemoryTest = async () => {
   shell.start(true); const mem = () => ({ ...renderer.info.memory });
   setPose({ lat: 29.2, lon: 69.4, range: 2700, heading: 0, tilt: 18 }); await settle(1500); const before = mem();
-  setPose({ lat: 24.8495, lon: 67.0105, range: 1.1, heading: 25, tilt: 58 }); await settle(4000); const inside = mem();
-  setPose({ lat: 29.2, lon: 69.4, range: 2700, heading: 0, tilt: 18 }); await settle(11000); const after = mem();
+  setPose({ lat: 24.8495, lon: 67.0105, range: 1.1, heading: 25, tilt: 58 }); await settle(4000); const inside = { ...mem(), city: !!cityState.loaded.karachi };
+  setPose({ lat: 29.2, lon: 69.4, range: 2700, heading: 0, tilt: 18 }); await settle(11000); const after = { ...mem(), city: !!cityState.loaded.karachi };
   return { before, inside, after };
 };
 window.__paknet.setStep = i => { const r0 = 27000, r1 = 0.3, N = 48; setPose({ lat: 24.86, lon: 67.02, range: r0 * Math.pow(r1 / r0, i / N), heading: 0, tilt: Math.min(55, i * 1.6) }); };

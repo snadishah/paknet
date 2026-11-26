@@ -1,6 +1,6 @@
 // Satellite controls in the layman UI: Near / Far toggles (one plain sentence
 // each), search entries, click-to-learn and the "Show near / far" camera moves.
-import { satLayers, applyLayers, pickSatellite, findSat, firstOfGroup, satMeta } from '../render/satellites.js';
+import { satLayers, applyLayers, pickSatellite, findSat, firstOfGroup } from '../render/satellites.js';
 import { GROUPS } from '../sat/catalog.js';
 import { flyTo } from '../render/globecam.js';
 
@@ -16,17 +16,17 @@ export function initSatelliteUI(ctx) {
   sh.pickExtra = (x, y) => pickSatellite(x, y);
 
   const nearFar = [['Show near satellites', () => { set('soon', true); sh.renderLayers(); flyTo('near'); }], ['Show far satellites', () => { set('far', true); flyTo('far'); }]];
-  const card = s => { if (!s) return; const info = s.describe(); sh.showInfo({ ...info, buttons: nearFar }); sh.selected = { name: s.name }; };
+  const card = s => { if (!s) { sh.hint('Satellites are still loading. Try again in a moment.', 3000); return; } const info = s.describe(); sh.showInfo({ ...info, buttons: nearFar }); sh.selected = { name: s.name }; };
   const showSat = (norad, view) => { set(norad === 37779 ? 'far' : 'far', true); card(findSat(norad)); flyTo(view); };
   sh.addSearch({ name: 'PakSat-MM1', alt: 'PakSat', sub: "Pakistan's internet satellite", go: () => showSat(59915, 'far') });
   sh.addSearch({ name: 'PakSat-1R', sub: 'Retired satellite (Aug 2026)', go: () => showSat(37779, 'far') });
   for (const [key, g] of Object.entries(GROUPS)) {
-    if (key === 'paksat' || !satMeta.groups[key]) continue;
+    if (key === 'paksat' || key === 'telesat') continue; // Telesat Lightspeed: nothing in orbit to show
     sh.addSearch({ name: g.label, sub: g.role === 'soon' ? 'Coming soon — not licensed yet' : g.role === 'eyes' ? 'Takes pictures, not internet' : 'Navigation, not internet', go: () => { set(g.layer, true); sh.renderLayers(); card(firstOfGroup(key)); flyTo(g.orbit === 'meo' ? { lat: 20, lon: 60, range: 58000 } : 'near'); } });
   }
   sh.addSearch({ name: 'Satellites near', sub: 'Low orbit', go: () => nearFar[0][1]() });
   sh.addSearch({ name: 'Satellites far', sub: 'Geostationary', go: () => nearFar[1][1]() });
   // a click on PakSat-MM1 from the network node opens the satellite card too
-  const satNode = ctx.G.SAT; satNode.describe = () => ({ ...findSat(59915).describe(), buttons: nearFar });
+  const satNode = ctx.G.SAT; satNode.describe = () => { const s = findSat(59915); return s ? { ...s.describe(), buttons: nearFar } : { title: 'PakSat-MM1', what: 'Loading…' }; };
   return { set, card };
 }

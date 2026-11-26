@@ -44,16 +44,20 @@ function request(z, x, y) {
   if (t) { t.used = performance.now(); return t; }
   t = { key, z, x, y, status: 'queued', used: performance.now(), mesh: null, tex: null, born: 0 }; cache.set(key, t); queue.push(t); return t;
 }
+// Offline back-off: after a failed tile, wait 30 s, then try one tile before loading more
+// (one failed request instead of dozens of console errors).
+let pauseUntil = 0, probing = false;
 function pump() {
-  while (inflight < MAX_CONCURRENT && queue.length) {
+  if (performance.now() < pauseUntil) return;
+  while (inflight < (probing ? 1 : MAX_CONCURRENT) && queue.length) {
     const t = queue.shift(); if (t.status !== 'queued') continue;
     t.status = 'loading'; inflight++;
     loader.load(URL(t.z, t.x, t.y), tex => {
-      inflight--; tileState.online = true;
+      inflight--; tileState.online = true; probing = false;
       if (!cache.has(t.key)) { tex.dispose(); return; }
       tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
       t.tex = tex; t.mesh = tileMesh(t.z, t.x, t.y, tex); t.status = 'ready'; t.born = performance.now(); group.add(t.mesh); tileState.loaded++;
-    }, undefined, () => { inflight--; t.status = 'failed'; t.failedAt = performance.now(); tileState.failed++; tileState.online = false; });
+    }, undefined, () => { inflight--; t.status = 'failed'; t.failedAt = performance.now(); tileState.failed++; tileState.online = false; pauseUntil = performance.now() + 30000; probing = true; });
   }
 }
 const childrenOf = t => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => `${t.z + 1}/${t.x * 2 + dx}/${t.y * 2 + dy}`);
