@@ -5,3 +5,4 @@ dist/v1.html
 .claude/settings.local.json
 .DS_Store
 .verify/
+dist/

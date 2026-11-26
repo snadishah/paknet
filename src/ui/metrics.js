@@ -43,7 +43,7 @@ export function initMetrics(ctx) {
     const cap = updateCapacity();
     const m = traffic.sample(); if (!m) return; // paused: keep the last values on screen
     smooth.thr = ewma(smooth.thr, m.intlTbps); smooth.loss = ewma(smooth.loss, m.lossPct);
-    emit('metrics:sample', { lossPct: m.lossPct, rttMs: m.rttMs, intlTbps: m.intlTbps });
+    emit('metrics:sample', { lossPct: m.lossPct, rttMs: m.rttMs, intlTbps: m.intlTbps, nodeQ: m.nodeQ });
     const thr = smooth.thr, loss = smooth.loss, lat = m.rttMs;
     // convergence: BGP shows its mocked window; OSPF and RIP show the measured time for a few seconds after they settle
     const nowMs = performance.now();

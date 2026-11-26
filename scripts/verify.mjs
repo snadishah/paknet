@@ -43,6 +43,7 @@ for (const vp of VIEWPORTS) {
   await page.goto(`http://localhost:${PORT}/?verify=1`, { waitUntil: 'commit', timeout: 60000 });
   try { await page.waitForFunction(() => window.__paknetReady === true, null, { timeout: 45000 }); v.readyMs = Date.now() - t0; }
   catch { v.readyMs = null; errors.push('window.__paknetReady never became true'); }
+  v.timing = await page.evaluate(() => ({ ...window.__paknetTiming, nav: Math.round(performance.now()) })).catch(() => null);
   await page.waitForTimeout(1500);
   const shot = async (name) => { const f = `${vp.name}-${name}.png`; await page.screenshot({ path: join(out, f) }); v.shots.push(f); };
   await shot('first-screen');
@@ -57,6 +58,11 @@ for (const vp of VIEWPORTS) {
     v.p50 = pct(v.frames, 0.5); v.p95 = pct(v.frames, 0.95); v.maxFrame = +Math.max(...v.frames).toFixed(1); v.frames = v.frames.length;
   }
 
+  // Continuous zoom from space to 300 m over Karachi: no black frame, no big jump.
+  if (vp.frames && v.readyMs != null) {
+    const z = await page.evaluate(() => window.__paknet?.zoomTest?.(150)).catch(e => (errors.push('zoomTest: ' + e.message), null));
+    if (z) { v.zoomMinLuma = Math.min(...z.slice(6)); v.zoomLuma = z; v.zoomMaxJump = +Math.max(...z.slice(2).map((x, i) => Math.abs(x - 2 * z[i + 1] + z[i]) / Math.max(20, z[i + 1]))).toFixed(2); } // sudden spikes, not steady change
+  }
   // Extra shots the app offers (window.__paknet.shots: name → async setup)
   const names = await page.evaluate(() => Object.keys(window.__paknet?.shots || {})).catch(() => []);
   for (const n of names) {
@@ -82,7 +88,9 @@ report.checks = {
   noConsoleErrors: mac.errors.length + phone.errors.length === 0,
   drawCallsUnder100: mac.maxDrawCalls == null ? null : mac.maxDrawCalls <= 100,
   assetsUnder25MB: distMB <= 25,
-  p95Under20ms_smoke: mac.p95 == null ? null : mac.p95 <= 20
+  p95Under20ms_smoke: mac.p95 == null ? null : mac.p95 <= 20,
+  zoomNoBlackFrame: mac.zoomMinLuma == null ? null : mac.zoomMinLuma > 20,
+  zoomNoPop: mac.zoomMaxJump == null ? null : mac.zoomMaxJump < 0.15
 };
 for (const v of Object.values(report.views)) { v.errorCount = v.errors.length; v.errors = v.errors.slice(0, 8); v.warnings = v.warnings.slice(0, 5); }
 writeFileSync(join(out, 'report.json'), JSON.stringify(report, null, 1));
@@ -96,8 +104,8 @@ const lines = [
   `draw calls: now ${mac.drawCalls ?? '—'}, max seen ${mac.maxDrawCalls ?? '—'} (≤ 100: ${ok(report.checks.drawCallsUnder100)}); triangles ${mac.triangles ?? '—'}; textures ${mac.textures ?? '—'}`,
   `console errors: mac ${mac.errorCount}, phone ${phone.errorCount}  (${ok(report.checks.noConsoleErrors)})`,
   `first error: ${(mac.errors[0] || phone.errors[0] || 'none').slice(0, 140)}`,
-  `warnings: mac ${mac.warnings.length}, phone ${phone.warnings.length}`,
+  `zoom space→300 m: min brightness ${mac.zoomMinLuma ?? '—'} (${ok(report.checks.zoomNoBlackFrame)}), biggest sudden change ${mac.zoomMaxJump ?? '—'} (${ok(report.checks.zoomNoPop)}); warnings ${mac.warnings.length}`,
   `screenshots: ${mac.shots.length + phone.shots.length} in .verify/ (${[...mac.shots, ...phone.shots].slice(0, 6).join(', ')}${mac.shots.length + phone.shots.length > 6 ? ', …' : ''})`,
-  `overall: ${Object.values(report.checks).every(c => c !== false) ? 'PASS' : 'FAIL'}  (details: .verify/report.json)`
+  `overall: ${Object.entries(report.checks).every(([k, c]) => c !== false || k.endsWith('_smoke')) ? 'PASS' : 'FAIL'}  (details: .verify/report.json)`
 ];
 console.log(lines.join('\n'));

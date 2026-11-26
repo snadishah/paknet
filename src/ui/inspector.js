@@ -1,25 +1,19 @@
 // Hover tooltip and the node inspector card.
-import * as THREE from 'three';
 import { ui, note } from './dom.js';
 import { tierName, mediumName } from './route.js';
-import { camera, renderer } from '../render/scene.js';
+import { renderer } from '../render/scene.js';
 
 export function initInspector(ctx) {
   const { G, net, view, route, traffic } = ctx;
-  const { nodes, adj, edges, accessNodes } = G;
-  const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+  const { nodes, adj, edges } = G;
   let hoverNode = null, inspectNode = null, hoverPending = null, downAt = null;
 
-  renderer.domElement.addEventListener('pointermove', ev => { mouse.set(ev.clientX / innerWidth * 2 - 1, -ev.clientY / innerHeight * 2 + 1); hoverPending = [ev.clientX, ev.clientY]; });
+  renderer.domElement.addEventListener('pointermove', ev => { if (!ev.buttons) hoverPending = [ev.clientX, ev.clientY]; });
   renderer.domElement.addEventListener('pointerdown', ev => downAt = [ev.clientX, ev.clientY]);
-  renderer.domElement.addEventListener('pointerup', ev => { if (downAt && Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) < 5) hoverNode ? open(hoverNode) : close(); });
+  renderer.domElement.addEventListener('pointerup', ev => { if (downAt && Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) < 5) { if (!document.body.classList.contains('expert')) return; hoverNode ? open(hoverNode) : close(); } });
 
-  function pick() {
-    ray.setFromCamera(mouse, camera);
-    const vis = view.pickables.filter(o => { let p = o; while (p) { if (!p.visible) return false; p = p.parent; } return true; });
-    const hit = ray.intersectObjects(vis, true)[0]; if (!hit) return null;
-    return hit.object === view.accMesh ? accessNodes[hit.instanceId] : hit.object.userData.node || null;
-  }
+  // screen-space pick of the nearest marker (render/network.js)
+  const pick = ([x, y]) => view.pick(x, y);
 
   function tip(n, x, y) {
     const t = ui('tip'); if (!n) { t.style.opacity = 0; return; }
@@ -42,7 +36,7 @@ export function initInspector(ctx) {
   // Called every frame: resolve the pending hover pick.
   function frame() {
     if (!hoverPending) return;
-    const n = pick(); hoverNode = n; tip(n, ...hoverPending); renderer.domElement.style.cursor = n ? 'pointer' : ''; hoverPending = null;
+    const n = pick(hoverPending); hoverNode = n; tip(n, ...hoverPending); renderer.domElement.style.cursor = n ? 'pointer' : ''; hoverPending = null;
   }
 
   // Called on each metrics tick with the measured sample: queue = fullest

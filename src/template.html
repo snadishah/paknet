@@ -3,9 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PAKNET — Pakistan's internet, simulated</title>
+<title>PAKNET — How Pakistan's internet travels</title>
+<meta name="description" content="A 3D simulation of how Pakistan's internet traffic travels, from space down to a city office.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- non-blocking: the app must start (and work offline) without waiting for the font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* Layout (CLAUDE.md, Design direction): floating header (brand + KPIs) top left
    with notifications under it; icon rail on the right opening a collapsible
@@ -226,6 +228,98 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
   .st-timeline span:not(.now) b { display: none; } .st-timeline b { font-weight: 600; white-space: nowrap; }
   .st-title { font-size: var(--t-lg); }
 }
+/* ===== Redesign shell (docs/REDESIGN.md §7): dark space, minimal, layman-first.
+   The original panels above stay intact and appear only in Expert mode. ===== */
+:root { --sp-bg: rgba(14,18,24,.72); --sp-bg2: rgba(22,28,36,.86); --sp-line: rgba(255,255,255,.12); --sp-ink: #eef2f5; --sp-mute: #a9b4bd; --sp-acc: #8fc3e6; --sp-warm: #f0a35b; }
+html, body { background: #000; }
+body:not(.expert) #header, body:not(.expert) #rail, body:not(.expert) #panel, body:not(.expert) #toasts, body:not(.expert) #mapbtns, body:not(.expert) #insp { display: none !important; }
+#strip, #notice { display: none !important; }
+body.expert #header { top: 72px; }
+body.expert #insp { left: 16px; right: auto; top: 260px; }
+#maplabels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+.ml { position: absolute; left: 0; top: 0; white-space: nowrap; font: 500 14px/1 var(--f); color: #f2f5f7; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.6); opacity: 0; transition: opacity .3s ease; padding: 3px 6px; letter-spacing: .01em; }
+.ml.on { opacity: 1; } .ml.click { pointer-events: auto; cursor: pointer; } .ml:not(.on) { pointer-events: none !important; }
+.ml.country { font-weight: 600; letter-spacing: .14em; font-size: 14px; color: #dfe6ea; }
+.ml.sea { font-style: italic; color: #9cc7e0; font-weight: 400; }
+.ml.city { font-weight: 600; font-size: 15px; } .ml.town { font-size: 14px; color: #d4dbe0; font-weight: 400; }
+.ml.small { font-size: 14px; color: #d8dee3; } .ml.planned { color: var(--sp-warm); } .ml.cab { color: #9cc7e0; font-size: 14px; }
+.ml.intl { color: #9cc7e0; } .ml.sat { color: #c8b8f5; } .ml.office { color: #fff; font-weight: 600; }
+.ml.hl { color: #fff; background: rgba(240,163,91,.25); border-radius: 6px; }
+.callout { background: var(--sp-bg2) !important; color: var(--sp-ink) !important; border: 1px solid var(--sp-line); }
+.glass { background: var(--sp-bg); border: 1px solid var(--sp-line); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); color: var(--sp-ink); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.sbtn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; min-width: 40px; padding: 0 14px; border-radius: 20px; color: var(--sp-ink); font-size: 14px; font-weight: 500; }
+.sbtn:hover { background: rgba(255,255,255,.08); } .sbtn.on { background: rgba(143,195,230,.22); color: #fff; }
+.sbtn:focus-visible, .ml:focus-visible, #search input:focus-visible, .ic button:focus-visible, .chipbtn:focus-visible, #intro button:focus-visible, #intro a:focus-visible { outline: 2px solid #f0c27a; outline-offset: 2px; }
+.ico2 { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+/* first screen */
+#intro { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 16px 14vh; pointer-events: none; text-align: center; transition: opacity .6s ease; }
+#intro.gone { opacity: 0; } #intro > * { pointer-events: auto; }
+#intro h1 { margin: 0 0 6px; font: 600 clamp(28px, 5vw, 52px)/1.1 var(--f); letter-spacing: .02em; color: #fff; text-shadow: 0 2px 20px rgba(0,0,0,.6); }
+#intro h1 span { display: block; font-size: .42em; font-weight: 400; color: #cfd8de; letter-spacing: .04em; margin-top: 10px; }
+#intro .go { margin-top: 28px; height: 52px; padding: 0 40px; border-radius: 26px; background: #f2f5f7; color: #0b0f14; font-size: 17px; font-weight: 600; box-shadow: 0 6px 30px rgba(143,195,230,.25); transition: transform .2s; }
+#intro .go:hover { transform: translateY(-1px); }
+#intro .skip { margin-top: 16px; color: #b9c4cc; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; background: none; }
+/* chrome appears after Start */
+.chrome { opacity: 0; pointer-events: none; transition: opacity .5s ease; }
+body.started .chrome { opacity: 1; pointer-events: auto; }
+#search { position: fixed; top: 16px; left: 16px; width: min(340px, calc(100vw - 32px - 56px)); z-index: 12; }
+#search .box { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 44px; }
+#search input { flex: 1; min-width: 0; background: none; border: 0; color: var(--sp-ink); font: 15px var(--f); outline: none; }
+#search input::placeholder { color: var(--sp-mute); }
+#search ul { list-style: none; margin: 6px 0 0; padding: 6px; max-height: 50vh; overflow: auto; display: none; }
+#search ul.on { display: block; }
+#search li { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+#search li small { color: var(--sp-mute); font-size: 14px; } #search li.sel, #search li:hover { background: rgba(255,255,255,.1); }
+#tools { position: fixed; top: 16px; right: 16px; z-index: 12; display: flex; gap: 4px; padding: 4px; }
+#tools .lbl { display: inline; } @media (max-width: 900px) { #tools .lbl { display: none; } }
+#menuLayers { position: fixed; top: 70px; right: 16px; z-index: 13; padding: 10px 6px; width: 280px; display: none; max-height: calc(100vh - 170px); overflow: auto; }
+#menuLayers.on { display: block; }
+#menuLayers h6 { margin: 8px 10px 4px; font-size: 14px; color: var(--sp-mute); font-weight: 500; }
+#menuLayers label { display: flex; align-items: flex-start; gap: 10px; padding: 7px 10px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+#menuLayers label:hover { background: rgba(255,255,255,.07); } #menuLayers label small { display: block; color: var(--sp-mute); font-size: 14px; }
+#menuLayers input { accent-color: #8fc3e6; margin-top: 2px; width: 16px; height: 16px; }
+/* info card */
+#infocard { position: fixed; right: 16px; top: 72px; width: min(360px, calc(100vw - 32px)); z-index: 11; padding: 18px 18px 14px; display: none; max-height: calc(100vh - 170px); overflow: auto; }
+#infocard.on { display: block; }
+#infocard .kick { font-size: 14px; color: var(--sp-acc); margin: 0 0 4px; } #infocard h3 { margin: 0 32px 10px 0; font-size: 20px; line-height: 1.25; }
+#infocard p { margin: 0 0 10px; font-size: 15px; line-height: 1.5; color: #dde4e9; } #infocard p b { color: #fff; font-weight: 600; }
+#infocard .why { color: #c5d0d7; } #infocard .tag { display: inline-block; font-size: 14px; padding: 2px 8px; border-radius: 10px; background: rgba(240,163,91,.18); color: #f3c08f; margin: 0 6px 8px 0; }
+#infocard .tag.grey { background: rgba(255,255,255,.1); color: #c9d2d8; } #infocard .tag.live { background: rgba(63,178,127,.2); color: #8fdcb7; }
+#infocard .x { position: absolute; top: 12px; right: 12px; }
+#infocard .row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.chipbtn { height: 36px; padding: 0 14px; border-radius: 18px; background: #eef2f5; color: #0b0f14; font-weight: 600; font-size: 14px; }
+.chipbtn.ghost { background: rgba(255,255,255,.1); color: var(--sp-ink); font-weight: 500; }
+#infocard details { margin-top: 12px; border-top: 1px solid var(--sp-line); padding-top: 8px; }
+#infocard summary { cursor: pointer; font-size: 14px; color: var(--sp-mute); padding: 4px 0; }
+#infocard dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 8px 0 0; font-size: 14px; } #infocard dt { color: var(--sp-mute); } #infocard dd { margin: 0; font-variant-numeric: tabular-nums; }
+/* time bar */
+#timebar { position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 12; display: flex; align-items: center; gap: 4px; padding: 4px 6px; max-width: calc(100vw - 32px); }
+#timebar .clock { padding: 0 10px; font-variant-numeric: tabular-nums; font-size: 14px; white-space: nowrap; text-align: center; min-width: 120px; }
+#timebar .clock small { display: block; color: var(--sp-mute); font-size: 14px; line-height: 1.1; }
+#timebar .speeds { display: flex; } #timebar .speeds .sbtn { padding: 0 10px; }
+#timebar .live { font-weight: 600; letter-spacing: .04em; } #timebar .live.on { color: #8fdcb7; background: rgba(63,178,127,.18); }
+#timebar .live i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-right: 2px; }
+#timebar .sbtn { white-space: nowrap; }
+@media (max-width: 760px) { #timebar { bottom: 44px; } #credits .long { display: none; } }
+@media (max-width: 600px) { #timebar { bottom: 40px; } #timebar .speeds .sbtn { padding: 0 7px; min-width: 34px; } #timebar .clock { min-width: 84px; padding: 0 4px; } #timebar .clock small { display: none; } }
+/* credits */
+#credits { position: fixed; left: 0; right: 0; bottom: 0; z-index: 14; padding: 6px 16px 8px; font-size: 11px; line-height: 1.35; color: rgba(220,228,233,.62); text-align: center; pointer-events: auto; background: linear-gradient(transparent, rgba(0,0,0,.5)); }
+#credits a { color: inherit; } #credits .tiles { display: none; } body.tiles-on #credits .tiles { display: inline; }
+@media (max-width: 600px) { #credits { font-size: 10px; padding: 4px 10px 6px; } }
+#hint { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 11; padding: 10px 16px; font-size: 15px; max-width: calc(100vw - 32px); text-align: center; opacity: 0; transition: opacity .4s; pointer-events: none; }
+#hint.on { opacity: 1; }
+#perf { position: fixed; left: 16px; bottom: 90px; z-index: 30; font: 12px/1.4 ui-monospace, Menlo, monospace; padding: 8px 10px; white-space: pre; display: none; }
+body.perf #perf { display: block; }
+body.expert #infocard { right: auto; left: 16px; top: 72px; }
+body.presenting { cursor: none; }
+@media (max-width: 600px) {
+  #search { width: calc(100vw - 32px); }
+  #tools { top: 68px; }
+  #menuLayers { top: 120px; left: 16px; right: 16px; width: auto; }
+  #infocard { top: auto; bottom: 100px; max-height: 52vh; }
+  body.expert #infocard { left: 16px; top: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .ml, #intro, .chrome, #hint { transition: none !important; } }
 </style>
 </head>
 <body>
@@ -398,9 +492,48 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 
 <div id="notice" class="card" role="dialog" aria-label="About this map"><b>A representative network</b><p>Pakistan's operators don't publish their internal networks. Cable landings, exchanges and incidents come from public sources; the corridors inside the country follow highways and are illustrative.</p><div class="row"><button class="btn sm" id="noticeOk">Got it</button><button class="btn ghost sm" id="noticeMore">Sources</button></div></div>
 <div id="about" aria-hidden="true"><div class="ab-card card" role="dialog" aria-label="About and sources"><div class="phead"><h2>About &amp; sources</h2><button class="iconbtn" id="aboutClose" aria-label="Close"><svg class="ico"><use href="#i-close"/></svg></button></div><div class="ab-body" id="aboutBody"></div></div></div>
+<!-- ===== Redesign shell ===== -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="s-search" viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></symbol>
+  <symbol id="s-layers" viewBox="0 0 20 20"><path d="M10 3 3 6.5 10 10l7-3.5z"/><path d="M3 10l7 3.5 7-3.5"/><path d="M3 13.5 10 17l7-3.5"/></symbol>
+  <symbol id="s-sun" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M4.3 15.7l1.4-1.4M14.3 5.7l1.4-1.4"/></symbol>
+  <symbol id="s-help" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 7.8a2.3 2.3 0 1 1 3.2 2.1c-.7.3-1 .8-1 1.5v.4M10 14.2v.1"/></symbol>
+  <symbol id="s-present" viewBox="0 0 20 20"><rect x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path d="M10 13.5V17M7 17h6"/></symbol>
+  <symbol id="s-expert" viewBox="0 0 20 20"><path d="M3 5h9M15 5h2M3 10h3M9 10h8M3 15h7M13 15h4"/><circle cx="13.5" cy="5" r="1.5"/><circle cx="7.5" cy="10" r="1.5"/><circle cx="11.5" cy="15" r="1.5"/></symbol>
+  <symbol id="s-play" viewBox="0 0 20 20"><path d="M6.5 4.5v11l9-5.5z" fill="currentColor"/></symbol>
+  <symbol id="s-pause" viewBox="0 0 20 20"><path d="M6 4.5v11M14 4.5v11" stroke-width="2.4"/></symbol>
+  <symbol id="s-close" viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></symbol>
+</svg>
+<div id="intro" role="dialog" aria-label="Welcome">
+  <h1>PAKNET <span>How Pakistan's internet travels</span></h1>
+  <button class="go" id="btnStart">Start</button>
+  <button class="skip" id="btnSkip">Skip intro</button>
+</div>
+<div id="search" class="glass chrome" role="search">
+  <div class="box"><svg class="ico2"><use href="#s-search"/></svg><input id="searchInput" type="search" placeholder="Search: Karachi, PakSat, AAE-1…" aria-label="Search for a place, cable or satellite" autocomplete="off"></div>
+  <ul id="searchList" role="listbox" aria-label="Search results"></ul>
+</div>
+<div id="tools" class="glass chrome" role="toolbar" aria-label="Tools">
+  <button class="sbtn" id="tLayers" aria-label="Layers" aria-expanded="false"><svg class="ico2"><use href="#s-layers"/></svg><span class="lbl">Layers</span></button>
+  <button class="sbtn" id="tLight" aria-label="Lighting: natural"><svg class="ico2"><use href="#s-sun"/></svg><span class="lbl" id="tLightLbl">Natural</span></button>
+  <button class="sbtn" id="tHelp" aria-label="Help and tour"><svg class="ico2"><use href="#s-help"/></svg></button>
+  <button class="sbtn" id="tPresent" aria-label="Presentation mode (P)"><svg class="ico2"><use href="#s-present"/></svg></button>
+  <button class="sbtn" id="tExpert" aria-label="Expert mode" aria-pressed="false"><svg class="ico2"><use href="#s-expert"/></svg><span class="lbl">Expert</span></button>
+</div>
+<div id="menuLayers" class="glass" role="menu" aria-label="Layers"></div>
+<aside id="infocard" class="glass" aria-live="polite"></aside>
+<div id="timebar" class="glass chrome" role="toolbar" aria-label="Time">
+  <button class="sbtn" id="tbPlay" aria-label="Pause"><svg class="ico2"><use href="#s-pause"/></svg></button>
+  <div class="speeds" role="group" aria-label="Speed"><button class="sbtn on" data-rate="1">1×</button><button class="sbtn" data-rate="10">10×</button><button class="sbtn" data-rate="60">60×</button><button class="sbtn" data-rate="3600">1 h/s</button></div>
+  <div class="clock" id="tbClock" aria-live="off">--:--<small>Pakistan time</small></div>
+  <button class="sbtn live on" id="tbLive" aria-label="Back to now"><i></i>LIVE</button>
+</div>
+<div id="hint" class="glass"></div>
+<div id="perf" class="glass"></div>
+<div id="credits">Earth: NASA Blue Marble &amp; Black Marble<span class="long"> (public domain; not endorsed by NASA)</span><span class="tiles"> · Sentinel-2 cloudless - <a href="https://s2maps.eu" target="_blank" rel="noopener">https://s2maps.eu</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)</span><span id="creditsMore"></span><span class="long"> · Network inside Pakistan is illustrative</span> · <button class="linkbtn" id="btnAbout2" style="color:inherit;text-decoration:underline">Sources</button></div>
 <script type="application/json" id="sourcesData">/*SOURCES*/</script>
 <div id="tip" class="card"></div>
 <div id="insp" class="card"></div>
-<script>/*BUNDLE*/</script>
+<script type="module" src="assets/main.js"></script>
 </body>
 </html>

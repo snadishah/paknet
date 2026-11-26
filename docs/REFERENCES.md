@@ -444,6 +444,32 @@ All values live in `src/sim/params.js`. **Sourced** values cite a section above;
 
 **What the step-3 model measured** (headless test runs, `tests/traffic.test.js`): at 21:00, about 6.6 Tbps of international traffic in the busier direction, ~0.2% loss (rural microwave hops), and a Karachi–Lahore–Karachi RTT of about 17 ms. With every Karachi cable cut, only the 0.45 Tbps China fibre and the land borders remain and loss exceeds 30%. An 8 Tbps flood saturates a data-centre uplink and raises loss to about 11%; diverting it to the scrubbing centre relieves the uplink.
 
+## 8. Redesign (Nov 2026): imagery, orbits, satellites, illustrative elements
+
+### 8.1 Imagery and data used by the globe (licences)
+| Asset | Where it came from | Licence / credit shown |
+|---|---|---|
+| Day texture `assets/textures/earth-day-{4k,2k}.jpg` | NASA Blue Marble Next Generation with topography and bathymetry (Reto Stöckli, NASA Earth Observatory). The 4096×2048 file was taken from the three-globe example mirror on jsDelivr (S116) because visibleearth.nasa.gov downloads timed out / redirected on 26 Nov 2026. Resized with macOS `sips`. | Public domain (NASA imagery is generally not subject to US copyright, S118). Credited "NASA Blue Marble"; no NASA logo, no implied endorsement. |
+| Night texture `assets/textures/earth-night-{4k,2k}.jpg` | NASA Black Marble 2016, 3 km, downloaded from assets.science.nasa.gov (S117); resized to 4096×2048 / 2048×1024. | Public domain; credited "NASA Black Marble". |
+| Close-up imagery (streamed, not shipped) | EOX Sentinel-2 cloudless, 2016 layer `s2cloudless_3857` (WMTS) (S119). Loaded only below ~1,500 km over Pakistan; fails quietly offline. | CC BY 4.0. Exact attribution shown in the credits line while tiles are on screen: "Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)". |
+| Orbits `src/data/satellites.json` | CelesTrak GP data, OMM JSON (S120), fetched by `scripts/fetch-orbits.mjs`; the fetch date is stored in the file. Starlink, OneWeb and Kuiper are evenly sampled to 300 satellites each ("sample of N" in the UI). | Credited "Orbital data: CelesTrak". |
+| City buildings `src/data/cities/*.json` | OpenStreetMap via the Overpass API (S121), `scripts/fetch-buildings.mjs`. | ODbL, "© OpenStreetMap contributors". |
+| Library | satellite.js 7.2.0 (MIT) for SGP4 propagation (S122). | — |
+
+### 8.2 Satellite facts (from the user's research brief, Nov 2026)
+These come from the research brief that defines the redesign ("Master Prompt", Nov 2026), which cites the sources named below. I did not re-open every primary page in this session; re-check before the demo.
+- **PakSat-MM1**: GEO at 38.2°E; launched 30 May 2024 (Long March 3B); operational 18 Sep 2024; 48 transponders across C, Ku, Ka and L bands incl. SBAS; NORAD 59915 / COSPAR 2024-104A (brief cites Quwa and SatBeams; NORAD and COSPAR IDs confirmed in CelesTrak's record, S120). **Checked in this session:** propagating the CelesTrak snapshot of 25 Nov 2026 gives 38.16°E at 35,793 km altitude (also a Vitest test, Phase 2).
+- **PakSat-1R**: launched 11 Aug 2011 to 38°E; Starpath Global (25 Aug 2026) reports it "completed all deorbiting operations" on 24 Aug 2026; OrbitalWiki (GCAT / CelesTrak SATCAT) lists NORAD 37779 as non-operational, end of transmission 2026-08-24. Shown only as "retired Aug 2026" (greyed). CelesTrak still publishes elements for 37779 (graveyard orbit).
+- **PRSS-1** (launched 9 Jul 2018) and the PRSC Earth-observation satellites launched since Jan 2025 take pictures; they don't carry internet. CelesTrak (S120, NAME=PRSC/PRSS/PAKTES, 26 Nov 2026) returns PRSS-1, PakTES-1A, PRSC-EO1, PRSC-S1 and PRSC-E03; the brief's HS-1 and PRSC-EO2 returned no data under those names.
+- **Not licensed in Pakistan as of late 2026**: Starlink (PSARB provisional registration 21 Mar 2025, per the brief citing Wikipedia's PSARB article; no licence to operate), OneWeb, Amazon Kuiper/Leo, Shanghai Spacecom (Qianfan) and Telesat. Shown as "Coming soon — not yet licensed in Pakistan (as of late 2026)". CelesTrak (26 Nov 2026): 11,194 Starlink, 651 OneWeb, 391 Kuiper, 275 Qianfan in orbit; no Telesat Lightspeed satellites found.
+- **Navigation**: GPS (32 operational) and BeiDou (37), shown as "navigation, not internet".
+
+### 8.3 Illustrative elements (made up for teaching; labelled in the UI)
+- Onward routes of the submarine cables beyond the map edge (to Marseille, Singapore, Djibouti and Mombasa): real end-point cities, guessed paths, drawn as great-circle arcs through hand-picked sea waypoints.
+- The five offices (Karachi, Lahore, Islamabad, Peshawar, Quetta), their locations and the example destinations ("YouTube video", "WhatsApp message to Dubai", "Google server") — see Phase 3.
+- PakSat-MM1's coverage disc ("approximate coverage").
+- As before: the network inside Pakistan (corridors, operators per corridor).
+
 ## Source list
 
 All web pages were accessed 21 Nov 2026. "(live)" means a database or API that changes over time.
@@ -564,6 +590,16 @@ All web pages were accessed 21 Nov 2026. "(live)" means a database or API that c
 - S114 — Crossref DOI 10.1109/CIACS.2015.7395569 (P3).
 - S115 — Crossref DOI 10.1109/ICDIM.2013.6693986 (P4).
 
+**Redesign: imagery, orbits, libraries** (accessed 26 Nov 2026)
+- S116 — three-globe (vasturiano), example image "earth-blue-marble.jpg" (NASA Blue Marble Next Generation, 4096×2048), via jsDelivr. https://cdn.jsdelivr.net/npm/three-globe@2.41.12/example/img/earth-blue-marble.jpg
+- S117 — NASA Earth Observatory, "Night Lights 2016 (Black Marble)", 3 km image. https://assets.science.nasa.gov/content/dam/science/esd/eo/images/imagerecords/144000/144898/BlackMarble_2016_3km.jpg
+- S118 — NASA, "Guidelines for using NASA images and media". https://www.nasa.gov/nasa-brand-center/images-and-media/
+- S119 — EOX IT Services, "Sentinel-2 cloudless" (s2maps.eu), licences and attribution; WMTS layer s2cloudless_3857. https://s2maps.eu
+- S120 — CelesTrak, GP element sets (OMM JSON), e.g. CATNR=59915 (live). https://celestrak.org/NORAD/elements/gp.php?CATNR=59915&FORMAT=json
+- S121 — OpenStreetMap contributors, Overpass API (ODbL). https://overpass-api.de
+- S122 — satellite.js 7.2.0, SGP4/SDP4 propagation (MIT). https://github.com/shashwatak/satellite-js
+- S123 — NASA SVS 3615, Blue Marble Next Generation equirectangular Earth (checked as an alternative source; not used: clouds baked in). https://svs.gsfc.nasa.gov/3615
+
 **Pages I tried but could not open** (not used as the basis for any status)
 - PID press release 31076 (MoITT on SMW6): certificate error.
 - Business Recorder 40060743 (OFC Phase II): HTTP 403.
@@ -579,3 +615,4 @@ All web pages were accessed 21 Nov 2026. "(live)" means a database or API that c
 - Al Jazeera, 7 Sep 2025: connection reset.
 - Corning SMF-28 Ultra sheets on corning.com: HTTP 403; the SMF-28e+ sheet S90 was used instead.
 - Springer page for P2: login redirect.
+- visibleearth.nasa.gov / eoimages.gsfc.nasa.gov Blue Marble downloads (26 Nov 2026): connection timed out or redirected to the home page.
