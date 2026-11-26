@@ -19,6 +19,7 @@
     "orbits": "node scripts/fetch-orbits.mjs",
     "buildings": "node scripts/fetch-buildings.mjs",
     "size": "node scripts/size.mjs",
+    "cables": "node scripts/fetch-cables.mjs",
     "roads": "node scripts/fetch-roads.mjs"
   },
   "dependencies": {

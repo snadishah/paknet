@@ -492,6 +492,9 @@ OpenStreetMap motorway, trunk and primary roads in Pakistan via the Overpass API
 ### 9.3 Pakistan outline
 Natural Earth 10 m admin-0 "PAK" polygon (as in §8), simplified to ~1 km (`scripts/simplify-borders.mjs`), used for the national border line and the mask that dims neighbouring countries.
 
+### 9.4 Submarine cable routes (src/data/cables.json, scripts/fetch-cables.mjs)
+Routes and landing points from TeleGeography's submarine cable map (S127), licence CC BY-NC-SA 3.0 (non-commercial, attribution, share-alike); our derived file `src/data/cables.json` is under the same licence. TeleGeography's own archive repository is no longer online (404 on 27 Nov 2026), so the 2021 copy of its public API v2 mirrored at S128 was used. For each cable the script takes the shortest path along the cable from its Karachi landing to: W = France (else Italy, Portugal, Spain, Egypt), G = the nearest UAE/Oman landing (WhatsApp to Dubai), E = Singapore (else Hong Kong, Malaysia), SW = Kenya (else Djibouti, Egypt). Results: SEA-ME-WE 4, IMEWE, AAE-1 → Marseille; SEA-ME-WE 5 → Toulon; SEA-ME-WE 3 (retired) → Penmarch; SEA-ME-WE 4/5 → Tuas, Singapore; AAE-1 → Hong Kong; IMEWE → Mumbai; TW1 → Fujairah; Africa-1, PEACE, 2Africa → Mombasa; every westbound cable also → Fujairah. **Approximate:** SEA-ME-WE 6 (2025) is not in the 2021 data and is drawn along SEA-ME-WE 5's path; 2Africa's Pakistan branch (2025) is not in it either and is joined from Karachi to 2Africa's nearest point. Render-only: the simulator's cable lengths and delays are unchanged; the drawn cable hop follows the real route up to the point nearest the simulator's sea end point, and the route continues from there.
+
 ## Source list
 
 All web pages were accessed 21 Nov 2026. "(live)" means a database or API that changes over time.
@@ -626,6 +629,8 @@ All web pages were accessed 21 Nov 2026. "(live)" means a database or API that c
 - S124 — Esri, World Imagery MapServer (ArcGIS Location Platform), service metadata `copyrightText` (live). https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer
 - S125 — Esri Developer, "Esri and data attribution: interactive maps" (Powered by Esri requirement). https://developers.arcgis.com/documentation/esri-and-data-attribution/interactive-maps/
 - S126 — Esri Developer, Static Basemap Tiles service, style arcgis/imagery/labels. https://developers.arcgis.com/rest/static-basemap-tiles/
+- S127 — TeleGeography, Submarine Cable Map (data licence CC BY-NC-SA 3.0, as published in the public repository telegeography/www.submarinecablemap.com, archived 2022). https://www.submarinecablemap.com
+- S128 — kmdrn7/cablemap-gis, copy of the Submarine Cable Map public API v2 (cable-geo.json and per-cable files, committed 30 Jun 2021), accessed 27 Nov 2026. https://github.com/kmdrn7/cablemap-gis
 
 **Pages I tried but could not open** (not used as the basis for any status)
 - PID press release 31076 (MoITT on SMW6): certificate error.

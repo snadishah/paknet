@@ -8,17 +8,12 @@ import { PROV } from '../geo/coast.js';
 import { latLonToFlat, greatCircle, GEO_ALT } from '../geo/globe.js';
 import { layer, fatLine, fatSegs, camera, renderer, disposeLine, onResize } from './scene.js';
 import { toGlobe, fromLatLon, edgeGlobe, mapPolyline, setRoadGeometry } from './geo3.js';
+import { routeCable, drawOnward } from './onward.js';
 
 // PakSat-MM1's position (ECEF km). Phase 2's satellite module updates it from the orbit data.
 export const paksatPos = fromLatLon(0, 38.2, GEO_ALT);
 
 // Illustrative onward routes beyond the map edge (real end points, guessed paths).
-export const ONWARD = {
-  W: { label: 'Marseille, France', pts: [[22.6, 59.9], [16.0, 53.5], [12.4, 45.5], [12.6, 43.4], [19.5, 39.0], [27.5, 34.0], [29.9, 32.55], [31.6, 32.3], [34.2, 25.0], [37.3, 12.0], [43.3, 5.37]] },
-  E: { label: 'Singapore', pts: [[19.0, 71.9], [12.0, 73.8], [6.5, 77.5], [5.6, 80.6], [6.0, 95.0], [3.8, 99.8], [1.27, 103.85]] },
-  SW: { label: 'Djibouti', pts: [[17.0, 58.0], [12.8, 51.0], [11.6, 43.2]] },
-  SW2: { label: 'Mombasa, Kenya', pts: [[17.0, 58.0], [8.0, 53.0], [0.0, 46.0], [-4.05, 39.7]] }
-};
 
 const TIER_STYLE = { // [shape (0 dot, 1 ring, 2 square, 3 diamond), size px, colour]
   core: [1, 11, '#f4f1ea'], agg: [0, 5.5, '#dfe6ea'], intl: [1, 9, '#9cc7e0'], cls: [2, 8, '#f0a35b'], ixp: [3, 9, '#e8c35a'],
@@ -63,6 +58,10 @@ export function drawNetwork(G, ROADS = null) {
   if (ROADS?.corridors) for (const e of edges) if (e.type === 'fiber' || e.type === 'aerial') {
     const r = ROADS.corridors[`${nodes[e.a].name}|${nodes[e.b].name}`]; if (r) setRoadGeometry(e, r);
   }
+  // submarine cables follow their real routes (scripts/fetch-cables.mjs); the simulator's sea end points
+  // then sit mid-route, so they are not drawn: each cable visibly carries on to its destination instead
+  for (const e of cableEdges) routeCable(e, nodes);
+  for (const k of ['W', 'E', 'SW']) if (cableEdges.some(e => e.dir === k && e.onward)) G.INTL[k].hideLabel = true;
   const gBorders = layer('borders'), gCables = layer('cables'), gBackbone = layer('backbone'), gMW = layer('microwave', false), gSat = layer('satellite', false),
     gPlanned = layer('planned', false), gCities = layer('cities', false), gLastMile = layer('lastmile', false), gRouters = layer('routers'), gGate = layer('gateways'), gOff = layer('offices');
   layer('packets'); layer('heat', false); layer('fx'); layer('labels');
@@ -112,13 +111,8 @@ export function drawNetwork(G, ROADS = null) {
     e.line = fatLine(edgeGlobe(e), { color: c.status === 'retired' ? 0x8a949a : 0x8fc3e6, linewidth: live ? 1.4 : 1.0, opacity: live ? 0.8 : 0.45, dashed: !live, dashSize: 8, gapSize: 6 });
     gCables.add(e.line);
   }
-  // onward routes (illustrative), joined to the map-edge end points
-  for (const k of Object.keys(ONWARD)) {
-    const o = ONWARD[k]; const pts = [];
-    for (let i = 1; i < o.pts.length; i++) { const arc = greatCircle(...o.pts[i - 1], ...o.pts[i], 16); arc.forEach(([la, lo], j) => { if (i === 1 || j > 0) pts.push(fromLatLon(la, lo)); }); }
-    o.gpts = pts; o.end = pts[pts.length - 1];
-    gCables.add(fatLine(pts, { color: 0x8fc3e6, linewidth: 1.0, opacity: 0.38, dashed: true, dashSize: 10, gapSize: 8 }));
-  }
+  // each cable carries on along its real route to a real landing abroad (render/onward.js)
+  drawOnward(cableEdges, gCables);
   for (const e of plannedEdges) gPlanned.add(fatLine(edgeGlobe(e), { color: 0xe98b3a, linewidth: 1.6, opacity: 0.9, dashed: true, dashSize: 6, gapSize: 5 }));
 
   // satellite links: straight from each ground station up to PakSat-MM1

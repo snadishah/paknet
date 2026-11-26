@@ -11,7 +11,7 @@ import { flyTo } from '../render/globecam.js';
 import { highlightPath, clearHighlight, hasHighlight } from '../render/fx.js';
 import { setHighlightOffice } from '../render/packets.js';
 import { addLabel, removeLabel } from '../render/labels.js';
-import { ONWARD } from '../render/network.js';
+
 import { layers, fatLine, disposeLine } from '../render/scene.js';
 import { cityState } from '../render/city.js';
 
@@ -86,16 +86,17 @@ export function initTraceroute(ctx) {
     flyTo({ lat: ll.lat, lon: ll.lon, range, tilt: range < 10 ? 55 : 35, heading: 20 });
   }
 
-  // route on the map: the simulated path + the illustrative onward arc for international destinations
+  // route on the map: the simulated path, then the same cable on to its landing abroad (one continuous line)
   function drawRoute(t) {
     highlightPath(t.path.seq[0], t.path.edges);
     if (tr.onward) { layers.fx.remove(tr.onward.line); disposeLine(tr.onward.line); tr.onward = null; }
     if (tr.farLabel) { removeLabel(tr.farLabel); tr.farLabel = null; }
     const ce = t.path.edges.at(-1);
-    if (t.cable && ce?.dir && ONWARD[ce.dir]) {
-      const o = ONWARD[ce.dir]; const line = fatLine(o.gpts, { color: 0xf0a35b, linewidth: 2.4, opacity: 0.9, dashed: true, dashSize: 60, gapSize: 30 });
-      line.renderOrder = 7; layers.fx.add(line); tr.onward = { line, end: o.end };
-      tr.farLabel = addLabel(t.far.split(' — ')[0] + ' (illustrative)', o.end, { cls: 'office', minR: 300, maxR: 40000, prio: 0, key: 'trace:far' });
+    const o = t.cable && ((tr.dest === 'whatsapp' && ce?.onwardGulf) || ce?.onward);
+    if (o) {
+      const line = fatLine(o.gpts, { color: 0xf0a35b, linewidth: 2.4, opacity: 0.9 }); // same style as the highlighted route it continues
+      line.renderOrder = 7; layers.fx.add(line); tr.onward = { line, end: o.dest.pos };
+      tr.farLabel = addLabel(`${t.far.split(' — ')[0]} · via ${o.dest.name}`, o.dest.pos, { cls: 'office', minR: 300, maxR: 40000, prio: 0, key: 'trace:far' });
     }
   }
 

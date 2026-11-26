@@ -30,6 +30,8 @@ import { initSatellites, updateSatellites } from './render/satellites.js';
 import { drawNetwork, glyphUniforms } from './render/network.js';
 import { buildLabels, updateLabels, hasCallouts } from './render/labels.js';
 import { initPackets, drawPackets, packetPos, packetUniforms, setTrailStep } from './render/packets.js';
+import { sendOnward, updateOnward } from './render/onward.js';
+import { edgeDelayMs } from './sim/links.js';
 import { burst, markCut, unmarkCut, clearHighlight, hasHighlight, updateFx } from './render/fx.js';
 import { flyTo, updateCamera, altitudeKm, pose, setPose, spin } from './render/globecam.js';
 import { updateTour } from './render/camera.js';
@@ -175,7 +177,7 @@ window.__paknet.zoomTest = async (stepMs = 0) => {
 
 /* ---------- main loop ---------- */
 const fmtClock = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
-let last = performance.now();
+let last = performance.now(), lastNet = null;
 const VERIFY = new URLSearchParams(location.search).has('verify'); let peakCalls = 0;
 
 // Bursts where bundles are lost (tail drop, cut link, blocked) or swallowed by a sink.
@@ -184,7 +186,12 @@ const VERIFY = new URLSearchParams(location.search).has('verify'); let peakCalls
 const expertOn = () => document.body.classList.contains('expert');
 const packetEvents = {
   drop: b => { if (expertOn() && Math.random() < 0.3) burst(packetPos(b, b.d), '#e5484d', 0.1, 0.5); },
-  arrive: b => { if (expertOn() && b.opt.sink && Math.random() < 0.2) burst(packetPos(b, b.d), '#e5484d', 0.22, 0.6); }
+  arrive: b => {
+    if (expertOn() && b.opt.sink && Math.random() < 0.2) burst(packetPos(b, b.d), '#e5484d', 0.22, 0.6);
+    // leaving Pakistan by cable: carry on along the same cable to its landing abroad, at the hop's own speed
+    const e = b.edges.at(-1);
+    if (e?.onward && b.seq.at(-1) === e.b) sendOnward(e, b.color, e.gcum.at(-1) / Math.max(1e-6, edgeDelayMs(e)), b.opt.dest === 'whatsapp'); // km per ms of network time
+  }
 };
 
 // Advance everything that runs on simulated time by sdt (wall seconds × speed):
@@ -225,6 +232,7 @@ function frame(now) {
   if (state.playing && ui('kClock')) ui('kClock').textContent = fmtClock(state.simHour);
   stepWorld(sdt);
   drawPackets(traffic.packets);
+  const netNow = traffic.engine.now; updateOnward(netNow - (lastNet ?? netNow), 2 * pose.range * Math.tan(camera.fov * Math.PI / 360) / innerHeight); lastNet = netNow;
   updateFx(dt);
   ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame
   updateLabels(layers);
