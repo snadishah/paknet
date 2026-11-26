@@ -1,6 +1,7 @@
 // The layman shell (docs/REDESIGN.md §7): first screen, time bar, search,
 // info card, layers menu, lighting toggle, Expert drawer, deep links, credits
-// and the ?perf=1 overlay. The original panels keep working inside Expert mode.
+// and the credits line. The original panels keep working inside Expert mode.
+// No stats are ever shown on screen; ?perf=1 only logs a short line to the browser console.
 import { state } from '../state.js';
 import { emit, on } from '../events.js';
 import { subSolarPoint, flatToLatLon } from '../geo/globe.js';
@@ -10,6 +11,8 @@ import { flyTo, pose, spin, input, setPose, keyNav, altitudeKm } from '../render
 import { setSun, setFlood, globeUniforms } from '../render/globe.js';
 import { layers, renderer, sunLight, netRoot } from '../render/scene.js';
 import { tileState } from '../render/tiles.js';
+import { cityBusy } from '../render/city.js';
+import { busyLabel } from '../busy.js';
 import { labelState } from '../render/labels.js';
 import { gloss } from './glossary.js';
 
@@ -27,7 +30,8 @@ export function initShell(ctx) {
   const { G, view, net } = ctx;
   const body = document.body, params = new URLSearchParams(location.search);
   const sh = { started: false, expert: false, selected: null, searchEntries: [] };
-  if (params.has('perf')) body.classList.add('perf');
+  const perfLog = params.has('perf'); // developer check: console only, never on screen
+  const verifyRun = params.has('verify');
 
   // ---------- first screen ----------
   spin.on = !matchMedia('(prefers-reduced-motion: reduce)').matches; // the slow intro spin, unless motion is reduced
@@ -81,7 +85,7 @@ export function initShell(ctx) {
     ['Planned links', 'Gwadar cable and CPEC fibre (not built)', ['planned']],
     ['Labels', 'Names of places', ['labels']]
   ];
-  const extraToggles = [['Close-up satellite photos', 'Sentinel-2 imagery when you zoom into Pakistan', () => tileState.enabled, v => { tileState.enabled = v; }]];
+  const extraToggles = [['Satellite photos up close', 'Real photos of the ground when you zoom in', () => tileState.enabled, v => { tileState.enabled = v; }]];
   sh.extraToggles = extraToggles;
   function renderLayers() {
     const m = ui('menuLayers');
@@ -260,19 +264,41 @@ export function initShell(ctx) {
   let hashT = 0;
 
   // ---------- per frame ----------
-  const perfEl = ui('perf'); let pf = { n: 0, t: performance.now(), ms: 0, fps: 0 }; const stats = window.__paknetStats = { calls: 0, maxCalls: 0, triangles: 0, textures: 0, geometries: 0 };
+  let lastCredit = '';
+  // the loading indicator: on after 250 ms of loading (no flicker for quick loads), off 600 ms after the last item arrives
+  let busySince = 0, idleSince = 0, busyText = '';
+  const showBusy = label => {
+    const now = performance.now(), el = ui('busy'); if (!el) return;
+    if (label) { busySince ||= now; idleSince = 0; if (label !== busyText) { busyText = label; el.querySelector('.txt').textContent = label; el.setAttribute('aria-label', label); } }
+    else { busySince = 0; idleSince ||= now; }
+    el.classList.toggle('on', label ? now - busySince > 250 : el.classList.contains('on') && now - idleSince < 600);
+  };
+  const creditHtml = () => {
+    const p = tileState.provider;
+    if (p === 'esri') return ` · <span class="esri">Powered by <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a></span> · Imagery: ${esc(tileState.credit)}${tileState.labels === 'provider' && tileState.labelsCredit ? ` · Labels: ${esc(tileState.labelsCredit)}` : ''}`;
+    if (p === 'eox') return ' · Sentinel-2 cloudless - <a href="https://s2maps.eu" target="_blank" rel="noopener">https://s2maps.eu</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data)';
+    if (p) return ` · ${esc(tileState.credit)}`;
+    return '';
+  };
+  let pf = { n: 0, t: performance.now(), ms: 0 }; const stats = window.__paknetStats = { calls: 0, maxCalls: 0, triangles: 0, textures: 0, geometries: 0 };
   sh.frame = (dt, rawMs) => {
     if (state.playing) { clock.t += dt * 1000 * clock.rate; if (clock.live && Math.abs(clock.t - Date.now()) > 2000) clock.t = Date.now(); }
     state.simHour = pktHour(clock.t);
     const ss = subSolarPoint(new Date(clock.t)); setSun(ss.lat, ss.lon);
     sunLight.position.copy(globeUniforms.uSun.value).multiplyScalar(100000);
     ui('tbClock').innerHTML = `${fmt(state.simHour)}<small>${clock.live ? 'Pakistan time · now' : new Date(clock.t + PKT * 3600000).toISOString().slice(0, 10)}</small>`;
-    body.classList.toggle('tiles-on', tileState.active && tileState.loaded > 0);
+    body.classList.toggle('tiles-on', tileState.active && tileState.loaded > 0 && (tileState.fade || 0) > 0.02);
+    // the credits of whichever imagery is on screen (Esri: "Powered by Esri" + the text the service returns)
+    const ck = `${tileState.provider}|${tileState.credit}|${tileState.labels}|${tileState.labelsCredit}`;
+    if (ck !== lastCredit) { lastCredit = ck; ui('creditTiles').innerHTML = creditHtml(); }
+    showBusy(tileState.busy ? 'Loading satellite photos' : cityBusy() ? 'Loading buildings' : busyLabel());
     if (performance.now() - hashT > 1000) { hashT = performance.now(); writeHash(); if (expertFn && ui('icExp')?.open) refreshExpert(); }
     const inf = renderer.info; stats.calls = inf.render.calls; stats.triangles = inf.render.triangles; stats.textures = inf.memory.textures; stats.geometries = inf.memory.geometries;
-    if (sh.started) stats.maxCalls = Math.max(stats.maxCalls, stats.calls);
+    if (sh.started && stats.calls > stats.maxCalls) {
+      stats.maxCalls = stats.calls; stats.maxAt = `${Math.round(altitudeKm)} km · ${body.className}`; // where the peak happened (verify)
+    }
     pf.n++; pf.ms = pf.ms * 0.9 + rawMs * 0.1;
-    if (body.classList.contains('perf') && performance.now() - pf.t > 500) { pf.fps = pf.n * 1000 / (performance.now() - pf.t); pf.n = 0; pf.t = performance.now(); perfEl.textContent = `fps ${pf.fps.toFixed(0)}  frame ${pf.ms.toFixed(1)} ms\ncalls ${stats.calls}  tris ${(stats.triangles / 1000).toFixed(0)}k\ntextures ${stats.textures}  geoms ${stats.geometries}\nalt ${altitudeKm.toFixed(altitudeKm < 10 ? 2 : 0)} km  pr ${renderer.getPixelRatio()}  quality ${sh.qualityLevel?.() ?? 0}`; }
+    if (perfLog && performance.now() - pf.t > 2000) { console.info(`[paknet] ${(pf.n * 1000 / (performance.now() - pf.t)).toFixed(0)} fps, ${pf.ms.toFixed(1)} ms/frame, ${stats.calls} draw calls`); pf.n = 0; pf.t = performance.now(); }
   };
   return sh;
 }

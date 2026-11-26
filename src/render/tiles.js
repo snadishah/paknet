@@ -1,130 +1,231 @@
-// Close-up imagery: Sentinel-2 cloudless (EOX, 2016 layer, CC BY 4.0) streamed
-// as Web-Mercator tiles when the camera is low over Pakistan. Only the area
-// around the view is loaded, at most 6 requests at a time, kept in a small
-// cache and disposed when no longer needed. Offline → the base globe shows.
+// Close-up imagery streamed as Web-Mercator tiles when the camera is low over
+// Pakistan and the nearby seas. Providers, keys and limits: src/config/imagery.js.
+//
+// Two tile layers: the satellite imagery and, above it, a transparent roads and
+// place-names overlay (512 px tiles cover the area of a 256 px tile one zoom level
+// lower, so they are requested one level up). Only tiles around the view load, at
+// most 8 requests at once, cached in memory for the session. A coarser tile stays
+// stretched under the view until the sharper one has faded in, so there are never
+// blank squares. If a provider keeps failing (no key, bad key, offline) the next one
+// takes over with the same fades; with none left the NASA globe simply stays.
 //
 // Tiles are curved patches on the sphere drawn right after the Earth with depth
 // testing off (back faces culled), so the coarse globe never pokes through them.
 import * as THREE from 'three';
-import { latLonToEcef } from '../geo/globe.js';
+import { latLonToEcef, gcDistance } from '../geo/globe.js';
+import { PROVIDERS, FAIL_LIMIT, MAX_CONCURRENT, CACHE_TILES, MAX_DRAWN, START_KM, AREA } from '../config/imagery.js';
 import { scene, renderer, camera } from './scene.js';
 import { pose, altitudeKm } from './globecam.js';
 import { globeUniforms } from './globe.js';
+import { pakMask } from './pakmask.js';
 
-const URL = (z, x, y) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/${z}/${y}/${x}.jpg`;
-export const ATTRIBUTION = 'Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)';
-const BOX = { lat0: 19, lat1: 40, lon0: 56, lon1: 81 }; // Pakistan and its coast, with margin
-const MAX_Z = 15, MAX_CONCURRENT = 6, CACHE = 180, START_KM = 1500, MAX_DRAWN = 50;
-
-export const tileState = { enabled: true, active: false, loaded: 0, failed: 0, online: true };
-const group = new THREE.Group(); group.name = 'tiles'; group.renderOrder = -1.5;
-const cache = new Map(); // key → { mesh, tex, status, used, z }
-let inflight = 0; const queue = [];
-const loader = new THREE.TextureLoader(); loader.setCrossOrigin('anonymous');
-
+export const tileState = { enabled: true, active: false, busy: false, loaded: 0, failed: 0, online: true, provider: null, labels: null, credit: '', labelsCredit: '', poweredByEsri: false };
 const lat2y = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * 2 ** z;
 const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)); };
 const lon2x = (lon, z) => (lon + 180) / 360 * 2 ** z;
 const x2lon = (x, z) => x / 2 ** z * 360 - 180;
 
-function tileMesh(z, x, y, tex) {
-  const S = z < 9 ? 12 : 6, pos = [], uv = [], idx = [], a = [0, 0, 0];
-  for (let j = 0; j <= S; j++) for (let i = 0; i <= S; i++) {
-    const lat = y2lat(y + j / S, z), lon = x2lon(x + i / S, z); latLonToEcef(lat, lon, 0, a); pos.push(...a); uv.push(i / S, 1 - j / S);
+// One shared request queue for both layers: at most MAX_CONCURRENT requests in flight.
+let inflight = 0; const queue = []; const cTmp = [0, 0, 0];
+let pauseUntil = 0; // offline back-off: after repeated failures with no provider left, wait before retrying
+
+// Shared uniforms: daylight to match the globe, and Pakistan's mask to darken the neighbours.
+// uC: the view centre on the ground (ECEF km); each level's tiles fade out towards the edge of the area they cover
+const shared = { uC: { value: new THREE.Vector3() }, uK: { value: 1 }, uFloor: { value: 0 }, uMask: pakMask.uniform, uDim: globeUniforms.uDim, uSun: globeUniforms.uSun, uFlood: globeUniforms.uFlood };
+const imgVS = `attribute vec2 muv; varying vec2 vUv; varying vec2 vM; varying vec3 vN; varying vec3 vP; void main(){ vUv=uv; vM=muv; vP=position; vN=normalize((modelMatrix*vec4(position,1.)).xyz); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`;
+const imgFS = `uniform sampler2D map; uniform float uOpacity; uniform float uK; uniform float uFloor; uniform vec3 uSun; uniform float uFlood; uniform sampler2D uMask; uniform float uDim; uniform vec3 uC; uniform vec2 uFe; varying vec2 vUv; varying vec2 vM; varying vec3 vN; varying vec3 vP;
+  void main(){ vec3 c = texture2D(map, vUv).rgb * uK;
+    // the same day / night as the globe shader, per pixel from the real sun; a low 'dusk' floor close to the ground
+    float ndl = dot(normalize(vN), uSun);
+    vec3 lit = c * (0.12 + 1.05 * max(ndl, 0.0));
+    vec3 night = c * max(0.025, uFloor);
+    c = mix(mix(night, lit, smoothstep(-0.12, 0.18, ndl)), c, uFlood);
+    // outside Pakistan: slightly darker and less colourful, so the country stands out
+    float out_ = 1.0 - texture2D(uMask, vM).r; float g = dot(c, vec3(.299,.587,.114));
+    c = mix(c, mix(vec3(g), c, .55) * .78, out_ * uDim);
+    // a soft edge instead of a hard square where a sharper level ends (the coarser one is drawn underneath)
+    gl_FragColor = vec4(c, uOpacity * (1.0 - smoothstep(uFe.x, uFe.y, distance(vP, uC))));
+    #include <colorspace_fragment>
+  }`;
+
+class TileLayer {
+  constructor(name, order, overlay) { this.name = name; this.order = order; this.overlay = overlay; this.cache = new Map(); this.group = new THREE.Group(); this.group.name = name; this.src = null; this.fails = 0; }
+  setSource(src) { // switch provider: keep what's on screen until the new tiles fade in over it
+    if (this.src === src) return; this.src = src; this.fails = 0;
+    for (const t of this.cache.values()) { if (t.status === 'queued') { this.cache.delete(t.key); } else t.old = true; }
   }
-  for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) { const p = j * (S + 1) + i, q = p + S + 1; idx.push(p, q, p + 1, p + 1, q, q + 1); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
-  // the Earth shader's day colours are in sRGB; keep the tiles looking the same
-  const m = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthTest: false, depthWrite: true });
-  const mesh = new THREE.Mesh(g, m); mesh.renderOrder = -1.9 + z * 0.001; mesh.frustumCulled = true; g.computeBoundingSphere(); return mesh;
+  mesh(t, tex) {
+    const S = t.z < 9 ? 12 : 6, pos = [], uv = [], muv = [], idx = [], a = [0, 0, 0];
+    for (let j = 0; j <= S; j++) for (let i = 0; i <= S; i++) {
+      const lat = y2lat(t.y + j / S, t.z), lon = x2lon(t.x + i / S, t.z); latLonToEcef(lat, lon, 0, a); pos.push(...a); uv.push(i / S, 1 - j / S); muv.push((lon + 180) / 360, (lat + 90) / 180);
+    }
+    for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) { const p = j * (S + 1) + i, q = p + S + 1; idx.push(p, q, p + 1, p + 1, q, q + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('muv', new THREE.Float32BufferAttribute(muv, 2)); g.setIndex(idx);
+    const m = this.overlay
+      ? new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthTest: false, depthWrite: false })
+      : new THREE.ShaderMaterial({ uniforms: { map: { value: tex }, uOpacity: { value: 0 }, uFe: { value: new THREE.Vector2(1e9, 2e9) }, ...shared }, vertexShader: imgVS, fragmentShader: imgFS, transparent: true, depthTest: false, depthWrite: true });
+    const mesh = new THREE.Mesh(g, m); mesh.renderOrder = this.order + t.z * 0.001; mesh.userData.key = t.key; g.computeBoundingSphere(); return mesh;
+  }
+  request(z, x, y) {
+    const key = `${this.src.id}/${z}/${x}/${y}`; let t = this.cache.get(key);
+    if (t) { t.used = performance.now(); return t; }
+    t = { key, layer: this, src: this.src, z, x, y, status: 'queued', used: performance.now(), mesh: null, tex: null, born: 0 }; this.cache.set(key, t); queue.push(t); return t;
+  }
+  setOpacity(t, o) { if (this.overlay) t.mesh.material.opacity = o; else t.mesh.material.uniforms.uOpacity.value = o; }
+  dispose(t) { if (t.mesh) { this.group.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.dispose(); } t.tex?.dispose(); this.cache.delete(t.key); }
+  clear() { for (const t of [...this.cache.values()]) if (t.status !== 'loading') this.dispose(t); }
+
+  // Choose and draw the tiles for the current view at imagery zoom zImg.
+  update(zImg, now) {
+    const src = this.src; if (!src) return;
+    const off = Math.log2(src.tileSize / 256); // 512 px tiles: one level up
+    const z = Math.max(4, Math.min(src.maxZoom, Math.round(zImg - off)));
+    const want = this.want = new Set(), c = this.cache;
+    const ring = (zz, r) => { const cx = Math.floor(lon2x(pose.lon, zz)), cy = Math.floor(lat2y(pose.lat, zz)); for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = cx + dx, y = cy + dy; if (y < 0 || y >= 2 ** zz) continue; want.add(this.request(zz, ((x % 2 ** zz) + 2 ** zz) % 2 ** zz, y).key); } };
+    const r = off ? 1 : 2, rt = pose.tilt > 50 ? r + 1 : r;
+    if (z - 2 >= 4) ring(z - 2, 1); // backdrop: also covers the far part of tilted views
+    ring(z, rt);
+    // how far each level reaches from the centre (km): its edge is feathered from half that distance
+    const kmAt = zz => 40075 * Math.cos(pose.lat * Math.PI / 180) / 2 ** zz, reach = zz => (zz === z ? rt : 2) * kmAt(zz);
+    if (!this.overlay) latLonToEcef(pose.lat, pose.lon, 0, cTmp), shared.uC.value.fromArray(cTmp);
+    // a tile entirely inside the unfeathered part of its level (only those may hide the level below)
+    const solid = t => this.overlay || gcDistance(pose.lat, pose.lon, y2lat(t.y + 0.5, t.z), x2lon(t.x + 0.5, t.z)) + 0.75 * kmAt(t.z) < 0.5 * reach(t.z);
+    for (const t of c.values()) if (t.status === 'failed' && t.httpStatus !== 404 && now - t.failedAt > 60000) { t.status = 'queued'; queue.push(t); }
+    // forget queued requests the view no longer needs (a fast zoom would otherwise starve the fine tiles)
+    for (let i = queue.length - 1; i >= 0; i--) { const t = queue[i]; if (t.layer === this && t.status === 'queued' && !want.has(t.key)) { queue.splice(i, 1); c.delete(t.key); } }
+    if (c.size > CACHE_TILES) {
+      const nearCentre = t => Math.abs(t.x - Math.floor(lon2x(pose.lon, t.z))) <= 1 && Math.abs(t.y - Math.floor(lat2y(pose.lat, t.z))) <= 1 && t.z < z;
+      [...c.values()].filter(t => !want.has(t.key) && t.status !== 'loading' && !(t.status === 'ready' && nearCentre(t))).sort((a, b) => a.used - b.used).slice(0, c.size - CACHE_TILES).forEach(t => this.dispose(t));
+    }
+    // Draw the wanted tiles and coarse cover tiles near the centre; skip a tile whose four children are painted.
+    const kids = t => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => c.get(`${t.src.id}/${t.z + 1}/${t.x * 2 + dx}/${t.y * 2 + dy}`));
+    const painted = new Map();
+    // coarser levels keep the whole view covered (radius 2) until finer tiles have painted over them
+    const nearC = t => { const rr = 2; return Math.abs(t.x - Math.floor(lon2x(pose.lon, t.z))) <= rr && Math.abs(t.y - Math.floor(lat2y(pose.lat, t.z))) <= rr; };
+    const drawable = t => want.has(t.key) || ((t.z < z || t.z === z + 1) && nearC(t)) || (!!t.old && nearC(t));
+    // a hidden tile that is about to be shown again does not count as painted yet (it would fade in from zero over a hole)
+    const isPainted = t => { if (!t || t.status !== 'ready' || now - t.born < 1050 || !solid(t)) return false; if (painted.has(t.key)) return painted.get(t.key); const p = kids(t).every(isPainted) || (drawable(t) && t.was !== false); painted.set(t.key, p); return p; };
+    const shown = [];
+    for (const t of c.values()) if (t.mesh) { t.was = t.mesh.visible; if (!this.overlay) t.mesh.material.uniforms.uFe.value.set(0.5 * reach(t.z), reach(t.z)); }
+    for (const t of [...c.values()].sort((a, b) => b.z - a.z)) if (t.mesh) {
+      // an old provider's tile stays only until the new provider has painted that spot
+      const coveredByNew = t.old && [...want].some(k => { const n = c.get(k); return n && !n.old && n.status === 'ready' && now - n.born > 1050 && n.z >= t.z; });
+      t.mesh.visible = !!(drawable(t) && !kids(t).every(isPainted) && !coveredByNew); // a real boolean: three.js draws anything that is not exactly false if (t.mesh.visible) shown.push(t);
+    }
+    const cap = this.overlay ? Math.round(MAX_DRAWN / 3) : MAX_DRAWN;
+    if (shown.length > cap) {
+      const d = t => Math.hypot(t.x + 0.5 - lon2x(pose.lon, t.z), t.y + 0.5 - lat2y(pose.lat, t.z));
+      // keep the tiles the view asked for (sharpest first), then the coarsest cover; drop the finest cover first
+      const capped = shown.sort((a, b) => want.has(b.key) - want.has(a.key) || (want.has(a.key) ? b.z - a.z : a.z - b.z) || d(a) - d(b)).slice(cap);
+      // a capped tile is hidden only when its nearest loaded ancestor can take its place (no holes)
+      for (const t of capped) for (let zz = t.z - 1, x = t.x >> 1, y = t.y >> 1; zz >= 4; zz--, x >>= 1, y >>= 1) { const a = c.get(`${t.src.id}/${zz}/${x}/${y}`); if (a?.mesh && now - a.born > 1050) { a.mesh.visible = true; t.mesh.visible = false; break; } }
+    }
+    for (const t of c.values()) if (t.mesh && t.mesh.visible && t.was === false && now - (t.seen || 0) > 1500) t.born = now; // comes into view: fade in from zero (its parent stays until it's opaque); a tile drawn a moment ago does not fade again
+  }
 }
 
-function request(z, x, y) {
-  const key = `${z}/${x}/${y}`; let t = cache.get(key);
-  if (t) { t.used = performance.now(); return t; }
-  t = { key, z, x, y, status: 'queued', used: performance.now(), mesh: null, tex: null, born: 0 }; cache.set(key, t); queue.push(t); return t;
+const imagery = new TileLayer('imagery', -1.9, false), labels = new TileLayer('labels', -1.6, true);
+let chain = PROVIDERS.filter(p => p.enabled), idx = 0;
+
+function useProvider(i) {
+  idx = i; const p = chain[i] || null;
+  tileState.provider = p ? p.id : null; tileState.credit = p ? p.credit : ''; tileState.poweredByEsri = !!p?.poweredByEsri;
+  imagery.setSource(p);
+  const l = p?.labels && !p.labelsFailed ? p.labels : null; labels.setSource(l ? { ...l, id: p.id + '-labels' } : null);
+  tileState.labels = l ? 'provider' : p?.id === 'maptiler' ? 'provider' : 'osm'; tileState.labelsCredit = l ? l.credit : '';
+  if (!l) labels.clear();
+  if (p?.metadata && !p.creditFetched) { p.creditFetched = true; fetchCredit(p.metadata).then(t => { if (t) { p.credit = t; if (chain[idx] === p) tileState.credit = t; } }); }
+  if (l?.metadata && !l.creditFetched) { l.creditFetched = true; fetchCredit(l.metadata).then(t => { if (t) { l.credit = t; if (labels.src) tileState.labelsCredit = t; } }); }
 }
-// Offline back-off: after a failed tile, wait 30 s, then try one tile before loading more
-// (one failed request instead of dozens of console errors).
-let pauseUntil = 0, probing = false;
+// The credit text the service itself returns (it changes over time), without the leading "Source:".
+async function fetchCredit(url) { try { const r = await fetch(url); if (!r.ok) return null; const j = await r.json(); return (j.copyrightText || j.copyright || '').replace(/^Source:\s*/i, '') || null; } catch { return null; } }
+
+function failTile(t, status) {
+  t.status = 'failed'; t.failedAt = performance.now(); t.httpStatus = status; tileState.failed++;
+  if (status === 404) return; // no tile at this zoom here (e.g. Quetta z19): the coarser one stays stretched
+  if (t.layer === labels) { const p = chain[idx]; if (p && ++labels.fails >= FAIL_LIMIT) { p.labelsFailed = true; useProvider(idx); } return; }
+  if (++imagery.fails >= FAIL_LIMIT) {
+    if (idx + 1 < chain.length) useProvider(idx + 1); // next provider, same fades
+    else { tileState.online = false; pauseUntil = performance.now() + 30000; imagery.fails = 0; } // none left: the NASA globe stays; retry later
+  }
+}
+
 function pump() {
   if (performance.now() < pauseUntil) return;
-  while (inflight < (probing ? 1 : MAX_CONCURRENT) && queue.length) {
+  while (inflight < MAX_CONCURRENT && queue.length) {
     const t = queue.shift(); if (t.status !== 'queued') continue;
     t.status = 'loading'; inflight++;
-    loader.load(URL(t.z, t.x, t.y), tex => {
-      inflight--; tileState.online = true; probing = false;
-      if (!cache.has(t.key)) { tex.dispose(); return; }
-      tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-      t.tex = tex; t.mesh = tileMesh(t.z, t.x, t.y, tex); t.status = 'ready'; t.born = performance.now(); group.add(t.mesh); tileState.loaded++;
-    }, undefined, () => { inflight--; t.status = 'failed'; t.failedAt = performance.now(); tileState.failed++; tileState.online = false; pauseUntil = performance.now() + 30000; probing = true; });
+    fetch(t.src.url(t.z, t.x, t.y)).then(async r => {
+      if (!r.ok) { inflight--; failTile(t, r.status); return; }
+      let blob; try { blob = await r.blob(); } catch { inflight--; failTile(t, 0); return; } // connection dropped mid-download
+      const img = new Image(); const u = URL.createObjectURL(blob);
+      img.onload = () => {
+        inflight--; URL.revokeObjectURL(u); tileState.online = true; t.layer.fails = 0;
+        if (!t.layer.cache.has(t.key)) return;
+        const tex = new THREE.Texture(img); tex.needsUpdate = true; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+        tex.minFilter = THREE.LinearMipmapLinearFilter; t.tex = tex; t.mesh = t.layer.mesh(t, tex); t.mesh.visible = false; /* the next pass decides (and keeps the draw cap) */ t.status = 'ready'; t.born = performance.now(); t.layer.group.add(t.mesh); tileState.loaded++;
+      };
+      img.onerror = () => { inflight--; URL.revokeObjectURL(u); failTile(t, 0); };
+      img.src = u;
+    }, () => { inflight--; failTile(t, 0); });
   }
 }
-const childrenOf = t => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => `${t.z + 1}/${t.x * 2 + dx}/${t.y * 2 + dy}`);
-function dispose(t) { if (t.mesh) { group.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.dispose(); } t.tex?.dispose(); cache.delete(t.key); }
 
-export function initTiles() { scene.add(group); }
-// Debug summary (verify / zoom probe): visible tiles per zoom with their mean opacity.
-export function tileDebug() { const by = {}; for (const t of cache.values()) if (t.mesh?.visible) { const b = by[t.z] ||= [0, 0]; b[0]++; b[1] += t.mesh.material.opacity; } return Object.entries(by).map(([z, [n, o]]) => `${z}:${n}@${(o / n).toFixed(2)}`).join(' ') + ` gv=${group.visible}`; }
+// Every frame: never more than the cap (+ a few cover tiles) on screen, whatever path the camera took.
+// Tiles furthest from the view centre (measured in their own tile size) are hidden first.
+const visibleList = [];
+// Safety sweep: a mesh in the scene must belong to a tile in the cache; anything else is removed and freed.
+function sweep(L) {
+  for (let i = L.group.children.length - 1; i >= 0; i--) {
+    const m = L.group.children[i], t = L.cache.get(m.userData.key);
+    if (!t || t.mesh !== m) { L.group.remove(m); m.geometry.dispose(); m.material.dispose(); } // textures belong to the cache, which frees them
+  }
+}
+// Only a tile whose area is already covered by a visible, fully faded-in ancestor may be hidden,
+// so the limit never opens a hole (a hole shows the globe's night lights as a bright blur).
+function enforceCap(L) {
+  const limit = (L.overlay ? Math.round(MAX_DRAWN / 3) : MAX_DRAWN) + 6, now = performance.now();
+  visibleList.length = 0; for (const t of L.cache.values()) if (t.mesh?.visible) visibleList.push(t);
+  if (visibleList.length <= limit) return;
+  const covered = t => { for (let zz = t.z - 1, x = t.x >> 1, y = t.y >> 1; zz >= 4; zz--, x >>= 1, y >>= 1) { const a = L.cache.get(`${t.src.id}/${zz}/${x}/${y}`); if (a?.mesh?.visible && now - a.born > 1050) return true; } return false; };
+  const d = t => Math.hypot(t.x + 0.5 - lon2x(pose.lon, t.z), t.y + 0.5 - lat2y(pose.lat, t.z));
+  // cover tiles the view did not ask for go first, finest and furthest first
+  let n = visibleList.length;
+  for (const t of visibleList.sort((a, b) => !!L.want?.has(a.key) - !!L.want?.has(b.key) || b.z - a.z || d(b) - d(a))) { if (n <= limit) break; if (covered(t)) { t.mesh.visible = false; n--; } }
+}
+
+export function initTiles() { scene.add(imagery.group, labels.group); useProvider(0); }
+export function tileDebug() { const by = {}; for (const t of imagery.cache.values()) if (t.mesh?.visible) { const b = by[t.z] ||= [0, 0]; b[0]++; b[1] += t.mesh.material.uniforms.uOpacity.value; } return Object.entries(by).map(([z, [n, o]]) => `${z}:${n}@${(o / n).toFixed(2)}`).join(' ') + ` src=${tileState.provider} labels=${tileState.labels}` + strays(); }
+function strays() { const o = imagery.group.children.filter(m => m.visible && imagery.cache.get(m.userData.key)?.mesh !== m); return o.length ? ` strays=${o.length}:${o.slice(0, 3).map(m => m.userData.key + (imagery.cache.has(m.userData.key) ? '(other)' : '(gone)')).join(',')}` : ''; }
 
 let last = 0;
 export function updateTiles() {
   const now = performance.now();
-  const inBox = pose.lat > BOX.lat0 && pose.lat < BOX.lat1 && pose.lon > BOX.lon0 && pose.lon < BOX.lon1;
-  const active = tileState.enabled && inBox && altitudeKm < START_KM;
-  tileState.active = active;
+  const inArea = pose.lat > AREA.lat0 && pose.lat < AREA.lat1 && pose.lon > AREA.lon0 && pose.lon < AREA.lon1;
+  const active = tileState.enabled && !!chain[idx] && inArea && altitudeKm < START_KM;
+  tileState.active = active; tileState.busy = active && inflight + queue.length > 0; // the loading spinner
+  // cross-fade from the NASA globe, driven by camera height (no sudden switch)
   const fade = active ? 1 - THREE.MathUtils.smoothstep(altitudeKm, START_KM * 0.45, START_KM) : 0;
-  group.visible = fade > 0.01;
-  if (active && now - last > 250) {
+  tileState.fade = fade;
+  if (active && now - last > 200) {
     last = now;
-    // zoom so a tile pixel is about a screen pixel at the view centre
     const kmPerPx = 2 * pose.range * Math.tan(camera.fov * Math.PI / 360) / innerHeight;
-    const zf = Math.log2(40075 * Math.cos(pose.lat * Math.PI / 180) / (256 * Math.max(1e-4, kmPerPx)));
-    // one level coarser than pixel-perfect: a quarter of the tiles (and draw calls) for a small loss of sharpness
-    const z = Math.max(5, Math.min(MAX_Z, Math.round(zf) - 1));
-    const want = new Set();
-    const ring = (zz, r) => { const cx = Math.floor(lon2x(pose.lon, zz)), cy = Math.floor(lat2y(pose.lat, zz)); for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const x = cx + dx, y = cy + dy; if (y < 0 || y >= 2 ** zz) continue; const t = request(zz, ((x % 2 ** zz) + 2 ** zz) % 2 ** zz, y); want.add(t.key); } };
-    if (z - 2 >= 5) ring(z - 2, 1); // backdrop: also covers the far part of tilted views
-    ring(z, 2);
-    // retry failed tiles after a minute; drop what's no longer wanted once the cache is full
-    for (const t of cache.values()) if (t.status === 'failed' && now - t.failedAt > 60000) { t.status = 'queued'; queue.push(t); }
-    // forget queued requests the view no longer needs (otherwise a fast zoom starves the fine tiles),
-    // then fetch the backdrop first and the fine tiles nearest the centre next
-    for (let i = queue.length - 1; i >= 0; i--) { const t = queue[i]; if (t.status === 'queued' && !want.has(t.key)) { queue.splice(i, 1); cache.delete(t.key); } }
-    const dist = t => Math.hypot(t.x + 0.5 - lon2x(pose.lon, t.z), t.y + 0.5 - lat2y(pose.lat, t.z));
-    queue.sort((a, b) => (a.z === z) - (b.z === z) || dist(a) - dist(b));
-    // Over the cache limit: drop unwanted tiles, least recently used first, but keep the
-    // coarse tiles around the view centre: they cover the screen while finer tiles load.
-    if (cache.size > CACHE) {
-      const nearCentre = t => Math.abs(t.x - Math.floor(lon2x(pose.lon, t.z))) <= 1 && Math.abs(t.y - Math.floor(lat2y(pose.lat, t.z))) <= 1 && t.z < z;
-      [...cache.values()].filter(t => !want.has(t.key) && t.status !== 'loading' && !(t.status === 'ready' && nearCentre(t))).sort((a, b) => a.used - b.used).slice(0, cache.size - CACHE).forEach(dispose);
-    }
-    // Draw: wanted tiles and the coarse cover tiles around the view centre, but skip any tile
-    // whose four children are already painted (each tile is a draw call).
-    const painted = new Map();
-    const isPainted = t => { if (!t || t.status !== 'ready' || now - t.born < 1050) return false; /* still fading in */ if (painted.has(t.key)) return painted.get(t.key); const kids = childrenOf(t); const p = kids.every(k => isPainted(cache.get(k))) || drawable(t); painted.set(t.key, p); return p; };
-    // the previous level keeps the whole view covered (radius 2); older levels only near the centre
-    const nearC = t => { const r = t.z === z - 1 || t.z === z + 1 ? 2 : 1; return Math.abs(t.x - Math.floor(lon2x(pose.lon, t.z))) <= r && Math.abs(t.y - Math.floor(lat2y(pose.lat, t.z))) <= r; };
-    const drawable = t => want.has(t.key) || ((t.z < z || t.z === z + 1) && nearC(t));
-    const shown = [];
-    for (const t of [...cache.values()].sort((a, b) => b.z - a.z)) if (t.mesh) { t.was = t.mesh.visible; t.mesh.visible = drawable(t) && !childrenOf(t).every(k => isPainted(cache.get(k))); if (t.mesh.visible) shown.push(t); }
-    // hard cap on tile draw calls: drop the finest tiles furthest from the view centre (coarse ones below still cover)
-    if (shown.length > MAX_DRAWN) {
-      const off = t => Math.hypot(t.x + 0.5 - lon2x(pose.lon, t.z), t.y + 0.5 - lat2y(pose.lat, t.z));
-      const capped = shown.sort((a, b) => a.z - b.z || off(a) - off(b)).slice(MAX_DRAWN);
-      capped.forEach(t => { t.mesh.visible = false; });
-      // a capped tile's nearest loaded ancestor fills its place
-      for (const t of capped) for (let zz = t.z - 1, x = t.x >> 1, y = t.y >> 1; zz >= 5; zz--, x >>= 1, y >>= 1) { const a = cache.get(`${zz}/${x}/${y}`); if (a?.mesh) { a.mesh.visible = true; break; } }
-    }
-    // a tile that comes back into view fades in again rather than popping
-    for (const t of cache.values()) if (t.mesh && t.mesh.visible && t.was === false) t.born = Math.max(t.born, now - 600);
+    const zImg = Math.log2(40075 * Math.cos(pose.lat * Math.PI / 180) / (256 * Math.max(1e-4, kmPerPx)));
+    imagery.update(zImg, now);
+    if (labels.src) labels.update(zImg, now);
+    queue.sort((a, b) => (a.layer === labels) - (b.layer === labels) || a.z - b.z); // imagery first, coarse first
     pump();
   }
-  if (!active && cache.size && now - last > 8000) { [...cache.values()].filter(t => t.status !== 'loading').forEach(dispose); last = now; }
-  // match the globe shader's daylight at the view centre (flood: fully lit)
-  const a = [0, 0, 0]; latLonToEcef(pose.lat, pose.lon, 0, a);
-  const sun = globeUniforms.uSun.value, ndl = (a[0] * sun.x + a[1] * sun.y + a[2] * sun.z) / 6371;
-  // Sentinel-2 cloudless is brighter than Blue Marble; 0.66 keeps the hand-over gentle
-  const k = 0.66 * (globeUniforms.uFlood.value ? 1 : Math.min(1.12, 0.12 + 1.05 * Math.max(0, ndl)));
-  for (const t of cache.values()) if (t.mesh) { t.mesh.material.opacity = Math.min(1, (now - t.born) / 1000) * fade; t.mesh.material.color.setScalar(k); }
+  if (!active && now - last > 8000 && (imagery.cache.size || labels.cache.size)) { imagery.clear(); labels.clear(); last = now; }
+  shared.uK.value = 0.64; // satellite photos are brighter than Blue Marble: this matches them, so the hand-over is invisible
+  // night: a low 'dusk' light builds up evenly (in log height) from 2,500 km down to 30 km, so roads stay readable close up
+  shared.uFloor.value = 0.24 * (1 - THREE.MathUtils.smoothstep(Math.log(Math.max(1, altitudeKm)), Math.log(30), Math.log(2500)));
+  for (const L of [imagery, labels]) {
+    L.group.visible = fade > 0.01;
+    sweep(L); // every frame: cheap, and nothing orphaned is ever drawn
+    enforceCap(L);
+    // labels fade in a little later than the imagery, once there's something to read (≈ below 250 km)
+    const lf = L === labels ? fade * (1 - THREE.MathUtils.smoothstep(altitudeKm, 120, 250)) : fade;
+    for (const t of L.cache.values()) if (t.mesh) { L.setOpacity(t, Math.min(1, (now - t.born) / 1000) * lf); if (t.mesh.visible) t.seen = now; }
+  }
 }

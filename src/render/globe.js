@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import { R, latLonToEcef } from '../geo/globe.js';
 import { scene, camera, isPhone, renderer } from './scene.js';
 import { altitudeKm } from './globecam.js';
+import { pakMask } from './pakmask.js';
+import { busyBegin } from '../busy.js';
 
 const tex = (url, onload) => {
   const t = new THREE.TextureLoader().load(url, onload, undefined, () => onload?.(null));
@@ -30,7 +32,9 @@ function sphereGeometry(nLon, nLat) {
 
 export const globeUniforms = {
   uDay: { value: null }, uNight: { value: null }, uSun: { value: new THREE.Vector3(1, 0, 0) }, uFlood: { value: 0 },
-  uNightGain: { value: 1.0 }, uReady: { value: 0 }
+  uNightGain: { value: 1.0 }, uReady: { value: 0 },
+  // neighbours are dimmed by this much (0–1) using Pakistan's mask (render/pakmask.js), set by globe.js below
+  uDim: { value: 0.42 }, uMask: { value: null }
 };
 
 const earthMat = new THREE.ShaderMaterial({
@@ -39,7 +43,7 @@ const earthMat = new THREE.ShaderMaterial({
     varying vec3 vN; varying vec3 vW; varying vec2 vUv;
     void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; vN = normalize(w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }`,
   fragmentShader: /* glsl */`
-    uniform sampler2D uDay; uniform sampler2D uNight; uniform vec3 uSun; uniform float uFlood; uniform float uNightGain; uniform float uReady;
+    uniform sampler2D uDay; uniform sampler2D uNight; uniform vec3 uSun; uniform float uFlood; uniform float uNightGain; uniform float uReady; uniform sampler2D uMask; uniform float uDim;
     varying vec3 vN; varying vec3 vW; varying vec2 vUv;
     void main(){
       vec3 n = normalize(vN); vec3 v = normalize(cameraPosition - vW);
@@ -59,6 +63,9 @@ const earthMat = new THREE.ShaderMaterial({
       // thin atmosphere rim on the lit side
       float fres = pow(1.0 - max(dot(n, v), 0.0), 3.0);
       col += vec3(0.30, 0.55, 1.0) * fres * 0.55 * mix(smoothstep(-0.25, 0.4, ndl), 1.0, uFlood);
+      // outside Pakistan: a little darker and less colourful, so the country stands out at every zoom
+      float out_ = 1.0 - texture2D(uMask, vUv).r; float gr = dot(col, vec3(.299,.587,.114));
+      col = mix(col, mix(vec3(gr), col, .55) * .78, out_ * uDim);
       gl_FragColor = vec4(col, 1.0);
       #include <colorspace_fragment>
     }`
@@ -97,6 +104,7 @@ const stars = (() => {
 })();
 
 export function buildGlobe() {
+  globeUniforms.uMask.value = pakMask.uniform.value;
   scene.add(stars, earth, atmo);
   const big = !isPhone && renderer.capabilities.maxTextureSize >= 4096;
   // the 2k textures show the first screen quickly; on desktops the 4k ones replace them once loaded
@@ -107,7 +115,8 @@ export function buildGlobe() {
   });
   function upgrade() {
     for (const [u, name] of [['uDay', 'day'], ['uNight', 'night']]) {
-      const t = tex(`assets/textures/earth-${name}-4k.jpg`, ok => { if (!ok) return; const old = globeUniforms[u].value; globeUniforms[u].value = t; old.dispose(); });
+      const end = busyBegin('Loading sharper Earth photos');
+      const t = tex(`assets/textures/earth-${name}-4k.jpg`, ok => { end(); if (!ok) return; const old = globeUniforms[u].value; globeUniforms[u].value = t; old.dispose(); });
     }
   }
 }

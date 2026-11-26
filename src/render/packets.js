@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { samplePath } from '../routing/paths.js';
 import { MAXP } from '../sim/traffic.js';
 import { renderer, layers } from './scene.js';
-import { toGlobe } from './geo3.js';
+import { toGlobe, sampleRoad } from './geo3.js';
 
 const TRAIL = 4;
 // Trail spacing (flat units): ~4 km from space, a few metres in a city view.
@@ -44,6 +44,7 @@ function hopPos(path, d, out) {
     const a = nodes[path.seq[0]].gpos, b = nodes[path.seq[1]].gpos, f = Math.max(0, Math.min(1, d / path.total));
     return out.copy(a).lerp(b, f);
   }
+  if (e && e.road) { const f = d / path.total; return sampleRoad(e, path.seq[0] === e.a ? f : 1 - f, out); } // along the real road
   samplePath(path, d, tmp); return toGlobe(tmp[0], tmp[1], 0, out);
 }
 

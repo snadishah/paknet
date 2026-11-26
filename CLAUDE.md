@@ -15,7 +15,7 @@ Computer Networks course project (SEECS, NUST), instructor **Ms. Maryam Sajjad**
 - `npm run experiment`, `npm run report` (experiments, charts with Python/matplotlib, Word report → `docs/PAKNET-report.docx`).
 - `npm run data`: regenerate `data/*.json` from the npm geo packages. Rarely needed.
 - Dev machine is a **Mac**; keep scripts cross-platform (Node only, no bash-only or Windows-only commands).
-- Debug hooks: `window.__sim.tick(seconds)`, `window.__paknetReady`, `window.__paknetStats`, `?perf=1` overlay.
+- Debug hooks: `window.__sim.tick(seconds)`, `window.__paknetReady`, `window.__paknetStats`, `?perf=1` (console log only; no stats on screen, ever).
 
 ## Layout
 - `src/main.js` wires everything (one `ctx` object) and runs the frame loop.

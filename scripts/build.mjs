@@ -13,6 +13,31 @@ const v1 = process.argv.includes('--v1');
 const watch = process.argv.includes('--watch');
 const dist = join(root, 'dist');
 
+// Imagery keys from .env (git-ignored), baked into the bundle at build time.
+// PAKNET_NO_KEYS=1 builds without them (to test the keyless fallbacks). Values are never printed.
+function readEnv() {
+  const env = {};
+  if (process.env.PAKNET_NO_KEYS === '1' || !existsSync(join(root, '.env'))) return env;
+  for (const line of readFileSync(join(root, '.env'), 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/); if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+  }
+  return env;
+}
+const ENV = readEnv();
+// Check once, at build time, whether the key may use Esri's road/place-name labels tiles, so the
+// browser never sends requests that would be refused (they'd show as errors in its console).
+async function probeLabels(key) {
+  if (!key) return false;
+  try {
+    const r = await fetch(`https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/arcgis/imagery/labels/static/tile/2/1/2?token=${key}`, { headers: { Referer: 'http://localhost:5173/' }, signal: AbortSignal.timeout(6000) });
+    if (r.ok) return true;
+    console.log(`Esri labels: not authorised for this key (HTTP ${r.status}); using the OpenStreetMap road overlay instead`); return false;
+  } catch { return true; } // offline at build time: let the app try (and fall back) at run time
+}
+const LABELS_OK = await probeLabels(ENV.ARCGIS_KEY);
+const keyDefines = { __ARCGIS_KEY__: JSON.stringify(ENV.ARCGIS_KEY || ''), __MAPTILER_KEY__: JSON.stringify(ENV.MAPTILER_KEY || ''), __ESRI_LABELS_OK__: JSON.stringify(LABELS_OK) };
+console.log(`imagery keys: ArcGIS ${ENV.ARCGIS_KEY ? 'yes' : 'no'}, MapTiler ${ENV.MAPTILER_KEY ? 'yes' : 'no'}`);
+
 // The Sources screen is generated from docs/REFERENCES.md ("## Source list"):
 // groups under **bold** headings, one "- S01 — text. URL" line per source.
 function readSources() {
@@ -59,6 +84,7 @@ const page = {
       if (existsSync(join(root, 'assets'))) cpSync(join(root, 'assets'), join(dist, 'assets'), { recursive: true });
       // baked city buildings are loaded at runtime (only when you zoom into a city)
       cpSync(join(root, 'src/data/satellites.json'), join(dist, 'assets/satellites.json'));
+      if (existsSync(join(root, 'src/data/roads.json'))) cpSync(join(root, 'src/data/roads.json'), join(dist, 'assets/roads.json'));
       if (existsSync(join(root, 'src/data/cities'))) cpSync(join(root, 'src/data/cities'), join(dist, 'assets/cities'), { recursive: true });
       writeFileSync(join(dist, 'index.html'), html);
       console.log(`built dist/ (${(dirSize(dist) / 1048576).toFixed(2)} MB)`);
@@ -79,7 +105,7 @@ const inlineV1 = {
   }
 };
 
-const common = { bundle: true, minify: !watch, sourcemap: watch ? 'inline' : false, loader: { '.json': 'json' }, define: { 'process.env.NODE_ENV': '"production"' }, logLevel: 'warning' };
+const common = { bundle: true, minify: !watch, sourcemap: watch ? 'inline' : false, loader: { '.json': 'json' }, define: { 'process.env.NODE_ENV': '"production"', ...keyDefines }, logLevel: 'warning' };
 const appOpts = { ...common, entryPoints: { main: join(root, 'src/main.js'), ...(existsSync(join(root, 'src/sat/worker.js')) ? { satworker: join(root, 'src/sat/worker.js') } : {}) }, outdir: join(dist, 'assets'), format: 'esm', plugins: [satShim, page] };
 
 if (v1) {

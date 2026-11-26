@@ -255,6 +255,8 @@ body.expert #insp { left: 16px; right: auto; top: 260px; }
 .ml { position: absolute; left: 0; top: 0; white-space: nowrap; font: 500 14px/1 var(--f); color: #f2f5f7; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.6); opacity: 0; transition: opacity .3s ease; padding: 3px 6px; letter-spacing: .01em; }
 .ml.on { opacity: 1; } .ml.click { pointer-events: auto; cursor: pointer; } .ml:not(.on) { pointer-events: none !important; }
 .ml.country { font-weight: 600; letter-spacing: .14em; font-size: 14px; color: #dfe6ea; }
+.ml.hero { font-size: clamp(26px, 3.2vw, 40px); font-weight: 600; letter-spacing: .32em; color: #fff6e6; text-shadow: 0 2px 18px rgba(0,0,0,.8), 0 0 30px rgba(255,217,160,.25); }
+.ml.hero.on { opacity: var(--o, 1); }
 .ml.sea { font-style: italic; color: #9cc7e0; font-weight: 400; }
 .ml.city { font-weight: 600; font-size: 15px; } .ml.town { font-size: 14px; color: #d4dbe0; font-weight: 400; }
 .ml.small { font-size: 14px; color: #d8dee3; } .ml.planned { color: var(--sp-warm); } .ml.cab { color: #9cc7e0; font-size: 14px; }
@@ -319,12 +321,18 @@ body.started .chrome { opacity: 1; pointer-events: auto; }
 @media (max-width: 600px) { #timebar { bottom: 40px; } #timebar .speeds .sbtn { padding: 0 7px; min-width: 34px; } #timebar .clock { min-width: 84px; padding: 0 4px; } #timebar .clock small { display: none; } }
 /* credits */
 #credits { position: fixed; left: 0; right: 0; bottom: 0; z-index: 14; padding: 6px 16px 8px; font-size: 11px; line-height: 1.35; color: rgba(220,228,233,.62); text-align: center; pointer-events: auto; background: linear-gradient(transparent, rgba(0,0,0,.5)); }
-#credits a { color: inherit; } #credits .tiles, #credits .osm { display: none; } body.tiles-on #credits .tiles, body.city-on #credits .osm { display: inline; }
+#credits a { color: inherit; } #credits .tiles, #credits .osm, #credits .roads { display: none; } body.tiles-on #credits .tiles, body.city-on #credits .osm, body.roads-on #credits .roads { display: inline; }
+#credits .esri { font-weight: 600; }
+/* loading indicator: shows while imagery, buildings or data are still arriving */
+#busy { position: fixed; left: 16px; bottom: 40px; z-index: 13; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; font-size: var(--t-sm); font-weight: 500; opacity: 0; transform: translateY(4px); transition: opacity .35s ease, transform .35s ease; pointer-events: none; }
+#busy.on { opacity: 1; transform: none; }
+#busy .ring { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.18); border-top-color: #7fd1a8; animation: spin .8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 760px) { #busy { bottom: auto; top: 16px; left: auto; right: 16px; width: 32px; padding: 0; justify-content: center; } #busy .txt { display: none; } }
+@media (prefers-reduced-motion: reduce) { #busy .ring { animation-duration: 2.4s; } }
 @media (max-width: 600px) { #credits { font-size: 10px; padding: 4px 10px 6px; } }
 #hint { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 11; padding: 10px 16px; font-size: 15px; max-width: calc(100vw - 32px); text-align: center; opacity: 0; transition: opacity .4s; pointer-events: none; }
 #hint.on { opacity: 1; }
-#perf { position: fixed; left: 16px; bottom: 90px; z-index: 30; font: 12px/1.4 ui-monospace, Menlo, monospace; padding: 8px 10px; white-space: pre; display: none; }
-body.perf #perf { display: block; }
 body.expert #infocard { right: auto; left: 16px; top: 72px; }
 body.presenting { cursor: none; }
 body.presenting #search, body.presenting #tools, body.presenting #timebar, body.presenting #hint, body.presenting #tourcard { display: none !important; }
@@ -616,8 +624,8 @@ body.expert #trace { top: auto; bottom: 100px; }
 <div id="tourcard" class="glass" role="dialog" aria-live="polite" aria-label="Tour"></div>
 <div id="capbar" aria-live="polite"></div>
 <aside id="trace" class="glass" aria-label="Visual traceroute"></aside>
-<div id="perf" class="glass"></div>
-<div id="credits">Earth: NASA Blue Marble &amp; Black Marble<span class="long"> (public domain;</span> not endorsed by NASA<span class="long">)</span><span class="tiles"> · Sentinel-2 cloudless - <a href="https://s2maps.eu" target="_blank" rel="noopener">https://s2maps.eu</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)</span><span id="creditsMore"> · Orbital data: CelesTrak</span><span class="osm"> · Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</span><span class="long"> · Network inside Pakistan is illustrative</span> · <button class="linkbtn" id="btnAbout2" style="color:inherit;text-decoration:underline">Sources</button></div>
+<div id="busy" class="glass" role="status" aria-live="polite"><span class="ring" aria-hidden="true"></span><span class="txt"></span></div>
+<div id="credits">Earth: NASA Blue Marble &amp; Black Marble<span class="long"> (public domain;</span> not endorsed by NASA<span class="long">)</span><span class="tiles" id="creditTiles"></span><span id="creditsMore"> · Orbital data: CelesTrak</span><span class="roads"> · Roads © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a></span><span class="osm"> · Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</span><span class="long"> · Network inside Pakistan is illustrative</span> · <button class="linkbtn" id="btnAbout2" style="color:inherit;text-decoration:underline">Sources</button></div>
 <script type="application/json" id="sourcesData">/*SOURCES*/</script>
 <div id="tip" class="card"></div>
 <div id="insp" class="card"></div>

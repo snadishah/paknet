@@ -12,6 +12,7 @@ import { pose, altitudeKm } from './globecam.js';
 
 const SHOW_KM = 30, HIDE_KM = 70; // altitude where a city appears / is unloaded
 export const cityState = { loaded: {}, failed: {}, onStatus: null };
+export const cityBusy = () => Object.values(groups).some(g => g.loading); // the loading spinner
 const groups = {};
 
 function enuGroup(lat, lon) {

@@ -7,7 +7,7 @@ import COUNTRIES from '../data/borders.json'; // simplified by scripts/simplify-
 import { PROV } from '../geo/coast.js';
 import { latLonToFlat, greatCircle, GEO_ALT } from '../geo/globe.js';
 import { layer, fatLine, fatSegs, camera, renderer, disposeLine, onResize } from './scene.js';
-import { toGlobe, fromLatLon, edgeGlobe, mapPolyline } from './geo3.js';
+import { toGlobe, fromLatLon, edgeGlobe, mapPolyline, setRoadGeometry } from './geo3.js';
 
 // PakSat-MM1's position (ECEF km). Phase 2's satellite module updates it from the orbit data.
 export const paksatPos = fromLatLon(0, 38.2, GEO_ALT);
@@ -55,22 +55,40 @@ function nodePoints(list, extra = {}) {
   const p = new THREE.Points(g, glyphMat()); p.frustumCulled = false; p.renderOrder = 6; p.userData.nodes = list; Object.assign(p.userData, extra); return p;
 }
 
-export function drawNetwork(G) {
+export function drawNetwork(G, ROADS = null) {
   const { nodes, edges, cableEdges, plannedEdges, SAT, accessNodes } = G;
   // globe position of every node (render-only)
   for (const n of nodes) n.gpos = n.tier === 'sat' ? paksatPos : toGlobe(n.pos.x, n.pos.y, 0);
+  // fibre corridors follow the real roads they run along (baked by scripts/roads.js)
+  if (ROADS?.corridors) for (const e of edges) if (e.type === 'fiber' || e.type === 'aerial') {
+    const r = ROADS.corridors[`${nodes[e.a].name}|${nodes[e.b].name}`]; if (r) setRoadGeometry(e, r);
+  }
   const gBorders = layer('borders'), gCables = layer('cables'), gBackbone = layer('backbone'), gMW = layer('microwave', false), gSat = layer('satellite', false),
     gPlanned = layer('planned', false), gCities = layer('cities', false), gLastMile = layer('lastmile', false), gRouters = layer('routers'), gGate = layer('gateways'), gOff = layer('offices');
   layer('packets'); layer('heat', false); layer('fx'); layer('labels');
+  // the main roads, drawn softly under the network when no road-label imagery is available (OSM)
+  const gRoads = layer('roads', true, gBorders.parent);
+  if (ROADS?.lines) {
+    const segs = []; for (const l of ROADS.lines) { let p = fromLatLon(l[1], l[0]); for (let i = 2; i < l.length; i += 2) { const q = fromLatLon(l[i + 1], l[i]); segs.push({ a: p, b: q }); p = q; } }
+    const roadLines = fatSegs(segs, { color: 0xd9c6a2, linewidth: 1.0, opacity: 0.0 }); // thinner and warmer than the bright fibre lines roadLines.renderOrder = 1; gRoads.add(roadLines); gRoads.userData.lines = roadLines;
+  }
 
   // borders: Pakistan's provinces (thin) and the neighbours' outlines (fainter)
   {
     const ring = r => mapPolyline(r.map(([lo, la]) => { const f = latLonToFlat(la, lo); return { x: f.x, y: f.y }; }), 0.25);
     const segs = (rings, out) => { for (const r of rings) { const p = ring(r); for (let i = 1; i < p.length; i++) out.push({ a: p[i - 1], b: p[i] }); } return out; };
     const prov = segs(Object.values(PROV).flatMap(polys => polys.map(p => p[0])), []);
-    gBorders.add(fatSegs(prov, { color: 0xffffff, linewidth: 1, opacity: 0.32 }));
+    gBorders.add(fatSegs(prov, { color: 0xffffff, linewidth: 0.8, opacity: 0.22 })); // thin, soft province lines
     const nb = segs(['IND', 'AFG', 'IRN', 'CHN', 'OMN', 'TJK', 'ARE'].flatMap(k => (COUNTRIES[k] || []).map(p => p[0])), []);
-    gBorders.add(fatSegs(nb, { color: 0xffffff, linewidth: 0.8, opacity: 0.16 }));
+    gBorders.add(fatSegs(nb, { color: 0xffffff, linewidth: 0.8, opacity: 0.12 }));
+    // Pakistan's national border: a dark under-stroke for contrast, a soft warm glow and a crisp bright line.
+    // Widths are in screen pixels, so it reads the same from space and from a city.
+    const pak = segs((COUNTRIES.PAK || []).map(p => p[0]), []);
+    const gPak = layer('pakborder', true, gBorders.parent);
+    gPak.add(fatSegs(pak, { color: 0x000000, linewidth: 4.5, opacity: 0.35 }));
+    gPak.add(fatSegs(pak, { color: 0xffd9a0, linewidth: 10, opacity: 0.13 }));
+    gPak.add(fatSegs(pak, { color: 0xfff4dc, linewidth: 2.2, opacity: 0.95 }));
+    gPak.children.forEach(l => { l.renderOrder = 5; l.userData.o = l.material.opacity; });
   }
 
   // backbone: fibre trunks brighter than regional fibre; dashed aerial / cross-border / microwave

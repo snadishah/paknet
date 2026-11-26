@@ -13,6 +13,7 @@ import { KIDS } from '../stories/kids.js';
 import { flyTo } from '../render/globecam.js';
 import { fromLatLon } from '../render/geo3.js';
 import { setAttackGrey } from '../render/packets.js';
+import { clearBursts } from '../render/fx.js';
 import { edgeCapacityGbps, edgeDelayMs } from '../sim/links.js';
 import { KM_PER_UNIT } from '../geo/globe.js';
 import * as fx from '../render/scenefx.js';
@@ -149,7 +150,7 @@ export function initScenarios(ctx) {
   // ---------- the player ----------
   let cur = null; // { id, def, t, i (next beat), paused, ended }
   function reset() {
-    fx.clearSceneFx(); setAttackGrey(false);
+    fx.clearSceneFx(); clearBursts(); setAttackGrey(false);
     try { kit().reset(); } catch { /* kit not ready */ }
     ctx.setLayer('heat', false); ctx.setLayer('microwave', false); ctx.setLayer('planned', false);
     setProtocol('OSPF'); kit().setDefence(true);
@@ -171,7 +172,9 @@ export function initScenarios(ctx) {
   }
   function stepNext() { // jump to the next beat (or the end)
     if (!cur) return; const b = cur.def.beats[cur.i];
-    cur.t = b ? Math.max(cur.t, b[0]) : cur.def.dur; fire(); render();
+    cur.t = b ? Math.max(cur.t, b[0]) : cur.def.dur; fire();
+    if (!b) cur.ended = true; // stepping past the last beat ends the story, even while paused
+    render();
   }
   function fire() { const b = cur.def.beats; while (cur.i < b.length && b[cur.i][0] <= cur.t) { b[cur.i][1](cur); cur.i++; } }
   function phase() { const [, bad, heal] = cur.def.phases; return cur.ended ? 'learn' : cur.t >= heal ? 'heal' : cur.t >= bad ? 'bad' : 'what'; }

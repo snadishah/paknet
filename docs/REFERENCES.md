@@ -473,6 +473,25 @@ These come from the research brief that defines the redesign ("Master Prompt", N
 - Office traffic volume (6 parcels per second per office at the evening peak, 0.002 Gbit each) is chosen for visibility; it does not change the network's load.
 - Slow motion near the ground (down to ×1/300) is a display choice: the simulator's delays are unchanged, only shown slower.
 
+## 9. Round 2 (Nov 2026): imagery providers, roads, Pakistan outline
+
+### 9.1 Close-up imagery (src/config/imagery.js)
+| Provider | Use | Licence / credit shown | Notes |
+|---|---|---|---|
+| Esri World Imagery (ArcGIS Location Platform, key in `.env`) | satellite photos below ~1,500 km, up to zoom 19 | "Powered by Esri" (linked to esri.com) + the service's own `copyrightText`, fetched at runtime; on 26 Nov 2026: "Esri, Vantor, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community" (S124, S125) | detail: z19 Karachi/Lahore/Islamabad, z18 Peshawar/Quetta/Hawke's Bay (Quetta z19 = 404) |
+| Esri Static Basemap Tiles, style `arcgis/imagery/labels` | roads + place names over the imagery | "Esri, TomTom, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors, and the GIS User Community" (or the service's text) | **not available with the current key** (HTTP 401, code 498); the build checks once and falls back to the OSM road overlay |
+| MapTiler Satellite Hybrid | fallback 1 (only if `MAPTILER_KEY`) | "© MapTiler © OpenStreetMap contributors" | not configured |
+| EOX Sentinel-2 cloudless | fallback 2 (no key) | "Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data)" (S119) | CC BY 4.0 (2016 layer) |
+| NASA Blue Marble / Black Marble | from space; last fallback | public domain (S116–S118) | — |
+
+Keys: read from `.env` (git-ignored) at build time; never committed, never logged (verify redacts `token=`/`key=`). A browser key can be read by anyone with the built page, so builds that contain a key are for local use only.
+
+### 9.2 Roads (src/data/roads.json, scripts/roads.js)
+OpenStreetMap motorway, trunk and primary roads in Pakistan via the Overpass API (S121), © OpenStreetMap contributors, ODbL. 86 of 87 fibre corridors are snapped to the road path between their two cities (shortest road path, accepted if ≤ 2.4× the straight distance; mountain roads such as the KKH wind). **Which road each corridor follows is an assumption** (operators' real fibre routes are not public); fibre along national highways is common practice. Render-only: the simulator's lengths and delays are unchanged.
+
+### 9.3 Pakistan outline
+Natural Earth 10 m admin-0 "PAK" polygon (as in §8), simplified to ~1 km (`scripts/simplify-borders.mjs`), used for the national border line and the mask that dims neighbouring countries.
+
 ## Source list
 
 All web pages were accessed 21 Nov 2026. "(live)" means a database or API that changes over time.
@@ -602,6 +621,11 @@ All web pages were accessed 21 Nov 2026. "(live)" means a database or API that c
 - S121 — OpenStreetMap contributors, Overpass API (ODbL). https://overpass-api.de
 - S122 — satellite.js 7.2.0, SGP4/SDP4 propagation (MIT). https://github.com/shashwatak/satellite-js
 - S123 — NASA SVS 3615, Blue Marble Next Generation equirectangular Earth (checked as an alternative source; not used: clouds baked in). https://svs.gsfc.nasa.gov/3615
+
+**Round 2: imagery and attribution** (accessed 26 Nov 2026)
+- S124 — Esri, World Imagery MapServer (ArcGIS Location Platform), service metadata `copyrightText` (live). https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer
+- S125 — Esri Developer, "Esri and data attribution: interactive maps" (Powered by Esri requirement). https://developers.arcgis.com/documentation/esri-and-data-attribution/interactive-maps/
+- S126 — Esri Developer, Static Basemap Tiles service, style arcgis/imagery/labels. https://developers.arcgis.com/rest/static-basemap-tiles/
 
 **Pages I tried but could not open** (not used as the basis for any status)
 - PID press release 31076 (MoITT on SMW6): certificate error.

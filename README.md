@@ -27,7 +27,7 @@ The app works offline. Only the close-up satellite photos of Pakistan come from 
 Other commands:
 - `npm test` runs the unit tests for the routing and simulation logic.
 - `npm run verify` builds the app, opens it in a hidden browser at laptop and phone sizes, takes screenshots and checks for errors. The results are in `.verify/`.
-- Add `?perf=1` to the address (e.g. `http://localhost:4173/?perf=1`) to see frame rate and draw calls.
+- Add `?perf=1` to the address (e.g. `http://localhost:4173/?perf=1`) and open the browser's developer console (⌥⌘J in Chrome): it logs the frame rate every 2 seconds. Nothing is ever shown on screen.
 
 ## How to use it
 

@@ -22,9 +22,9 @@ bGeo.setAttribute('aSize', new THREE.BufferAttribute(bSize, 1)); bGeo.setAttribu
 const projScale = () => renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
 const bMat = new THREE.ShaderMaterial({
   // no depth test: a big ring must not be cut in half by the globe; rings behind the Earth are skipped in updateFx
-  transparent: true, depthWrite: false, depthTest: false, uniforms: { uProj: { value: projScale() } },
-  vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aAlpha; uniform float uProj; varying vec3 vC; varying float vA;
-    void main(){ vC=aColor; vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize = min(512., aSize * uProj / -mv.z); gl_Position=projectionMatrix*mv; }`,
+  transparent: true, depthWrite: false, depthTest: false, uniforms: { uProj: { value: projScale() }, uPR: { value: renderer.getPixelRatio() } },
+  vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aAlpha; uniform float uProj; uniform float uPR; varying vec3 vC; varying float vA;
+    void main(){ vC=aColor; vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize = min(180. * uPR, aSize * uProj / -mv.z); /* a ring never fills the screen */ gl_Position=projectionMatrix*mv; }`,
   fragmentShader: `varying vec3 vC; varying float vA; void main(){ float r=length(gl_PointCoord-.5)*2.; float a = smoothstep(.84,.9,r) * (1.-smoothstep(.96,1.,r)); if (a<=0.) discard; gl_FragColor=vec4(vC, a*vA); }`
 });
 const bPoints = new THREE.Points(bGeo, bMat); bPoints.frustumCulled = false; bPoints.renderOrder = 8;
@@ -41,8 +41,10 @@ let hiLines = [];
 export const hasHighlight = () => hiLines.length > 0;
 export function clearHighlight() { hiLines.forEach(l => { gFX().remove(l); disposeLine(l); }); hiLines = []; }
 export function highlightPath(src, pe) {
-  clearHighlight(); const p = buildPath(src, pe); const flat = []; for (let i = 0; i < p.n; i++) flat.push({ x: p.arr[i * 3], y: p.arr[i * 3 + 1] });
-  const pts = mapPolyline(flat);
+  clearHighlight(); const p = buildPath(src, pe);
+  // stitch each edge's drawn geometry (road-following where it has a road) in travel order
+  const pts = []; let cur = src;
+  for (const e of pe) { const g = edgeGlobe(e), fw = e.a === cur, seg = fw ? g : [...g].reverse(); for (let i = pts.length ? 1 : 0; i < seg.length; i++) pts.push(seg[i]); cur = fw ? e.b : e.a; }
   const a = fatLine(pts, { color: 0xffffff, linewidth: 6, opacity: 0.35 }); const b = fatLine(pts, { color: 0xf0a35b, linewidth: 3, opacity: 1, dashed: true, dashSize: 14, gapSize: 6 });
   b.userData.anim = true; a.renderOrder = b.renderOrder = 7; gFX().add(a, b); hiLines.push(a, b); return p;
 }
@@ -69,7 +71,9 @@ function rebuildCuts() {
 export function markCut(e) { const gp = edgeGlobe(e), mid = gp[Math.floor(gp.length * (e.cable ? 0.3 : 0.5))]; e.cutPos = mid; cutMarks.set(e.id, { e, mid }); rebuildCuts(); }
 export function unmarkCut(e) { if (cutMarks.delete(e.id)) rebuildCuts(); }
 export function setMarkScale() {}
-export function setFxPixelRatio(pr) { xMat.uniforms.uPR.value = pr; bMat.uniforms.uProj.value = projScale(); }
+export function setFxPixelRatio(pr) { xMat.uniforms.uPR.value = pr; bMat.uniforms.uPR.value = pr; bMat.uniforms.uProj.value = projScale(); }
+// Remove every ring at once (a scenario ends: its ripples must not spill into the next view)
+export function clearBursts() { bursts.length = 0; }
 
 // ---------- shields ----------
 const shields = [];

@@ -11,6 +11,7 @@ import { scene, camera, renderer, fatSegs, disposeLine } from './scene.js';
 import { paksatPos } from './network.js';
 import { addLabel } from './labels.js';
 import { fromLatLon } from './geo3.js';
+import { busyBegin } from '../busy.js';
 
 export const satLayers = { far: true, soon: false, eyes: false, nav: false };
 export const satMeta = { fetched: null, groups: {} };
@@ -132,6 +133,7 @@ function askRings(t) {
 export function initSatellites(clock, onMove) {
   scene.add(group);
   satState.clock = clock; satState.onMove = onMove;
+  const end = busyBegin('Loading satellites');
   fetch('assets/satellites.json').then(r => r.json()).then(snap => {
     setup(snap);
     try {
@@ -141,7 +143,7 @@ export function initSatellites(clock, onMove) {
       worker.postMessage({ type: 'init', omms: list.map(s => s.omm) });
     } catch { worker = null; }
     applyLayers(); satState.ready = true;
-  }).catch(() => { satState.failed = true; });
+  }).catch(() => { satState.failed = true; }).finally(end);
   // labels that follow their satellite
   satState.mm1Label = addLabel('PakSat-MM1', new THREE.Vector3(), { cls: 'sat', minR: 4000, maxR: 1e9, prio: 1, key: 'sat:mm1', layer: null });
   satState.r1Label = addLabel('PakSat-1R (retired)', new THREE.Vector3(), { cls: 'sat dim', minR: 30000, maxR: 1e9, prio: 6, key: 'sat:1r' });
@@ -158,7 +160,7 @@ export function applyLayers() {
   if (!N) { setTracks([]); return; }
   list.forEach((s, i) => { vis[i] = satLayers[s.g.layer] && (s.role !== 'soon' || i % sampleStep === 0) ? 1 : 0; });
   geo.attributes.aVis.needsUpdate = true;
-  cap.visible = satLayers.far; satState.capOn = satLayers.far;
+  satState.capOn = satLayers.far; // updateSatellites shows the disc only from high up (no one-frame flash here)
   satState.ringT = -1e15; // recompute tracks for the visible groups
 }
 

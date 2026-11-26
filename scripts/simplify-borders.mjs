@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const C = JSON.parse(readFileSync(join(root, 'data/countries.json'), 'utf8'));
-const KEYS = ['IND', 'AFG', 'IRN', 'CHN', 'OMN', 'TJK', 'ARE'];
+const KEYS = ['PAK', 'IND', 'AFG', 'IRN', 'CHN', 'OMN', 'TJK', 'ARE'];
 const TOL = 0.01; // degrees (~1 km)
 
 // Douglas–Peucker on [lon, lat] points

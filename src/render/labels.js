@@ -15,9 +15,9 @@ export const labelState = { enabled: true, extra: null }; // extra: (label) => b
 const labels = [];
 
 // pos: Vector3 (globe). prio: lower = more important. node: optional sim node (click → info card).
-export function addLabel(text, pos, { cls = '', minR = 0, maxR = 1e9, prio = 5, node = null, layer = null, key = null } = {}) {
+export function addLabel(text, pos, { cls = '', minR = 0, maxR = 1e9, prio = 5, node = null, layer = null, key = null, fade = null } = {}) {
   const el = document.createElement('div'); el.className = 'ml ' + cls; el.textContent = text; layerEl.appendChild(el);
-  const l = { text, pos, el, minR, maxR, prio, node, layer, key: key || text, on: false, w: text.length * (cls.includes('country') ? 10.5 : 7.6) + 16, h: 20, forced: false };
+  const l = { text, pos, el, minR, maxR, prio, node, layer, key: key || text, on: false, w: text.length * (cls.includes('hero') ? 26 : cls.includes('country') ? 10.5 : 7.6) + 16, h: cls.includes('hero') ? 40 : 20, forced: false, fade };
   if (node) { el.classList.add('click'); el.onclick = () => labelState.onClick?.(node); }
   labels.push(l); labels.sort((a, b) => a.prio - b.prio); return l;
 }
@@ -27,7 +27,9 @@ export const findLabel = key => labels.find(l => l.key === key);
 export function buildLabels(G) {
   const { nodes, N, CABLES } = G;
   // From space: countries and seas
-  for (const [t, la, lo, p] of [['PAKISTAN', 29.8, 69.0, 0], ['AFGHANISTAN', 33.6, 65.8, 2], ['IRAN', 32.0, 54.5, 2], ['INDIA', 22.5, 78.5, 2], ['CHINA', 35.5, 90.0, 2], ['Arabian Sea', 16.5, 64.0, 3], ['OMAN', 21.0, 57.0, 4], ['SAUDI ARABIA', 23.5, 45.0, 4], ['Red Sea', 20.5, 38.5, 4], ['Indian Ocean', 2, 72, 4], ['UAE', 24.2, 54.6, 5]])
+  // the big PAKISTAN title from space: fades out smoothly between 4,500 and 1,500 km as you zoom in
+  addLabel('PAKISTAN', fromLatLon(29.6, 69.3), { cls: 'country hero', minR: 1200, maxR: 60000, prio: -1, fade: [1300, 4500] });
+  for (const [t, la, lo, p] of [['AFGHANISTAN', 33.6, 65.8, 2], ['IRAN', 32.0, 54.5, 2], ['INDIA', 22.5, 78.5, 2], ['CHINA', 35.5, 90.0, 2], ['Arabian Sea', 16.5, 64.0, 3], ['OMAN', 21.0, 57.0, 4], ['SAUDI ARABIA', 23.5, 45.0, 4], ['Red Sea', 20.5, 38.5, 4], ['Indian Ocean', 2, 72, 4], ['UAE', 24.2, 54.6, 5]])
     addLabel(t, fromLatLon(la, lo), { cls: t === t.toUpperCase() ? 'country' : 'sea', minR: 1800, maxR: 40000, prio: p });
   // Near Pakistan: big cities and hubs
   for (const n of nodes) {
@@ -73,12 +75,12 @@ export function updateLabels(layers) {
         if (sx - l.w / 2 < 4 || sx + l.w / 2 > innerWidth - 4 || sy < 30 || sy > innerHeight - 4) want = false;
       }
       if (want) {
-        const b = [sx - l.w / 2, sy - 26, sx + l.w / 2, sy - 6];
+        const b = [sx - l.w / 2, sy - l.h - 6, sx + l.w / 2, sy - 6];
         for (const o of boxes) if (b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]) { want = false; break; }
         if (want) boxes.push(b);
       }
     }
-    if (want) { shown++; l.el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) translate(-50%, -100%)`; }
+    if (want) { shown++; l.el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) translate(-50%, -100%)`; if (l.fade) l.el.style.setProperty('--o', THREE.MathUtils.smoothstep(range, l.fade[0], l.fade[1]).toFixed(3)); }
     if (want !== l.on) { l.on = want; l.el.classList.toggle('on', want); }
   }
   void alt;

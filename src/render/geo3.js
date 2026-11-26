@@ -29,6 +29,20 @@ export function mapPolyline(pts, maxStep = 0.3, altKm = 0) {
 // Globe points of an edge, cached on the edge (render-only property).
 export function edgeGlobe(e) { return e.gpts || (e.gpts = mapPolyline(e.pts)); }
 
+// A fibre corridor that follows a real road (scripts/roads.js): flat [lon, lat, …] from e.a to e.b.
+// Render-only: the simulator's own length and delay for the edge don't change.
+export function setRoadGeometry(e, flat) {
+  const pts = []; for (let i = 0; i < flat.length; i += 2) pts.push(fromLatLon(flat[i + 1], flat[i]));
+  const cum = new Float32Array(pts.length); for (let i = 1; i < pts.length; i++) cum[i] = cum[i - 1] + pts[i].distanceTo(pts[i - 1]);
+  e.gpts = pts; e.gcum = cum; e.road = true;
+}
+// Point at fraction f (0 at e.a, 1 at e.b) along a road edge, into out.
+export function sampleRoad(e, f, out) {
+  const c = e.gcum, n = c.length, d = Math.max(0, Math.min(1, f)) * c[n - 1];
+  let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (c[m] < d) lo = m; else hi = m; }
+  const t = (d - c[lo]) / Math.max(1e-9, c[hi] - c[lo]); return out.copy(e.gpts[lo]).lerp(e.gpts[hi], t);
+}
+
 // Orient an object so its local +Z points away from the Earth's centre at pos.
 const Z = new THREE.Vector3(0, 0, 1), n3 = new THREE.Vector3();
 export function faceUp(obj, pos) { obj.position.copy(pos); obj.quaternion.setFromUnitVectors(Z, n3.copy(pos).normalize()); return obj; }

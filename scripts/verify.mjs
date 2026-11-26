@@ -19,7 +19,8 @@ const args = process.argv.slice(2);
 const onlyShots = (args.find(a => a.startsWith('--shots=')) || '').slice(8).split(',').filter(Boolean);
 mkdirSync(out, { recursive: true });
 
-if (!args.includes('--no-build')) execFileSync(process.execPath, [join(root, 'scripts/build.mjs')], { stdio: 'pipe' });
+// --no-keys: build without the imagery keys, to check the keyless fallbacks (EOX → NASA)
+if (!args.includes('--no-build')) execFileSync(process.execPath, [join(root, 'scripts/build.mjs')], { stdio: 'pipe', env: { ...process.env, ...(args.includes('--no-keys') ? { PAKNET_NO_KEYS: '1' } : {}) } });
 
 function dirSize(d) { let s = 0; for (const f of readdirSync(d)) { const p = join(d, f); const st = statSync(p); s += st.isDirectory() ? dirSize(p) : st.size; } return s; }
 const distMB = +(dirSize(join(root, 'dist')) / 1048576).toFixed(2);
@@ -41,11 +42,13 @@ for (const vp of VIEWPORTS) {
   const page = await ctx.newPage();
   const errors = [], warnings = [];
   // optional internet resources (close-up tiles, web font, live orbits) may fail offline: counted, not errors
-  const OPTIONAL = /tiles\.maps\.eox\.at|fonts\.(googleapis|gstatic)\.com|celestrak/;
+  const OPTIONAL = /tiles\.maps\.eox\.at|arcgis\.com|api\.maptiler\.com|fonts\.(googleapis|gstatic)\.com|celestrak/;
+  // never write an API key anywhere: strip token= / key= values from every logged URL or message
+  const redact = t => String(t).replace(/([?&](token|key)=)[^&\s'"]+/gi, '$1<redacted>');
   const netSoft = [];
-  page.on('console', m => { const t = m.type(), url = m.location()?.url || ''; if (t === 'error' && OPTIONAL.test(url)) netSoft.push(url); else if (t === 'error') errors.push(m.text()); else if (t === 'warning') warnings.push(m.text()); });
-  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-  page.on('requestfailed', r => { if (OPTIONAL.test(r.url())) netSoft.push(r.url()); else errors.push('requestfailed: ' + r.url()); });
+  page.on('console', m => { const t = m.type(), url = m.location()?.url || ''; if (t === 'error' && OPTIONAL.test(url)) netSoft.push(redact(url)); else if (t === 'error') errors.push(redact(m.text())); else if (t === 'warning') warnings.push(redact(m.text())); });
+  page.on('pageerror', e => errors.push('pageerror: ' + redact(e.message)));
+  page.on('requestfailed', r => { if (OPTIONAL.test(r.url())) netSoft.push(redact(r.url())); else errors.push('requestfailed: ' + redact(r.url())); });
   const v = { errors, warnings, shots: [], netSoft };
   const t0 = Date.now();
   await page.goto(`http://localhost:${PORT}/?verify=1`, { waitUntil: 'commit', timeout: 60000 });
@@ -69,7 +72,11 @@ for (const vp of VIEWPORTS) {
   // Continuous zoom from space to 300 m over Karachi: no black frame, no big jump.
   if (vp.frames && v.readyMs != null) {
     const z = await page.evaluate(() => window.__paknet?.zoomTest?.(150)).catch(e => (errors.push('zoomTest: ' + e.message), null));
-    if (z) { v.zoomMinLuma = Math.min(...z.slice(6)); v.zoomLuma = z; const zz = z.slice(6); /* the first steps are the globe growing from 27,000 km: smooth but fast */ v.zoomMaxJump = +Math.max(...zz.slice(2).map((x, i) => Math.abs(x - 2 * zz[i + 1] + zz[i]) / Math.max(20, zz[i + 1]))).toFixed(2); } // sudden spikes, not steady change
+    v.imagery = await page.evaluate(() => window.__paknet.debug.tileState.provider).catch(() => null);
+    v.zoomDetail = await page.evaluate(() => window.__paknet.zoomDetail).catch(() => null);
+    v.debugText = await page.evaluate(() => /\bfps\b|frame ms|draw calls|triangles/i.test(document.body.innerText)).catch(() => null);
+    // a black frame = a frame much darker than both neighbours (absolute brightness depends on day or night)
+    if (z) { v.zoomMinLuma = Math.min(...z.slice(1, -1).map((x, i) => x / Math.max(1, Math.min(z[i], z[i + 2])))); v.zoomLuma = z; const zz = z.slice(6); /* the first steps are the globe growing from 27,000 km: smooth but fast */ v.zoomMaxJump = +Math.max(...zz.slice(2).map((x, i) => Math.abs(x - 2 * zz[i + 1] + zz[i]) / Math.max(40, zz[i + 1]))).toFixed(2); } // floor 40/255: smaller changes in a dark scene aren't visible // sudden spikes, not steady change
   }
   // City view memory: geometries come back to the baseline after leaving the city
   if (vp.frames && v.readyMs != null) {
@@ -90,10 +97,11 @@ for (const vp of VIEWPORTS) {
       await page.evaluate(n => window.__paknet.shots[n](), n);
       await page.waitForTimeout(800);
       await shot(n);
+      (v.shotCalls ||= {})[n] = await page.evaluate(() => window.__paknetStats.calls).catch(() => null); // draw calls in this view
     } catch (e) { errors.push(`shot ${n}: ${e.message.split('\n')[0]}`); }
   }
   const stats = await page.evaluate(() => window.__paknetStats ? { ...window.__paknetStats } : null).catch(() => null);
-  if (stats) { v.drawCalls = stats.calls; v.maxDrawCalls = stats.maxCalls; v.triangles = stats.triangles; v.textures = stats.textures; }
+  if (stats) { v.drawCalls = stats.calls; v.maxDrawCalls = stats.maxCalls; v.maxDrawCallsAt = stats.maxAt; v.maxDrawCallsWhat = stats.maxWhat; v.triangles = stats.triangles; v.textures = stats.textures; }
   report.views[vp.name] = v;
   await ctx.close();
 }
@@ -104,12 +112,13 @@ report.checks = {
   ready: !!(mac.readyMs != null && phone.readyMs != null),
   firstScreenUnder3s: mac.readyMs != null && mac.readyMs < 3000,
   noConsoleErrors: mac.errors.length + phone.errors.length === 0,
-  drawCallsUnder100: mac.maxDrawCalls == null ? null : mac.maxDrawCalls <= 100,
+  drawCallsUnder150: mac.maxDrawCalls == null ? null : mac.maxDrawCalls <= 150, // round 2 budget: about 150
   assetsUnder25MB: distMB <= 25,
   p95Under20ms_smoke: mac.p95 == null ? null : mac.p95 <= 20,
   cityMemoryReturns: mac.cityDisposed ?? null,
+  noDebugTextOnScreen: mac.debugText == null ? null : !mac.debugText,
   scenariosEndToEnd: mac.scenariosOk ?? null,
-  zoomNoBlackFrame: mac.zoomMinLuma == null ? null : mac.zoomMinLuma > 20,
+  zoomNoBlackFrame: mac.zoomMinLuma == null ? null : mac.zoomMinLuma > 0.6,
   zoomNoPop: mac.zoomMaxJump == null ? null : mac.zoomMaxJump < 0.15
 };
 for (const v of Object.values(report.views)) { v.optionalNetFailures = v.netSoft.length; delete v.netSoft; v.errorCount = v.errors.length; v.errors = v.errors.slice(0, 8); v.warnings = v.warnings.slice(0, 5); }
@@ -121,12 +130,13 @@ const lines = [
   `dist size: ${distMB} MB  (≤ 25 MB: ${ok(report.checks.assetsUnder25MB)})`,
   `ready: mac ${mac.readyMs ?? '—'} ms, phone ${phone.readyMs ?? '—'} ms  (< 3 s: ${ok(report.checks.firstScreenUnder3s)})`,
   `frames (headless, smoke): ${mac.frames ?? 0} frames, p50 ${mac.p50 ?? '—'} ms, p95 ${mac.p95 ?? '—'} ms, max ${mac.maxFrame ?? '—'} ms`,
-  `draw calls: now ${mac.drawCalls ?? '—'}, max seen ${mac.maxDrawCalls ?? '—'} (≤ 100: ${ok(report.checks.drawCallsUnder100)}); triangles ${mac.triangles ?? '—'}; textures ${mac.textures ?? '—'}`,
+  `draw calls: now ${mac.drawCalls ?? '—'}, max seen ${mac.maxDrawCalls ?? '—'} (≤ 150: ${ok(report.checks.drawCallsUnder150)}); triangles ${mac.triangles ?? '—'}; textures ${mac.textures ?? '—'}`,
   `console errors: mac ${mac.errorCount}, phone ${phone.errorCount}  (${ok(report.checks.noConsoleErrors)}); optional internet requests failed: ${mac.optionalNetFailures + phone.optionalNetFailures}`,
   `first error: ${(mac.errors[0] || phone.errors[0] || 'none').slice(0, 140)}`,
-  `zoom space→300 m: min brightness ${mac.zoomMinLuma ?? '—'} (${ok(report.checks.zoomNoBlackFrame)}), biggest sudden change ${mac.zoomMaxJump ?? '—'} (${ok(report.checks.zoomNoPop)}); warnings ${mac.warnings.length}`,
+  `zoom space→300 m: darkest frame vs neighbours ${mac.zoomMinLuma != null ? mac.zoomMinLuma.toFixed(2) : '—'} (${ok(report.checks.zoomNoBlackFrame)}), biggest sudden change ${mac.zoomMaxJump ?? '—'} (${ok(report.checks.zoomNoPop)}); warnings ${mac.warnings.length}`,
   `city memory (geometries before/inside/after): ${mac.cityMem ? [mac.cityMem.before.geometries, mac.cityMem.inside.geometries, mac.cityMem.after.geometries].join(' / ') : '—'} (${ok(report.checks.cityMemoryReturns)})`,
   `scenarios end to end: ${mac.scenarios ? Object.values(mac.scenarios).filter(r => r.learned && !r.error).length + '/' + Object.keys(mac.scenarios).length : '—'} (${ok(report.checks.scenariosEndToEnd)})`,
+  `imagery provider seen: ${mac.imagery ?? '—'}; debug text on screen: ${mac.debugText ? 'YES' : 'none'}`,
   `screenshots: ${mac.shots.length + phone.shots.length} in .verify/ (${[...mac.shots, ...phone.shots].slice(0, 6).join(', ')}${mac.shots.length + phone.shots.length > 6 ? ', …' : ''})`,
   `overall: ${Object.entries(report.checks).every(([k, c]) => c !== false || k.endsWith('_smoke')) ? 'PASS' : 'FAIL'}  (details: .verify/report.json)`
 ];

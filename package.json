@@ -18,7 +18,8 @@
     "verify": "node scripts/verify.mjs",
     "orbits": "node scripts/fetch-orbits.mjs",
     "buildings": "node scripts/fetch-buildings.mjs",
-    "size": "node scripts/size.mjs"
+    "size": "node scripts/size.mjs",
+    "roads": "node scripts/fetch-roads.mjs"
   },
   "dependencies": {
     "satellite.js": "^7.2.0",

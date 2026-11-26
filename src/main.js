@@ -24,7 +24,8 @@ import { initScenarios } from './ui/scenarios.js';
 import { DV_ROUND_S } from './sim/params.js';
 import { renderer, labelRenderer, scene, camera, setLift } from './render/scene.js';
 import { buildGlobe, updateGlobe } from './render/globe.js';
-import { initTiles, updateTiles, tileDebug } from './render/tiles.js';
+import * as THREE from 'three';
+import { initTiles, updateTiles, tileDebug, tileState } from './render/tiles.js';
 import { initSatellites, updateSatellites } from './render/satellites.js';
 import { drawNetwork, glyphUniforms } from './render/network.js';
 import { buildLabels, updateLabels, hasCallouts } from './render/labels.js';
@@ -55,7 +56,9 @@ const globeReady = buildGlobe();
 initTiles();
 const G = buildTopology();
 addOffices(G); // five illustrative office hosts (leaf nodes: routes between cities don't change)
-const view = drawNetwork(G);
+// the road file loads in parallel with the textures; without it the corridors stay straight
+const ROADS = await fetch('assets/roads.json').then(r => (r.ok ? r.json() : null)).catch(() => null);
+const view = drawNetwork(G, ROADS);
 buildLabels(G);
 initPackets(G);
 const net = createNetwork(G);
@@ -82,6 +85,7 @@ ctx.inspector = initInspector(ctx);
 initMetrics(ctx);
 ctx.stories = initStories(ctx);
 initSources();
+ctx.debug = { scene };
 const shell = ctx.shell = initShell(ctx);
 shell.qualityLevel = () => qualityState.level;
 // satellites follow the shell's clock; PakSat links are redrawn when PakSat-MM1 moves
@@ -103,7 +107,7 @@ window.__sim = { SCEN, runHijack, runDDoS, runMalware, setTab, traceRoute: ctx.r
   traffic, net, interdomain: ctx.interdomain, stories: () => ctx.stories, shell, G, pose };
 // Screenshot set-ups used by scripts/verify.mjs (each resolves once the camera has arrived).
 const settle = (ms = 2500) => new Promise(r => setTimeout(r, ms));
-window.__paknet = { ctx, debug: { scene, cityState, qualityState }, shots: {
+window.__paknet = { ctx, debug: { scene, camera, renderer, cityState, qualityState, tileState }, shots: {
   'start': async () => { shell.start(true); await settle(500); },
   'pakistan': async () => { shell.start(true); await flyTo('pakistan', 10); await settle(1500); },
   'karachi': async () => { shell.start(true); await flyTo({ lat: 24.86, lon: 67.0, range: 25, tilt: 50, heading: 10 }, 10); await settle(9000); },
@@ -164,7 +168,7 @@ window.__paknet.zoomTest = async (stepMs = 0) => {
     setPose({ lat: 24.86, lon: 67.02, range: r0 * Math.pow(r1 / r0, i / N), heading: 0, tilt: Math.min(55, i * 1.6) });
     updateTiles(); setLift(Math.min(3, Math.max(0.002, altitudeKm * 0.0015)));
     if (stepMs) await new Promise(r => setTimeout(r, stepMs));
-    await new Promise(r => requestAnimationFrame(r)); out.push(+probeLuma().toFixed(1)); if (window.__paknet.debugZoom) console.log('step', i, out.at(-1), pose.range.toFixed(1), tileDebug());
+    await new Promise(r => requestAnimationFrame(r)); out.push(+probeLuma().toFixed(1)); if (window.__paknet.captureSteps?.includes(i)) (window.__paknet.captures ||= {})[i] = renderer.domElement.toDataURL('image/jpeg', 0.8); window.__paknet.zoomTestHook?.(); (window.__paknet.zoomDetail ||= []).push(`${i} ${pose.range.toFixed(0)}km ${tileDebug()} calls=${renderer.info.render.calls}`); if (window.__paknet.debugZoom) console.log('step', i, out.at(-1), pose.range.toFixed(1), tileDebug());
   }
   return out;
 };
@@ -172,11 +176,15 @@ window.__paknet.zoomTest = async (stepMs = 0) => {
 /* ---------- main loop ---------- */
 const fmtClock = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
 let last = performance.now();
+const VERIFY = new URLSearchParams(location.search).has('verify'); let peakCalls = 0;
 
 // Bursts where bundles are lost (tail drop, cut link, blocked) or swallowed by a sink.
+// Only in Expert mode, where the loss numbers are shown too; for everyone else these
+// unexplained red rings were noise (they come back, explained, in the stories that need them).
+const expertOn = () => document.body.classList.contains('expert');
 const packetEvents = {
-  drop: b => { if (Math.random() < 0.3) burst(packetPos(b, b.d), '#e5484d', 0.1, 0.5); },
-  arrive: b => { if (b.opt.sink && Math.random() < 0.2) burst(packetPos(b, b.d), '#e5484d', 0.22, 0.6); }
+  drop: b => { if (expertOn() && Math.random() < 0.3) burst(packetPos(b, b.d), '#e5484d', 0.1, 0.5); },
+  arrive: b => { if (expertOn() && b.opt.sink && Math.random() < 0.2) burst(packetPos(b, b.d), '#e5484d', 0.22, 0.6); }
 };
 
 // Advance everything that runs on simulated time by sdt (wall seconds × speed):
@@ -196,6 +204,9 @@ function frame(now) {
   const rawMs = now - last; const dt = Math.min(0.05, rawMs / 1000); last = now;
   updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updateCity(G.OFFICES);
   document.body.classList.toggle('city-on', Object.keys(cityState.loaded).length > 0); // OSM credit while buildings are shown
+  // our own road overlay when the imagery has no road labels: eased in below ~1,400 km
+  const rl = layers.roads?.userData.lines;
+  if (rl) { const want = tileState.labels !== 'provider' ? (1 - THREE.MathUtils.smoothstep(altitudeKm, 350, 1400)) * 0.38 : 0; rl.material.opacity += (want - rl.material.opacity) * Math.min(1, dt * 4); rl.visible = rl.material.opacity > 0.01; document.body.classList.toggle('roads-on', rl.visible); }
   // Slow motion near the ground: a 1 km hop takes microseconds of network time, so
   // close up the simulation runs slower (down to 1/300) and you can watch each hop.
   // The time of day is not affected (shell clock), and offices keep sending steadily.
@@ -203,7 +214,7 @@ function frame(now) {
   const sdt = state.playing ? dt * state.speed * slow : 0;
   if (state.playing) offices.spawn(dt);
   setTrailStep(Math.min(0.035, Math.max(0.00004, altitudeKm * 0.00012)));
-  const slowEl = ui('tbSlow'); if (slowEl) { const on = slow < 0.9; slowEl.classList.toggle('on', on); if (on) slowEl.innerHTML = `<span class="w">Slow motion </span>×1/${Math.round(1 / slow)}`; }
+  const slowEl = ui('tbSlow'); if (slowEl) { const on = slow < 0.9; slowEl.classList.toggle('on', on); if (on) slowEl.innerHTML = 'Slowed down<span class="w"> so you can watch</span>'; }
   // lift the network a little above the ground: metres in a city, a few km from space
   setLift(Math.min(3, Math.max(0.002, altitudeKm * 0.0015)));
   // network markers shrink when far away so the globe stays calm from space
@@ -219,6 +230,8 @@ function frame(now) {
   updateLabels(layers);
   ctx.inspector.frame();
   renderer.render(scene, camera); if (hasCallouts()) labelRenderer.render(scene, camera);
+  // verify only: what was drawn in the frame with the most draw calls so far
+  if (VERIFY && renderer.info.render.calls > peakCalls) { peakCalls = renderer.info.render.calls; const c = {}; scene.traverseVisible(o => { if (o.isMesh || o.isPoints || o.isLine) { let n = o, k = ''; while (n && !k) { k = n.name; n = n.parent; } c[k || o.type] = (c[k || o.type] || 0) + 1; } }); window.__paknetStats.maxWhat = { calls: peakCalls, ...c, tiles: tileDebug() }; }
   requestAnimationFrame(frame);
 }
 
