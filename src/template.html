@@ -406,6 +406,18 @@ body.expert #trace { top: auto; bottom: 100px; }
   #infocard { top: auto; bottom: 100px; max-height: 52vh; }
   body.expert #infocard { left: 16px; top: auto; }
 }
+/* Opening and closing (src/ui/fades.js): 300 ms fades; "leaving" keeps a closing element shown while it fades out.
+   Uses the translate property, so it adds to (never replaces) an element's own transform. */
+@keyframes fadeIn { from { opacity: 0; translate: 0 6px; } }
+@keyframes fadeOut { to { opacity: 0; translate: 0 6px; } }
+@keyframes chg { from { opacity: .25; } }
+#note.on, #conv.on, #notice.on, #about.on, .pop.on, #insp.on, #search ul.on, #menuLayers.on, #infocard.on, #menuScen.on, #scen.on, #tourcard.on, #capbar.on, #trace.on, #pane-story.on, .callout { animation: fadeIn .3s ease both; }
+#note.leaving, #conv.leaving, #about.leaving, #pane-story.leaving { display: flex; }
+#notice.leaving, .pop.leaving, #insp.leaving, #search ul.leaving, #menuLayers.leaving, #infocard.leaving, #menuScen.leaving, #scen.leaving, #tourcard.leaving, #capbar.leaving, #trace.leaving { display: block; }
+.leaving, .callout.leaving { animation: fadeOut .3s ease forwards; pointer-events: none !important; }
+.chg { animation: chg .35s ease; }
+#tip { transition-duration: .25s; } #glosstip { transition-duration: .25s; }
+@media (prefers-reduced-motion: reduce) { .leaving, .chg, .callout, .on { animation-duration: 1ms !important; } }
 @media (prefers-reduced-motion: reduce) { .ml, #intro, .chrome, #hint { transition: none !important; } }
 </style>
 </head>

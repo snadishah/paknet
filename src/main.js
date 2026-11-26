@@ -51,6 +51,7 @@ import { initSatelliteUI } from './ui/satui.js';
 import { createFailures } from './scenarios/failures.js';
 import { createSecurity } from './scenarios/security.js';
 import { createRoutingDemos } from './scenarios/routing-demos.js';
+import { updateFades } from './render/fade3d.js';
 
 /* ---------- build ---------- */
 const T0 = performance.now(); window.__paknetTiming = {};
@@ -233,7 +234,7 @@ function frame(now) {
   stepWorld(sdt);
   drawPackets(traffic.packets);
   const netNow = traffic.engine.now; updateOnward(netNow - (lastNet ?? netNow), 2 * pose.range * Math.tan(camera.fov * Math.PI / 360) / innerHeight); lastNet = netNow;
-  updateFx(dt);
+  updateFx(dt); updateFades(dt); // after the effects, so a fade wins over their own opacity for its 300 ms
   ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame
   updateLabels(layers);
   ctx.inspector.frame();

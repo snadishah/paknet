@@ -92,6 +92,8 @@ export function addCallout(pos, html, cls = '') {
   const d = document.createElement('div'); d.className = 'callout ' + cls; d.innerHTML = cls ? html : `<i></i>${html}`;
   const o = new CSS2DObject(d); o.position.copy(G3(pos)); scene.add(o); callouts.push(o); return o;
 }
-export function removeCallout(o) { const i = callouts.indexOf(o); if (i >= 0) callouts.splice(i, 1); scene.remove(o); o.element.remove(); }
-export function clearCallouts() { callouts.forEach(o => { scene.remove(o); o.element.remove(); }); callouts.length = 0; }
+// callouts fade out (300 ms) before they are removed
+const fadeAway = o => { o.element.classList.add('leaving'); setTimeout(() => { scene.remove(o); o.element.remove(); }, 300); };
+export function removeCallout(o) { const i = callouts.indexOf(o); if (i >= 0) callouts.splice(i, 1); fadeAway(o); }
+export function clearCallouts() { callouts.forEach(fadeAway); callouts.length = 0; }
 export const hasCallouts = () => callouts.length > 0;

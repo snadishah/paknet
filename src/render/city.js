@@ -56,8 +56,13 @@ async function load(office) {
   } catch { delete groups[k]; cityState.failed[k] = true; cityState.onStatus?.(k, false); }
 }
 
+// leaving a city: its buildings fade out (0.5 s, in updateCity), then are freed
 function unload(k) {
   const g = groups[k]; if (!g || g.loading) { delete groups[k]; return; }
+  g.userData.leaving ??= performance.now();
+}
+function free(k) {
+  const g = groups[k];
   scene.remove(g); g.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
   delete groups[k]; delete cityState.loaded[k];
 }
@@ -69,14 +74,16 @@ export function updateCity(offices) {
     lastCheck = now;
     for (const o of offices) {
       const dKm = gcDistance(pose.lat, pose.lon, o.lat, o.lon);
-      if (altitudeKm < SHOW_KM && dKm < 40) load(o);
+      if (altitudeKm < SHOW_KM && dKm < 40) { if (groups[o.key]?.userData?.leaving) groups[o.key].userData.leaving = null; load(o); } // came back while it faded: keep it
       else if (groups[o.key] && (altitudeKm > HIDE_KM || dKm > 120)) unload(o.key);
     }
   }
   // fade in over 0.8 s, and with altitude between 30 and 15 km
   for (const g of Object.values(groups)) {
     if (!g.children?.[0]?.userData?.meshes) continue; // still loading
-    const a = Math.min(1, (now - g.userData.shown) / 800) * (1 - THREE.MathUtils.smoothstep(altitudeKm, 15, SHOW_KM));
+    const out = g.userData.leaving ? 1 - (now - g.userData.leaving) / 500 : 1;
+    if (out <= 0) { free(Object.keys(groups).find(k => groups[k] === g)); continue; }
+    const a = Math.min(1, (now - g.userData.shown) / 800) * (1 - THREE.MathUtils.smoothstep(altitudeKm, 15, SHOW_KM)) * out;
     g.visible = a > 0.01;
     // always in the transparent pass, so they draw after the ground tiles (which skip the depth test)
     for (const m of g.children[0].userData.meshes) { m.material.opacity = a; m.material.depthWrite = a > 0.5; }

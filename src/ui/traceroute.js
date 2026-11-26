@@ -14,6 +14,8 @@ import { addLabel, removeLabel } from '../render/labels.js';
 
 import { layers, fatLine, disposeLine } from '../render/scene.js';
 import { cityState } from '../render/city.js';
+import { patchHtml } from './fades.js';
+import { fadeIn, fadeOut } from '../render/fade3d.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmtMs = ms => (ms < 1 ? ms.toFixed(2) : ms < 10 ? ms.toFixed(1) : Math.round(ms)) + ' ms';
@@ -63,21 +65,23 @@ export function initTraceroute(ctx) {
       return `<li><button data-hop="${i}"><span class="n">${i + 1}</span><span class="t"><b>${esc(name)}</b><small>${esc(job)}${how ? ' · ' + esc(how) : ''}</small>${ex}</span><span class="d">${i ? '+' + fmtMs(h.ms) : ''}</span></button></li>`;
     });
     const last = t.hops.at(-1);
-    if (t.far) rows.push(`<li><button data-far="1"><span class="n">${t.hops.length + 1}</span><span class="t"><b>${esc(t.far)}</b><small>Beyond our map: the server answers. Not simulated.</small></span><span class="d">?</span></button></li>`);
+    // past the simulator's sea point the parcels ride the same cable to its landing abroad: light in glass covers ~1 km every 5 µs
+    const ce = t.path.edges.at(-1), on = t.cable && ((tr.dest === 'whatsapp' && ce?.onwardGulf) || ce?.onward), onKm = on ? on.cum.at(-1) : 0, onMs = onKm * 0.005;
+    if (t.far) rows.push(`<li><button data-far="1"><span class="n">${t.hops.length + 1}</span><span class="t"><b>${esc(t.far)}</b><small>${on ? `Along the same cable to ${esc(on.dest.name)} (${Math.round(onKm).toLocaleString('en')} km), then the server answers. Estimated, not simulated.` : 'Beyond our map: the server answers. Not simulated.'}</small></span><span class="d">${on ? `+≈${fmtMs(onMs)}` : '?'}</span></button></li>`);
     const total = last.cum, measured = t.measuredMs;
-    ui('trace').innerHTML = `<div class="th"><div><p class="kick">Following parcels from</p><h3>${esc(t.office.name)}</h3><span class="tag grey">Illustrative office</span></div><button class="sbtn x" id="trX" aria-label="Close"><svg class="ico2"><use href="#s-close"/></svg></button></div>
+    patchHtml(ui('trace'), `<div class="th"><div><p class="kick">Following parcels from</p><h3>${esc(t.office.name)}</h3><span class="tag grey">Illustrative office</span></div><button class="sbtn x" id="trX" aria-label="Close"><svg class="ico2"><use href="#s-close"/></svg></button></div>
       <div class="dests" role="group" aria-label="What is the office sending?">${Object.entries(DESTS).map(([k, d]) => `<button class="chipbtn ${k === tr.dest ? '' : 'ghost'}" data-dest="${k}" aria-pressed="${k === tr.dest}">${esc(t.office.key === 'lahore' && k === 'email' ? 'Email to a friend in Karachi' : d.label)}</button>`).join('')}</div>
       <p class="why">${gloss(t.office.key === 'lahore' && tr.dest === 'email' ? EXPLAIN.email : EXPLAIN[tr.dest])}</p>
       ${changed ? '<p class="alert">The road just changed: a link on the old road is down, so the routers picked another one.</p>' : ''}
       ${t.fate !== 'ok' ? '<p class="alert">The parcels cannot get through right now: the routers have no working road yet.</p>' : ''}
       <ol class="trhops">${rows.join('')}</ol>
-      <p class="sum">Time to get there: <b>${fmtMs(total)}</b> one way, measured on each link right now${measured != null ? ` (parcels that arrived took ${fmtMs(measured)} on average)` : ''}. A blink takes about 100 ms.</p>`;
+      <p class="sum">Time to get there: <b>${fmtMs(total + onMs)}</b> one way${on ? ` (${fmtMs(total)} measured on each link right now, plus about ${fmtMs(onMs)} along the cable to ${esc(on.dest.name)})` : ', measured on each link right now'}${measured != null ? `; parcels took ${fmtMs(measured)} on average${on ? ' to reach that point at sea' : ''}` : ''}. A blink takes about 100 ms.</p>`);
     ui('trace').classList.add('on'); document.body.classList.add('tracing');
     if (focusSel) ui('trace').querySelector(focusSel)?.focus({ preventScroll: true });
     ui('trX').onclick = close;
     ui('trace').querySelectorAll('[data-dest]').forEach(b => b.onclick = () => { tr.dest = b.dataset.dest; tr.pathKey = ''; render(); });
     ui('trace').querySelectorAll('[data-hop]').forEach(b => b.onclick = () => goHop(t.hops[+b.dataset.hop], +b.dataset.hop));
-    ui('trace').querySelector('[data-far]')?.addEventListener('click', () => { if (tr.onward) flyTo({ ...llOf(tr.onward.end), range: 2500, tilt: 20 }); });
+    const far = ui('trace').querySelector('[data-far]'); if (far) far.onclick = () => { if (tr.onward) flyTo({ ...llOf(tr.onward.end), range: 2500, tilt: 20 }); };
   }
   const llOf = v => { const r = v.length(); return { lat: Math.asin(v.z / r) * 180 / Math.PI, lon: Math.atan2(v.y, v.x) * 180 / Math.PI }; };
   function goHop(h, i) {
@@ -89,13 +93,13 @@ export function initTraceroute(ctx) {
   // route on the map: the simulated path, then the same cable on to its landing abroad (one continuous line)
   function drawRoute(t) {
     highlightPath(t.path.seq[0], t.path.edges);
-    if (tr.onward) { layers.fx.remove(tr.onward.line); disposeLine(tr.onward.line); tr.onward = null; }
+    if (tr.onward) { const l = tr.onward.line; fadeOut(l, 300, () => { layers.fx.remove(l); disposeLine(l); }); tr.onward = null; }
     if (tr.farLabel) { removeLabel(tr.farLabel); tr.farLabel = null; }
     const ce = t.path.edges.at(-1);
     const o = t.cable && ((tr.dest === 'whatsapp' && ce?.onwardGulf) || ce?.onward);
     if (o) {
       const line = fatLine(o.gpts, { color: 0xf0a35b, linewidth: 2.4, opacity: 0.9 }); // same style as the highlighted route it continues
-      line.renderOrder = 7; layers.fx.add(line); tr.onward = { line, end: o.dest.pos };
+      line.renderOrder = 7; layers.fx.add(fadeIn(line)); tr.onward = { line, end: o.dest.pos };
       tr.farLabel = addLabel(`${t.far.split(' — ')[0]} · via ${o.dest.name}`, o.dest.pos, { cls: 'office', minR: 300, maxR: 40000, prio: 0, key: 'trace:far' });
     }
   }
@@ -106,7 +110,7 @@ export function initTraceroute(ctx) {
   }
   function close() {
     tr.key = null; clearInterval(tr.timer); setHighlightOffice(null); clearHighlight();
-    if (tr.onward) { layers.fx.remove(tr.onward.line); disposeLine(tr.onward.line); tr.onward = null; }
+    if (tr.onward) { const l = tr.onward.line; fadeOut(l, 300, () => { layers.fx.remove(l); disposeLine(l); }); tr.onward = null; }
     if (tr.farLabel) { removeLabel(tr.farLabel); tr.farLabel = null; }
     ui('trace').classList.remove('on'); document.body.classList.remove('tracing');
   }

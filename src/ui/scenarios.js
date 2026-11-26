@@ -17,6 +17,7 @@ import { clearBursts } from '../render/fx.js';
 import { edgeCapacityGbps, edgeDelayMs } from '../sim/links.js';
 import { KM_PER_UNIT } from '../geo/globe.js';
 import * as fx from '../render/scenefx.js';
+import { patchHtml } from './fades.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = x => `${Math.round(x * 100)}%`;
@@ -192,7 +193,7 @@ export function initScenarios(ctx) {
       <details id="scExp" ${document.body.classList.contains('expert') ? 'open' : ''}><summary>Expert details</summary><dl>${cur.def.expert().map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>`;
     const key = html.replace(/width:[^%]+%/, '');
     if (key !== lastHtml) {
-      lastHtml = key; const open = ui('scExp')?.open; ui('scen').innerHTML = html; if (open != null) ui('scExp').open = open;
+      lastHtml = key; patchHtml(ui('scen'), html); // details keep their open state
       ui('scX').onclick = () => stop(); ui('scStop').onclick = () => stop(); ui('scAgain').onclick = () => start(cur.id);
       ui('scPlay').onclick = () => { shell.setPlaying(!state.playing); render(); }; ui('scStep').onclick = stepNext;
     } else ui('scen').querySelector('.bar i').style.width = Math.min(100, cur.t / cur.def.dur * 100).toFixed(1) + '%';

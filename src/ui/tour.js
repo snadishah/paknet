@@ -13,6 +13,7 @@ import { satLayers, applyLayers } from '../render/satellites.js';
 import { state } from '../state.js';
 import { on } from '../events.js';
 import { labelState } from '../render/labels.js';
+import { patchHtml } from './fades.js';
 
 const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
 
@@ -62,16 +63,16 @@ export function initTour(ctx) {
   function render() {
     const s = run.steps[run.i], n = run.steps.length, last = run.i === n - 1;
     if (run.mode === 'tour') {
-      ui('tourcard').innerHTML = `<p class="cap">${gloss(s.text)}</p>
+      patchHtml(ui('tourcard'), `<p class="cap">${gloss(s.text)}</p>
         <div class="row"><div class="dots" aria-hidden="true">${run.steps.map((_, k) => `<i class="${k === run.i ? 'on' : ''}"></i>`).join('')}</div>
         <span class="count">${run.i + 1} of ${n}</span>
         <button class="sbtn" id="tcBack" ${run.i ? '' : 'disabled'}>Back</button><button class="chipbtn" id="tcNext">${last ? 'Finish' : 'Next'}</button></div>
-        <button class="skip" id="tcSkip">Skip the tour</button>`;
+        <button class="skip" id="tcSkip">Skip the tour</button>`);
       ui('tourcard').classList.add('on');
       ui('tcBack').onclick = () => go(run.i - 1); ui('tcNext').onclick = () => go(run.i + 1); ui('tcSkip').onclick = finish;
       ui('tcNext').focus({ preventScroll: true });
     } else {
-      ui('capbar').innerHTML = `<p>${gloss(s.text)}</p><span>${run.i + 1} / ${n} · ← → to move · Esc to leave</span>`;
+      patchHtml(ui('capbar'), `<p>${gloss(s.text)}</p><span>${run.i + 1} / ${n} · ← → to move · Esc to leave</span>`);
       ui('capbar').classList.add('on');
     }
   }

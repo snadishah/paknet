@@ -5,6 +5,7 @@ import { FLOW } from '../palette.js';
 import { ui, setTab, closePanel, panelOpen, activeTab } from './dom.js';
 import { layers, labelRenderer } from '../render/scene.js';
 import { flyTo, setTour, tourOn } from '../render/camera.js';
+import { showLayer, fadeOpacity } from '../render/fade3d.js';
 
 const LAYER_UI = [
   ['Network', [['backbone', 'Fibre backbone'], ['cables', 'Submarine cables'], ['gateways', 'Landing stations, IXPs, data centres'], ['microwave', 'Microwave backup (KKH)'], ['satellite', 'Satellite (PakSat-MM1)'], ['planned', 'Planned (Gwadar, CPEC-II)']]],
@@ -29,10 +30,10 @@ export function initPanel(ctx) {
   // layers
   ui('layerList').innerHTML = LAYER_UI.map(([g, items]) => `<h5>${g}</h5>` + items.map(([k, t]) => `<label class="chk"><input type="checkbox" data-k="${k}" ${layers[k].visible ? 'checked' : ''}><i></i>${t}</label>`).join('')).join('');
   function setLayer(k, v) {
-    layers[k].visible = v; const i = document.querySelector(`[data-k="${k}"]`); if (i) i.checked = v;
+    showLayer(layers[k], v); const i = document.querySelector(`[data-k="${k}"]`); if (i) i.checked = v; // 400 ms fade
     if (k === 'labels') labelRenderer.domElement.style.display = v ? '' : 'none';
     if (k === 'satellite') traffic.flags.satellite = v;
-    if (k === 'heat') { layers.backbone.children.forEach(c => c.material.opacity = v ? 0.25 : c.userData.o ?? c.material.opacity); G.nodes.forEach(n => n.queue && (n.queue.visible = v)); }
+    if (k === 'heat') { layers.backbone.children.forEach(c => fadeOpacity(c.material, v ? 0.25 : c.userData.o ?? c.material.opacity)); G.nodes.forEach(n => n.queue && (n.queue.visible = v)); }
   }
   traffic.flags.satellite = layers.satellite.visible;
   document.querySelectorAll('#layerList input').forEach(i => i.onchange = () => setLayer(i.dataset.k, i.checked));

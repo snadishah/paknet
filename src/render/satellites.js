@@ -21,7 +21,7 @@ const ROLE_STYLE = { pk: ['#f2d8a7', 11], retired: ['#8a949a', 8], soon: ['#cfd6
 // The orbit snapshot (src/data/satellites.json, copied to assets/) is loaded after
 // the first screen is up, so it doesn't slow the start. Until then there are no satellites.
 let list = [], N = 0, iMM1 = -1, i1R = -1; // list: { key, g, omm, norad, name, role }
-let pos = new Float32Array(0), vis = new Float32Array(0);
+let pos = new Float32Array(0), vis = new Float32Array(0), visT = new Float32Array(0), lastVis = 0; // vis eases towards visT (fades, 400 ms)
 const geo = new THREE.BufferGeometry();
 function setup(snap) {
   SNAP = snap; satMeta.fetched = snap.fetched;
@@ -32,7 +32,7 @@ function setup(snap) {
     for (const omm of d.sats) list.push({ key, g, omm, norad: omm.NORAD_CAT_ID, name: omm.OBJECT_NAME });
   }
   N = list.length; iMM1 = list.findIndex(s => s.norad === 59915); i1R = list.findIndex(s => s.norad === 37779);
-  pos = new Float32Array(N * 3); vis = new Float32Array(N);
+  pos = new Float32Array(N * 3); vis = new Float32Array(N); visT = new Float32Array(N);
   const col = new Float32Array(N * 3), size = new Float32Array(N), kind = new Float32Array(N), c = new THREE.Color();
   list.forEach((s, i) => {
     const role = s.norad === 37779 ? 'retired' : s.g.role; const [hex, sz] = ROLE_STYLE[role];
@@ -50,13 +50,13 @@ const mat = new THREE.ShaderMaterial({
   vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aKind; attribute float aVis; uniform float uPR; uniform float uScale;
     varying vec3 vC; varying float vK; varying float vV;
     void main(){ vC=aColor; vK=aKind; vV=aVis; vec4 mv = modelViewMatrix*vec4(position,1.);
-      gl_PointSize = aVis < .5 ? 0. : aSize * uScale * uPR; gl_Position = projectionMatrix*mv; }`,
+      gl_PointSize = aVis < .01 ? 0. : aSize * uScale * uPR; gl_Position = projectionMatrix*mv; }`,
   fragmentShader: `varying vec3 vC; varying float vK; varying float vV;
-    void main(){ if (vV < .5) discard; float r = length(gl_PointCoord-.5)*2.; if (r>1.) discard;
+    void main(){ if (vV < .01) discard; float r = length(gl_PointCoord-.5)*2.; if (r>1.) discard;
       float a = 1.-smoothstep(.65,1.,r);
       if (vK > .5 && vK < 1.5) a *= smoothstep(.35,.6,r) * .75; // hollow: "coming soon"
       if (vK > 1.5) a *= .6;
-      gl_FragColor = vec4(mix(vec3(1.), vC, smoothstep(0.,.5,r)), a); }`
+      gl_FragColor = vec4(mix(vec3(1.), vC, smoothstep(0.,.5,r)), a * vV); }`
 });
 const points = new THREE.Points(geo, mat); points.frustumCulled = false; points.renderOrder = 4;
 
@@ -158,8 +158,7 @@ let sampleStep = 1;
 export function setSatSample(step) { sampleStep = step; applyLayers(); }
 export function applyLayers() {
   if (!N) { setTracks([]); return; }
-  list.forEach((s, i) => { vis[i] = satLayers[s.g.layer] && (s.role !== 'soon' || i % sampleStep === 0) ? 1 : 0; });
-  geo.attributes.aVis.needsUpdate = true;
+  list.forEach((s, i) => { visT[i] = satLayers[s.g.layer] && (s.role !== 'soon' || i % sampleStep === 0) ? 1 : 0; }); // updateSatellites fades towards these
   satState.capOn = satLayers.far; // updateSatellites shows the disc only from high up (no one-frame flash here)
   satState.ringT = -1e15; // recompute tracks for the visible groups
 }
@@ -168,11 +167,14 @@ const p0 = new THREE.Vector3(), p1 = new THREE.Vector3();
 export function updateSatellites() {
   if (!N) return; // snapshot not loaded yet
   const t = satState.clock.t, rate = satState.clock.rate;
+  const now = performance.now(), step = Math.min(1, (now - lastVis) / 400); lastVis = now; let moved = false;
+  for (let i = 0; i < N; i++) if (vis[i] !== visT[i]) { vis[i] = visT[i] > vis[i] ? Math.min(visT[i], vis[i] + step) : Math.max(visT[i], vis[i] - step); moved = true; }
+  if (moved) geo.attributes.aVis.needsUpdate = true;
   if (!pending && (performance.now() - lastAsk > 200 || !A || t < tA || t > tB + 5000)) ask(t, rate);
   if (A) {
     const f = Math.max(0, Math.min(1.5, (t - tA) / Math.max(1, tB - tA)));
     for (let i = 0; i < N; i++) {
-      const k = i * 3; if (Number.isNaN(A[k]) || Number.isNaN(B[k])) { if (vis[i]) { vis[i] = 0; geo.attributes.aVis.needsUpdate = true; } continue; }
+      const k = i * 3; if (Number.isNaN(A[k]) || Number.isNaN(B[k])) { if (vis[i]) { vis[i] = visT[i] = 0; geo.attributes.aVis.needsUpdate = true; } continue; }
       p0.set(A[k], A[k + 1], A[k + 2]); p1.set(B[k], B[k + 1], B[k + 2]);
       const r = p0.length() + (p1.length() - p0.length()) * f; p0.lerp(p1, f).setLength(r); // stay on the orbit
       pos[k] = p0.x; pos[k + 1] = p0.y; pos[k + 2] = p0.z;

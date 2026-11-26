@@ -13,8 +13,10 @@ import { layers, renderer, sunLight, netRoot } from '../render/scene.js';
 import { tileState } from '../render/tiles.js';
 import { cityBusy } from '../render/city.js';
 import { busyLabel } from '../busy.js';
+import { initFades, patchHtml } from './fades.js';
 import { labelState } from '../render/labels.js';
 import { gloss } from './glossary.js';
+import { fadeIn } from '../render/fade3d.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const PKT = 5; // Pakistan Standard Time = UTC+5
@@ -29,6 +31,7 @@ const fmt = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor(
 export function initShell(ctx) {
   const { G, view, net } = ctx;
   const body = document.body, params = new URLSearchParams(location.search);
+  initFades(); // panels and cards fade in and out
   const sh = { started: false, expert: false, selected: null, searchEntries: [] };
   const perfLog = params.has('perf'); // developer check: console only, never on screen
   const verifyRun = params.has('verify');
@@ -39,7 +42,7 @@ export function initShell(ctx) {
   function start(skip = false) {
     if (sh.started) return; sh.started = true; spin.on = false;
     ui('intro').classList.add('gone'); setTimeout(() => ui('intro').style.display = 'none', 650);
-    body.classList.add('started'); labelState.enabled = true; netRoot.visible = true;
+    body.classList.add('started'); labelState.enabled = true; netRoot.visible = true; fadeIn(netRoot, 800); // the network fades in
     if (skip) setPose({ ...poseOf('pakistan') }); // Start: the tour (ui/tour.js) takes the camera from here
     emit('shell:started', { skip });
 
@@ -107,13 +110,13 @@ export function initShell(ctx) {
   const fmtText = t => (/[<&]/.test(t) ? t : gloss(t));
   function showInfo(info) {
     const c = ui('infocard'); expertFn = info.expert || null;
-    c.innerHTML = `<button class="sbtn x" id="icX" aria-label="Close"><svg class="ico2"><use href="#s-close"/></svg></button>
+    patchHtml(c, `<button class="sbtn x" id="icX" aria-label="Close"><svg class="ico2"><use href="#s-close"/></svg></button>
       ${info.kick ? `<p class="kick">${esc(info.kick)}</p>` : ''}<h3>${esc(info.title)}</h3>
       ${(info.tags || []).map(([t, cl]) => `<span class="tag ${cl || ''}">${esc(t)}</span>`).join('')}
       ${info.what ? `<p><b>What it is:</b> ${fmtText(info.what)}</p>` : ''}${info.why ? `<p class="why"><b>Why it matters:</b> ${fmtText(info.why)}</p>` : ''}
       ${info.extraHtml || ''}
       <div class="row">${info.showMe ? '<button class="chipbtn" id="icShow">Show me</button>' : ''}${(info.buttons || []).map((b, i) => `<button class="chipbtn ghost" data-ib="${i}">${esc(b[0])}</button>`).join('')}</div>
-      ${expertFn ? `<details id="icExp" ${sh.expert ? 'open' : ''}><summary>Expert details</summary><dl id="icDl"></dl></details>` : ''}`;
+      ${expertFn ? `<details id="icExp" ${sh.expert ? 'open' : ''}><summary>Expert details</summary><dl id="icDl"></dl></details>` : ''}`);
     c.classList.add('on');
     ui('icX').onclick = closeInfo;
     if (info.showMe) ui('icShow').onclick = info.showMe;

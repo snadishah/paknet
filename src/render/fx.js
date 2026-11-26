@@ -9,6 +9,7 @@ import { buildPath } from '../routing/paths.js';
 import { layers, fatLine, fatSegs, disposeLine, camera, renderer, onResize } from './scene.js';
 import { G3, faceUp, mapPolyline, edgeGlobe } from './geo3.js';
 import { altitudeKm } from './globecam.js';
+import { fadeIn, fadeOut } from './fade3d.js';
 
 const gFX = () => layers.fx;
 const K = KM_PER_UNIT;
@@ -39,14 +40,14 @@ export function burst(pos, color = '#dc2626', s = 0.2, life = 0.8) {
 // ---------- route highlight ----------
 let hiLines = [];
 export const hasHighlight = () => hiLines.length > 0;
-export function clearHighlight() { hiLines.forEach(l => { gFX().remove(l); disposeLine(l); }); hiLines = []; }
+export function clearHighlight() { hiLines.forEach(l => fadeOut(l, 300, () => { gFX().remove(l); disposeLine(l); })); hiLines = []; }
 export function highlightPath(src, pe) {
   clearHighlight(); const p = buildPath(src, pe);
   // stitch each edge's drawn geometry (road-following where it has a road) in travel order
   const pts = []; let cur = src;
   for (const e of pe) { const g = edgeGlobe(e), fw = e.a === cur, seg = fw ? g : [...g].reverse(); for (let i = pts.length ? 1 : 0; i < seg.length; i++) pts.push(seg[i]); cur = fw ? e.b : e.a; }
   const a = fatLine(pts, { color: 0xffffff, linewidth: 6, opacity: 0.35 }); const b = fatLine(pts, { color: 0xf0a35b, linewidth: 3, opacity: 1, dashed: true, dashSize: 14, gapSize: 6 });
-  b.userData.anim = true; a.renderOrder = b.renderOrder = 7; gFX().add(a, b); hiLines.push(a, b); return p;
+  b.userData.anim = true; a.renderOrder = b.renderOrder = 7; gFX().add(fadeIn(a), fadeIn(b)); hiLines.push(a, b); return p;
 }
 
 // ---------- cut marks: red dashed lines + an X, two draw calls for all of them ----------
