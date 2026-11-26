@@ -6,3 +6,4 @@ dist/v1.html
 .DS_Store
 .verify/
 dist/
+.env
