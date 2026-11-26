@@ -8,7 +8,7 @@ import { gloss } from './glossary.js';
 import { DESTS } from '../sim/offices.js';
 import { mediumName } from './route.js';
 import { flyTo } from '../render/globecam.js';
-import { highlightPath, clearHighlight } from '../render/fx.js';
+import { highlightPath, clearHighlight, hasHighlight } from '../render/fx.js';
 import { setHighlightOffice } from '../render/packets.js';
 import { addLabel, removeLabel } from '../render/labels.js';
 import { ONWARD } from '../render/network.js';
@@ -52,8 +52,10 @@ export function initTraceroute(ctx) {
     const t = offices.traceroute(tr.key, tr.dest); if (!t) return;
     const key = t.path.edges.map(e => e.id).join(',');
     const changed = tr.pathKey && key !== tr.pathKey;
-    if (key !== tr.pathKey) { tr.pathKey = key; drawRoute(t); }
+    if (key !== tr.pathKey || !hasHighlight()) { tr.pathKey = key; drawRoute(t); } // a cut elsewhere clears the highlight
     const expert = document.body.classList.contains('expert');
+    // remember which button had keyboard focus, so the 1 s refresh doesn't take it away
+    const fa = document.activeElement, focusSel = fa?.closest?.('#trace') ? (fa.dataset.hop != null ? `[data-hop="${fa.dataset.hop}"]` : fa.dataset.dest ? `[data-dest="${fa.dataset.dest}"]` : fa.id ? '#' + fa.id : null) : null;
     const rows = t.hops.map((h, i) => {
       const [name, job] = hopInfo(h, i, t);
       const how = h.edge ? `by ${mediumName(h.edge)}` : '';
@@ -71,6 +73,7 @@ export function initTraceroute(ctx) {
       <ol class="trhops">${rows.join('')}</ol>
       <p class="sum">Time to get there: <b>${fmtMs(total)}</b> one way, measured on each link right now${measured != null ? ` (parcels that arrived took ${fmtMs(measured)} on average)` : ''}. A blink takes about 100 ms.</p>`;
     ui('trace').classList.add('on'); document.body.classList.add('tracing');
+    if (focusSel) ui('trace').querySelector(focusSel)?.focus({ preventScroll: true });
     ui('trX').onclick = close;
     ui('trace').querySelectorAll('[data-dest]').forEach(b => b.onclick = () => { tr.dest = b.dataset.dest; tr.pathKey = ''; render(); });
     ui('trace').querySelectorAll('[data-hop]').forEach(b => b.onclick = () => goHop(t.hops[+b.dataset.hop], +b.dataset.hop));

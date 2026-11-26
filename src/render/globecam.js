@@ -73,6 +73,7 @@ export function toPose(k) {
 
 export function flyTo(k, dur) {
   const b = toPose(k); if (!b) return;
+  stopFly(); // resolve the move this one replaces, so nobody waits on it forever
   const a = { ...pose };
   const dist = gcDistance(a.lat, a.lon, b.lat, b.lon);
   // long hops rise above both ends, like a plane, so the Earth stays in view

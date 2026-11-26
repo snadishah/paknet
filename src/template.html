@@ -245,6 +245,11 @@ html, body { background: #000; }
 body:not(.expert) #header, body:not(.expert) #rail, body:not(.expert) #panel, body:not(.expert) #toasts, body:not(.expert) #mapbtns, body:not(.expert) #insp { display: none !important; }
 #strip, #notice { display: none !important; }
 body.expert #header { top: 72px; }
+body.expert #toasts { top: 150px; }
+/* Expert form controls in the dark theme */
+select { background-color: rgba(255,255,255,.06) !important; color: var(--ink) !important; border-color: var(--line-strong) !important; }
+select option { background: #151a20; color: #eef2f5; }
+input[type="range"] { accent-color: #8fc3e6; }
 body.expert #insp { left: 16px; right: auto; top: 260px; }
 #maplabels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
 .ml { position: absolute; left: 0; top: 0; white-space: nowrap; font: 500 14px/1 var(--f); color: #f2f5f7; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.6); opacity: 0; transition: opacity .3s ease; padding: 3px 6px; letter-spacing: .01em; }
@@ -385,7 +390,7 @@ body.touring #timebar, body.touring #hint { display: none; }
 #timebar .slowmo { font-size: 14px; color: #f6d9a8; padding: 0 8px; white-space: nowrap; display: none; } #timebar .slowmo.on { display: inline; }
 body.tracing #search { display: none; }
 body.expert #trace { top: auto; bottom: 100px; }
-@media (max-width: 600px) { #trace { top: auto; bottom: 96px; max-height: 50vh; } #timebar .slowmo { font-size: 12px; padding: 0 4px; } #timebar .slowmo .w { display: none; } }
+@media (max-width: 600px) { body.touring #trace { top: 120px; bottom: auto; max-height: 34vh; } #trace { top: auto; bottom: 96px; max-height: 50vh; } #timebar .slowmo { font-size: 14px; padding: 0 4px; } #timebar .slowmo .w { display: none; } }
 @media (max-width: 600px) {
   #search { width: calc(100vw - 32px); }
   #tools { top: 68px; }
@@ -612,7 +617,7 @@ body.expert #trace { top: auto; bottom: 100px; }
 <div id="capbar" aria-live="polite"></div>
 <aside id="trace" class="glass" aria-label="Visual traceroute"></aside>
 <div id="perf" class="glass"></div>
-<div id="credits">Earth: NASA Blue Marble &amp; Black Marble<span class="long"> (public domain; not endorsed by NASA)</span><span class="tiles"> · Sentinel-2 cloudless - <a href="https://s2maps.eu" target="_blank" rel="noopener">https://s2maps.eu</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)</span><span id="creditsMore"> · Orbital data: CelesTrak</span><span class="osm"> · Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</span><span class="long"> · Network inside Pakistan is illustrative</span> · <button class="linkbtn" id="btnAbout2" style="color:inherit;text-decoration:underline">Sources</button></div>
+<div id="credits">Earth: NASA Blue Marble &amp; Black Marble<span class="long"> (public domain;</span> not endorsed by NASA<span class="long">)</span><span class="tiles"> · Sentinel-2 cloudless - <a href="https://s2maps.eu" target="_blank" rel="noopener">https://s2maps.eu</a> by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)</span><span id="creditsMore"> · Orbital data: CelesTrak</span><span class="osm"> · Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</span><span class="long"> · Network inside Pakistan is illustrative</span> · <button class="linkbtn" id="btnAbout2" style="color:inherit;text-decoration:underline">Sources</button></div>
 <script type="application/json" id="sourcesData">/*SOURCES*/</script>
 <div id="tip" class="card"></div>
 <div id="insp" class="card"></div>

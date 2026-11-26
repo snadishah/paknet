@@ -69,6 +69,7 @@ function rebuildCuts() {
 export function markCut(e) { const gp = edgeGlobe(e), mid = gp[Math.floor(gp.length * (e.cable ? 0.3 : 0.5))]; e.cutPos = mid; cutMarks.set(e.id, { e, mid }); rebuildCuts(); }
 export function unmarkCut(e) { if (cutMarks.delete(e.id)) rebuildCuts(); }
 export function setMarkScale() {}
+export function setFxPixelRatio(pr) { xMat.uniforms.uPR.value = pr; bMat.uniforms.uProj.value = projScale(); }
 
 // ---------- shields ----------
 const shields = [];

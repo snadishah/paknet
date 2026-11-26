@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { GROUPS, SAT_INFO, GROUP_INFO, decodeSnapshot } from '../sat/catalog.js';
 import { makeRecords, positionsAt, orbitRing } from '../sat/propagate.js';
 import { R, GEO_ALT, ecefToLatLon } from '../geo/globe.js';
-import { scene, camera, renderer, fatLine, fatSegs, disposeLine } from './scene.js';
+import { scene, camera, renderer, fatSegs, disposeLine } from './scene.js';
 import { paksatPos } from './network.js';
 import { addLabel } from './labels.js';
 import { fromLatLon } from './geo3.js';
@@ -60,9 +60,7 @@ const mat = new THREE.ShaderMaterial({
 const points = new THREE.Points(geo, mat); points.frustumCulled = false; points.renderOrder = 4;
 
 // ---------- GEO belt and sample orbit tracks ----------
-const geoRing = fatLine(Array.from({ length: 241 }, (_, i) => { const a = i / 240 * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * (R + GEO_ALT), Math.sin(a) * (R + GEO_ALT), 0); }),
-  { color: 0xf2d8a7, linewidth: 1, opacity: 0.32 });
-geoRing.renderOrder = 3;
+const BELT = Array.from({ length: 241 }, (_, i) => { const a = i / 240 * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * (R + GEO_ALT), Math.sin(a) * (R + GEO_ALT), 0); });
 let tracks = null; let trackIdx = [];
 function pickTracks() {
   trackIdx = [];
@@ -75,6 +73,7 @@ function pickTracks() {
 function setTracks(rings) {
   if (tracks) { group.remove(tracks); disposeLine(tracks); tracks = null; }
   const segs = []; const cc = new THREE.Color();
+  if (satLayers.far) for (let i = 1; i < BELT.length; i++) segs.push({ a: BELT[i - 1], b: BELT[i], c: '#f2d8a7' }); // the geostationary belt
   rings.forEach((ring, j) => { const s = list[trackIdx[j]]; cc.set(ROLE_STYLE[s.role][0]); const hex = '#' + cc.getHexString(); for (let i = 1; i < ring.length; i++) segs.push({ a: new THREE.Vector3(...ring[i - 1]), b: new THREE.Vector3(...ring[i]), c: hex }); });
   if (!segs.length) return;
   tracks = fatSegs(segs, { vertexColors: true, linewidth: 0.8, opacity: 0.35, dashed: false }); tracks.renderOrder = 3; group.add(tracks);
@@ -107,7 +106,7 @@ const cap = new THREE.Mesh(capGeometry(0, 38.2, 71.4), capMat); cap.renderOrder 
 let capAt = null;
 
 const group = new THREE.Group(); group.name = 'satellites';
-group.add(points, geoRing, cap);
+group.add(points, cap); // the GEO belt is part of the tracks object (setTracks)
 
 // ---------- propagation: worker at ≤ 5 Hz, main-thread fallback ----------
 let A = null, B = null, tA = 0, tB = 1, pending = false, lastAsk = 0, worker = null;
@@ -125,6 +124,7 @@ function ask(t, rate) {
 function onPos(t0, t1, a, b) { A = a; B = b; tA = t0; tB = t1; pending = false; }
 function askRings(t) {
   pickTracks();
+  if (!trackIdx.length) { setTracks([]); return; }
   if (worker) worker.postMessage({ type: 'rings', idx: trackIdx, t });
   else { recsMain.recs ||= makeRecords(list.map(s => s.omm)); setTracks(trackIdx.map(i => orbitRing(recsMain.recs[i], new Date(t)))); }
 }
@@ -155,10 +155,10 @@ export const satState = { clock: null, onMove: null, ringT: -1e15, mm1Label: nul
 let sampleStep = 1;
 export function setSatSample(step) { sampleStep = step; applyLayers(); }
 export function applyLayers() {
-  if (!N) { geoRing.visible = satLayers.far; return; }
+  if (!N) { setTracks([]); return; }
   list.forEach((s, i) => { vis[i] = satLayers[s.g.layer] && (s.role !== 'soon' || i % sampleStep === 0) ? 1 : 0; });
   geo.attributes.aVis.needsUpdate = true;
-  geoRing.visible = satLayers.far; cap.visible = satLayers.far; satState.capOn = satLayers.far;
+  cap.visible = satLayers.far; satState.capOn = satLayers.far;
   satState.ringT = -1e15; // recompute tracks for the visible groups
 }
 
@@ -170,7 +170,7 @@ export function updateSatellites() {
   if (A) {
     const f = Math.max(0, Math.min(1.5, (t - tA) / Math.max(1, tB - tA)));
     for (let i = 0; i < N; i++) {
-      const k = i * 3; if (Number.isNaN(A[k]) || Number.isNaN(B[k])) { vis[i] = 0; continue; }
+      const k = i * 3; if (Number.isNaN(A[k]) || Number.isNaN(B[k])) { if (vis[i]) { vis[i] = 0; geo.attributes.aVis.needsUpdate = true; } continue; }
       p0.set(A[k], A[k + 1], A[k + 2]); p1.set(B[k], B[k + 1], B[k + 2]);
       const r = p0.length() + (p1.length() - p0.length()) * f; p0.lerp(p1, f).setLength(r); // stay on the orbit
       pos[k] = p0.x; pos[k + 1] = p0.y; pos[k + 2] = p0.z;
@@ -185,7 +185,7 @@ export function updateSatellites() {
     if (i1R >= 0 && !Number.isNaN(pos[i1R * 3])) satState.r1Label.pos.fromArray(pos, i1R * 3);
   }
   // sample orbits: refresh when the layers change or after 20 min of sim time
-  if (Math.abs(t - satState.ringT) > 20 * 60000) { satState.ringT = t; askRings(t); if (!trackIdx.length && tracks) { group.remove(tracks); disposeLine(tracks); tracks = null; } }
+  if (Math.abs(t - satState.ringT) > 20 * 60000) { satState.ringT = t; askRings(t); }
   // the coverage disc is for the view from space; it fades out as the camera comes down
   const alt = camera.position.length() - R; capMat.uniforms.uOpacity.value = 0.16 * THREE.MathUtils.smoothstep(alt, 3000, 9000); cap.visible = satState.capOn && alt > 3000;
   // points shrink a little from far away

@@ -122,7 +122,7 @@ window.__paknet = { ctx, debug: { scene, cityState, qualityState }, shots: {
   'tour-3': async () => { ctx.tour.go(2); await settle(3500); },
   'tour-8': async () => { ctx.tour.go(7); await settle(3500); ctx.tour.finish(); },
   'present': async () => { ctx.tour.startPresent(); ctx.tour.go(1); await settle(3500); },
-  'expert': async () => { ctx.tour.finish(); shell.closeInfo(); shell.setExpert(true); await flyTo('pakistan', 10); await settle(1500); shell.setExpert(false); }
+  'expert': async () => { ctx.tour.finish(); ctx.scen.stop(true); shell.closeInfo(); shell.setExpert(true); await flyTo('pakistan', 10); await settle(2500); } // last shot: Expert stays on for the screenshot
 } };
 
 // Zoom check for verify: from 27,000 km down to 300 m over Karachi in 48 steps,
@@ -199,7 +199,7 @@ function frame(now) {
   // Slow motion near the ground: a 1 km hop takes microseconds of network time, so
   // close up the simulation runs slower (down to 1/300) and you can watch each hop.
   // The time of day is not affected (shell clock), and offices keep sending steadily.
-  const slow = Math.min(1, Math.max(1 / 300, altitudeKm / 250));
+  const slow = ctx.scen.current ? 1 : Math.min(1, Math.max(1 / 300, altitudeKm / 250)); // scenarios run in real time
   const sdt = state.playing ? dt * state.speed * slow : 0;
   if (state.playing) offices.spawn(dt);
   setTrailStep(Math.min(0.035, Math.max(0.00004, altitudeKm * 0.00012)));

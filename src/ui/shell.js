@@ -30,7 +30,7 @@ export function initShell(ctx) {
   if (params.has('perf')) body.classList.add('perf');
 
   // ---------- first screen ----------
-  spin.on = true;
+  spin.on = !matchMedia('(prefers-reduced-motion: reduce)').matches; // the slow intro spin, unless motion is reduced
   labelState.enabled = false; netRoot.visible = false;
   function start(skip = false) {
     if (sh.started) return; sh.started = true; spin.on = false;
@@ -221,10 +221,10 @@ export function initShell(ctx) {
   // ---------- keyboard ----------
   addEventListener('keydown', ev => {
     if (ev.target.closest?.('input, textarea, select')) return;
+    if (sh.keyHook?.(ev)) return; // tour / presentation keys first (Esc leaves them, Space steps slides)
     if (ev.key === '/' ) { ev.preventDefault(); if (!sh.started) start(true); input_.focus(); return; }
     if (ev.key === 'Escape') { closeInfo(); ui('menuLayers').classList.remove('on'); return; }
     if (ev.key === ' ' && sh.started && !ev.target.closest('button')) { ev.preventDefault(); setPlaying(!state.playing); return; }
-    if (sh.keyHook?.(ev)) return;
     if (sh.started && keyNav(ev)) ev.preventDefault();
   });
   input.onInteract = () => { if (!sh.started) start(true); };
@@ -248,7 +248,7 @@ export function initShell(ctx) {
     const v = (h.get('v') || '').split(',').map(Number); if (v.length === 5 && v.every(Number.isFinite)) setPose({ lat: v[0], lon: v[1], range: v[2], heading: v[3], tilt: v[4] });
     if (h.get('t')) { const t = Date.parse(h.get('t') + 'Z'); if (Number.isFinite(t)) { setLive(false); clock.t = t; } }
     if (h.get('r')) setRate(+h.get('r'));
-    if (h.get('l') === 'flood') ui('tLight').click();
+    sh.setFloodLight(h.get('l') === 'flood');
     if (h.get('x') === '1') setExpert(true);
     const f = h.get('f'); if (f) { const e = entries.find(e => e.name === f); if (e) setTimeout(() => { const keep = { ...pose }; e.go(); setPose(keep); }, 0); }
     return true;

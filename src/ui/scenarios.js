@@ -58,7 +58,7 @@ export function initScenarios(ctx) {
       beats: [
         [1, () => fx.rocks(35.45, 74.05, 210)],
         [3.5, () => { const e = kkhFibre(); net.cutEdge(e); net.topologyChanged([e], 'OSPF'); ctx.setLayer('microwave', true); fx.spark(e.cutPos || e.gpts[0]); }],
-        [11, s => { s.towerTimer = setInterval(() => { const e = G.edges.find(x => x.type === 'mwbackup' && !x.cut); if (!e) { clearInterval(s.towerTimer); return; } net.cutEdge(e); net.topologyChanged([e], 'OSPF'); fx.spark(e.gpts[e.gpts.length - 1], 3); }, 450); }],
+        [11, s => { s.towerTimer = setInterval(() => { if (!state.playing) return; const e = G.edges.find(x => x.type === 'mwbackup' && !x.cut); if (!e) { clearInterval(s.towerTimer); return; } net.cutEdge(e); net.topologyChanged([e], 'OSPF'); fx.spark(e.gpts[e.gpts.length - 1], 3); }, 450); }],
         [26, () => flyTo('pakistan')]],
       metric: s => `Road to China: big glass cable (${Math.round(s.fib)} Gbps) → radio towers (${Math.round(s.mw)} Gbps) → none. China-bound parcels now wait; the rest use the sea cables.`,
       stop: s => clearInterval(s.towerTimer),
@@ -69,7 +69,7 @@ export function initScenarios(ctx) {
       before: s => { s.km0 = routeKm(N('Gwadar'), G.INTL.W); s.ms0 = routeMs(N('Gwadar'), G.INTL.W); },
       beats: [[3, () => fx.drawLine(G.plannedEdges[0].gpts, { dur: 5 })], [8.5, () => { if (!state.plannedActive) failures.SCEN.gwadar(); }]],
       metric: s => { const km = routeKm(N('Gwadar'), G.INTL.W), ms = routeMs(N('Gwadar'), G.INTL.W); return `From Gwadar to the Gulf: ${Math.round(s.km0).toLocaleString()} km → ${Math.round(km).toLocaleString()} km of cable, ${f1(s.ms0)} → ${f1(ms)} ms. (Imaginary.)`; },
-      stop: () => { if (state.plannedActive) failures.SCEN.gwadar(); },
+      stop: () => { if (state.plannedActive) failures.SCEN.gwadar(); ui('scGwadar')?.classList.remove('on'); },
       expert: () => [['What-if', 'Gwadar landing + CPEC Phase II fibre (not built; progress unverified)'], ['Measured', 'Shortest route Gwadar → Gulf endpoint, before and after']]
     },
     ddos: {
@@ -96,12 +96,12 @@ export function initScenarios(ctx) {
     },
     hijack: {
       camera: { lat: 32, lon: 48, range: 9500, tilt: 0, heading: 0 }, dur: 42, phases: [0, 8, 30],
-      before: s => { kit().setDefence(false); s.max = 0; },
+      before: s => { kit().setDefence(false); s.max = 0; s.w0 = ctx.interdomain.worldHijackedShare?.() ?? 0; },
       beats: [[2, () => security.runHijack()], [3, () => fx.waves(N('Karachi').gpos, { size: 22, count: 5, every: 0.8, life: 3 })],
         [7, s => { s.counter = fx.bubble(N('Karachi').gpos, '', 'bub'); }],
         [30, () => fx.bubble(fromLatLon(22, 60), '<b>✓ Stamp of approval (RPKI)</b><br>With today\'s rules, the fake sign would be rejected.', 'bub ok')]],
-      tick: s => { const w = ctx.interdomain.worldHijackedShare?.() ?? 0; s.max = Math.max(s.max, w); s.counter?.set(`YouTube parcels lost here: <b>${pct(w)}</b>`); },
-      metric: s => `YouTube users whose parcels went the wrong way: up to ${pct(s.max)} of the world.`,
+      tick: s => { const w = ctx.interdomain.worldHijackedShare?.() ?? 0; s.max = Math.max(s.max, w); s.wNow = w; s.counter?.set(`YouTube parcels lost here: <b>${pct(w)}</b>`); },
+      metric: s => `YouTube users whose parcels went the wrong way: ${pct(s.w0)} before, ${pct(s.max)} at the worst, ${pct(s.wNow ?? 0)} now (model of 15 networks).`,
       expert: () => [['2008', 'AS17557 (PTCL) announced 208.65.153.0/24; leaked via AS3491 (PCCW)'], ['Model', 'Simplified BGP on 15 ASes, compressed time'], ['RPKI', 'What-if: the /22 has ROAs today, so the /24 would be Invalid']]
     },
     facebook: {
@@ -118,7 +118,7 @@ export function initScenarios(ctx) {
     },
     rip: {
       camera: 'cti', dur: 40, phases: [0, 6, 24],
-      before: s => { net.setDVOptions({ splitHorizon: false, poisonReverse: false }); s.rounds = 0; },
+      before: s => { s.dvPrev = { ...net.dv.opts }; net.setDVOptions({ splitHorizon: false, poisonReverse: false }); s.rounds = 0; },
       beats: [[2, s => { ctx.demos.countToInfinity(); s.start = net.dv.round; s.a = fx.bubble(N('Nok Kundi').gpos, '', 'bub big'); s.b = fx.bubble(N('Dalbandin').gpos, '', 'bub big'); }]],
       onRound: s => {
         const T = N('Taftan'); if (!s.a) return; const show = (b, r) => { const d = net.dv.distance(r.id, T.id); b.set(d >= 16 ? '16 = no road!' : `"${d} steps"`); b.flash(); };
@@ -129,7 +129,7 @@ export function initScenarios(ctx) {
         const T = N('Taftan'), done = [N('Nok Kundi'), N('Dalbandin')].every(r => net.dv.distance(r.id, T.id) >= 16);
         return done ? `The two routers argued for ${s.rounds} rounds (about ${Math.round(s.rounds * 0.5)} minutes in real RIP) before saying "no road".` : `Round ${s.rounds}: they are still counting up…`;
       },
-      stop: () => { ctx.demos.restoreLink(); setProtocol('OSPF'); },
+      stop: s => { ctx.demos.restoreLink(); setProtocol('OSPF'); net.setDVOptions({ splitHorizon: !!s.dvPrev?.splitHorizon, poisonReverse: !!s.dvPrev?.poisonReverse }); for (const [id, k] of [['dvSH', 'splitHorizon'], ['dvPR', 'poisonReverse']]) { const c = ui(id); if (c) c.checked = !!s.dvPrev?.[k]; } },
       expert: () => [['Protocol', 'RIP (distance vector), hop count, infinity = 16'], ['Cut', 'Nok Kundi–Taftan; split horizon and poison reverse off'], ['Time', 'One round = RIP\'s 30 s timer, compressed']]
     },
     ospf: {
@@ -200,6 +200,7 @@ export function initScenarios(ctx) {
   let acc = 0;
   function frame(dt) {
     fx.updateSceneFx(dt);
+    if (cur && cur.shownPlaying !== state.playing) { cur.shownPlaying = state.playing; render(); } // paused from the time bar / Space
     if (!cur || cur.ended || !state.playing) return;
     cur.t += dt; fire(); cur.def.tick?.(cur);
     if (cur.t >= cur.def.dur) { cur.ended = true; render(); return; }
@@ -216,6 +217,7 @@ export function initScenarios(ctx) {
   menu.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { menu.classList.remove('on'); ui('tScen').classList.remove('on'); start(b.dataset.s); });
   ui('tScen').onclick = ev => { ev.stopPropagation(); const o = !menu.classList.contains('on'); menu.classList.toggle('on', o); ui('tScen').classList.toggle('on', o); ui('tScen').setAttribute('aria-expanded', o); };
   document.addEventListener('click', ev => { if (!ev.target.closest('#menuScen') && !ev.target.closest('#tScen')) { menu.classList.remove('on'); ui('tScen').classList.remove('on'); } });
+  shell.addSearch({ name: 'Telesat Lightspeed', sub: 'Coming soon — none in orbit yet', go: () => shell.showInfo({ kick: 'Low-orbit internet satellites', title: 'Telesat Lightspeed', tags: [['Coming soon — not yet licensed in Pakistan (as of late 2026)', 'grey'], ['No satellites in orbit yet (CelesTrak, Nov 2026)', 'grey']], what: 'A planned swarm of internet satellites from Telesat (Canada).', why: 'None are flying yet, so there is nothing to show on the globe.' }) });
   for (const id of ORDER) shell.addSearch({ name: KIDS[id].title, sub: 'Scenario', go: () => start(id) });
   ctx.scenarioSlides = ORDER.map(id => ({ id: 'scen-' + id, text: KIDS[id].what, enter: () => start(id), leave: () => stop(true) }));
 

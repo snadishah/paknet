@@ -5,7 +5,8 @@
 // (The globe has no separate cloud layer: clouds are part of the day image.)
 // It never steps back up during a visit, so the picture doesn't flicker.
 import { setPixelRatio, quality } from './scene.js';
-import { setSatSample } from './satellites.js';
+import { setSatSample, satUniforms } from './satellites.js';
+import { setFxPixelRatio } from './fx.js';
 import { packetUniforms } from './packets.js';
 import { glyphUniforms } from './network.js';
 import { renderer } from './scene.js';
@@ -27,5 +28,5 @@ function stepDown() {
   qualityState.level++;
   if (qualityState.level === 1 && quality.pixelRatio > 1) setPixelRatio(1);
   if (qualityState.level === 2) setSatSample(3);
-  packetUniforms.uPR.value = glyphUniforms.uPR.value = renderer.getPixelRatio();
+  packetUniforms.uPR.value = glyphUniforms.uPR.value = satUniforms.uPR.value = renderer.getPixelRatio(); setFxPixelRatio(renderer.getPixelRatio());
 }
