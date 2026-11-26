@@ -85,9 +85,11 @@ export function initShell(ctx) {
   function renderLayers() {
     const m = ui('menuLayers');
     m.innerHTML = '<h6>Show on the map</h6>' + sh.layerItems.map(([t, d, ks], i) => `<label><input type="checkbox" data-li="${i}" ${ks.every(k => k === 'labels' ? labelState.enabled : layers[k]?.visible) ? 'checked' : ''}><span>${esc(t)}<small>${esc(d)}</small></span></label>`).join('')
-      + extraToggles.map(([t, d, get], i) => `<label><input type="checkbox" data-xi="${i}" ${get() ? 'checked' : ''}><span>${esc(t)}<small>${esc(d)}</small></span></label>`).join('');
+      + extraToggles.map(([t, d, get], i) => `<label><input type="checkbox" data-xi="${i}" ${get() ? 'checked' : ''}><span>${esc(t)}<small>${esc(d)}</small></span></label>`).join('')
+      + (sh.satToggles?.length ? '<h6>Satellites</h6>' + sh.satToggles.map(([t, d, get], i) => `<label><input type="checkbox" data-si="${i}" ${get() ? 'checked' : ''}><span>${esc(t)}<small>${esc(d)}</small></span></label>`).join('') : '');
     m.querySelectorAll('[data-li]').forEach(i => i.onchange = () => { for (const k of sh.layerItems[+i.dataset.li][2]) { if (k === 'labels') labelState.enabled = i.checked; else ctx.setLayer(k, i.checked); } });
     m.querySelectorAll('[data-xi]').forEach(i => i.onchange = () => extraToggles[+i.dataset.xi][3](i.checked));
+    m.querySelectorAll('[data-si]').forEach(i => i.onchange = () => sh.satToggles[+i.dataset.si][3](i.checked));
   }
   sh.renderLayers = renderLayers;
   ui('tLayers').onclick = ev => { ev.stopPropagation(); const m = ui('menuLayers'); const o = !m.classList.contains('on'); if (o) renderLayers(); m.classList.toggle('on', o); ui('tLayers').classList.toggle('on', o); ui('tLayers').setAttribute('aria-expanded', o); };

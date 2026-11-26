@@ -58,7 +58,7 @@ function nodePoints(list, extra = {}) {
 export function drawNetwork(G) {
   const { nodes, edges, cableEdges, plannedEdges, SAT, accessNodes } = G;
   // globe position of every node (render-only)
-  for (const n of nodes) n.gpos = n.tier === 'sat' ? paksatPos.clone() : toGlobe(n.pos.x, n.pos.y, 0);
+  for (const n of nodes) n.gpos = n.tier === 'sat' ? paksatPos : toGlobe(n.pos.x, n.pos.y, 0);
   const gBorders = layer('borders'), gCables = layer('cables'), gBackbone = layer('backbone'), gMW = layer('microwave', false), gSat = layer('satellite', false),
     gPlanned = layer('planned', false), gCities = layer('cities', false), gLastMile = layer('lastmile', false), gRouters = layer('routers'), gGate = layer('gateways');
   layer('packets'); layer('heat', false); layer('fx'); layer('labels');

@@ -7,7 +7,7 @@ import { R, latLonToEcef, enuBasis, flatToLatLon, KM_PER_UNIT, gcDistance } from
 import { emit } from '../events.js';
 import { camera, renderer, fitClipPlanes } from './scene.js';
 
-export const MIN_RANGE = 0.3, MAX_RANGE = 60000;
+export const MIN_RANGE = 0.3, MAX_RANGE = 90000;
 const D = Math.PI / 180;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -23,15 +23,16 @@ export const VIEWS = {
   karachi: { lat: 24.9, lon: 67.05, range: 140, heading: 0, tilt: 40 },
   north: { lat: 35.0, lon: 73.9, range: 700, heading: 0, tilt: 38 },
   sea: { lat: 22.8, lon: 63.5, range: 1900, heading: 0, tilt: 28 },
-  sat: { lat: 8, lon: 52, range: 52000, heading: 0, tilt: 0 },
-  far: { lat: 8, lon: 52, range: 52000, heading: 0, tilt: 0 },
+  sat: { lat: 8, lon: 72, range: 84000, heading: 0, tilt: 0 },
+  far: { lat: 8, lon: 72, range: 84000, heading: 0, tilt: 0 },
   near: { lat: 26, lon: 66, range: 9000, heading: 0, tilt: 0 },
   cti: { lat: 28.9, lon: 63.6, range: 650, heading: 0, tilt: 32 },
   redsea: { lat: 19.5, lon: 40.5, range: 2800, heading: 0, tilt: 22 },
   gulf: { lat: 23.5, lon: 60.5, range: 2400, heading: 0, tilt: 20 }
 };
 
-const maxTilt = range => 78 - 78 * THREE.MathUtils.smoothstep(Math.log(range), Math.log(400), Math.log(9000));
+// Low down you can tilt to the horizon; from mid-space the view is straight down; far out (to see GEO) a tilt is allowed again.
+const maxTilt = range => Math.max(78 - 78 * THREE.MathUtils.smoothstep(Math.log(range), Math.log(400), Math.log(9000)), 45 * THREE.MathUtils.smoothstep(Math.log(range), Math.log(15000), Math.log(45000)));
 
 // ---------- pose → camera ----------
 const T = new THREE.Vector3(), P = new THREE.Vector3(), U = new THREE.Vector3(), tmpA = [0, 0, 0];

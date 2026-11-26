@@ -14,7 +14,7 @@ import { globeUniforms } from './globe.js';
 const URL = (z, x, y) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/${z}/${y}/${x}.jpg`;
 export const ATTRIBUTION = 'Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016)';
 const BOX = { lat0: 19, lat1: 40, lon0: 56, lon1: 81 }; // Pakistan and its coast, with margin
-const MAX_Z = 15, MAX_CONCURRENT = 6, CACHE = 180, START_KM = 1500, MAX_DRAWN = 48;
+const MAX_Z = 15, MAX_CONCURRENT = 6, CACHE = 180, START_KM = 1500, MAX_DRAWN = 50;
 
 export const tileState = { enabled: true, active: false, loaded: 0, failed: 0, online: true };
 const group = new THREE.Group(); group.name = 'tiles'; group.renderOrder = -1.5;
@@ -60,6 +60,8 @@ const childrenOf = t => [[0, 0], [1, 0], [0, 1], [1, 1]].map(([dx, dy]) => `${t.
 function dispose(t) { if (t.mesh) { group.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.dispose(); } t.tex?.dispose(); cache.delete(t.key); }
 
 export function initTiles() { scene.add(group); }
+// Debug summary (verify / zoom probe): visible tiles per zoom with their mean opacity.
+export function tileDebug() { const by = {}; for (const t of cache.values()) if (t.mesh?.visible) { const b = by[t.z] ||= [0, 0]; b[0]++; b[1] += t.mesh.material.opacity; } return Object.entries(by).map(([z, [n, o]]) => `${z}:${n}@${(o / n).toFixed(2)}`).join(' ') + ` gv=${group.visible}`; }
 
 let last = 0;
 export function updateTiles() {
@@ -82,7 +84,11 @@ export function updateTiles() {
     ring(z, 2);
     // retry failed tiles after a minute; drop what's no longer wanted once the cache is full
     for (const t of cache.values()) if (t.status === 'failed' && now - t.failedAt > 60000) { t.status = 'queued'; queue.push(t); }
-    queue.sort((a, b) => a.z - b.z);
+    // forget queued requests the view no longer needs (otherwise a fast zoom starves the fine tiles),
+    // then fetch the backdrop first and the fine tiles nearest the centre next
+    for (let i = queue.length - 1; i >= 0; i--) { const t = queue[i]; if (t.status === 'queued' && !want.has(t.key)) { queue.splice(i, 1); cache.delete(t.key); } }
+    const dist = t => Math.hypot(t.x + 0.5 - lon2x(pose.lon, t.z), t.y + 0.5 - lat2y(pose.lat, t.z));
+    queue.sort((a, b) => (a.z === z) - (b.z === z) || dist(a) - dist(b));
     // Over the cache limit: drop unwanted tiles, least recently used first, but keep the
     // coarse tiles around the view centre: they cover the screen while finer tiles load.
     if (cache.size > CACHE) {
@@ -92,12 +98,12 @@ export function updateTiles() {
     // Draw: wanted tiles and the coarse cover tiles around the view centre, but skip any tile
     // whose four children are already painted (each tile is a draw call).
     const painted = new Map();
-    const isPainted = t => { if (!t || t.status !== 'ready' || now - t.born < 650) return false; /* still fading in */ if (painted.has(t.key)) return painted.get(t.key); const kids = childrenOf(t); const p = kids.every(k => isPainted(cache.get(k))) || drawable(t); painted.set(t.key, p); return p; };
+    const isPainted = t => { if (!t || t.status !== 'ready' || now - t.born < 1050) return false; /* still fading in */ if (painted.has(t.key)) return painted.get(t.key); const kids = childrenOf(t); const p = kids.every(k => isPainted(cache.get(k))) || drawable(t); painted.set(t.key, p); return p; };
     // the previous level keeps the whole view covered (radius 2); older levels only near the centre
     const nearC = t => { const r = t.z === z - 1 || t.z === z + 1 ? 2 : 1; return Math.abs(t.x - Math.floor(lon2x(pose.lon, t.z))) <= r && Math.abs(t.y - Math.floor(lat2y(pose.lat, t.z))) <= r; };
     const drawable = t => want.has(t.key) || ((t.z < z || t.z === z + 1) && nearC(t));
     const shown = [];
-    for (const t of [...cache.values()].sort((a, b) => b.z - a.z)) if (t.mesh) { t.mesh.visible = drawable(t) && !childrenOf(t).every(k => isPainted(cache.get(k))); if (t.mesh.visible) shown.push(t); }
+    for (const t of [...cache.values()].sort((a, b) => b.z - a.z)) if (t.mesh) { t.was = t.mesh.visible; t.mesh.visible = drawable(t) && !childrenOf(t).every(k => isPainted(cache.get(k))); if (t.mesh.visible) shown.push(t); }
     // hard cap on tile draw calls: drop the finest tiles furthest from the view centre (coarse ones below still cover)
     if (shown.length > MAX_DRAWN) {
       const off = t => Math.hypot(t.x + 0.5 - lon2x(pose.lon, t.z), t.y + 0.5 - lat2y(pose.lat, t.z));
@@ -106,13 +112,15 @@ export function updateTiles() {
       // a capped tile's nearest loaded ancestor fills its place
       for (const t of capped) for (let zz = t.z - 1, x = t.x >> 1, y = t.y >> 1; zz >= 5; zz--, x >>= 1, y >>= 1) { const a = cache.get(`${zz}/${x}/${y}`); if (a?.mesh) { a.mesh.visible = true; break; } }
     }
+    // a tile that comes back into view fades in again rather than popping
+    for (const t of cache.values()) if (t.mesh && t.mesh.visible && t.was === false) t.born = Math.max(t.born, now - 600);
     pump();
   }
   if (!active && cache.size && now - last > 8000) { [...cache.values()].filter(t => t.status !== 'loading').forEach(dispose); last = now; }
   // match the globe shader's daylight at the view centre (flood: fully lit)
   const a = [0, 0, 0]; latLonToEcef(pose.lat, pose.lon, 0, a);
   const sun = globeUniforms.uSun.value, ndl = (a[0] * sun.x + a[1] * sun.y + a[2] * sun.z) / 6371;
-  // Sentinel-2 cloudless is brighter than Blue Marble; 0.74 keeps the hand-over gentle
-  const k = 0.74 * (globeUniforms.uFlood.value ? 1 : Math.min(1.12, 0.12 + 1.05 * Math.max(0, ndl)));
-  for (const t of cache.values()) if (t.mesh) { t.mesh.material.opacity = Math.min(1, (now - t.born) / 600) * fade; t.mesh.material.color.setScalar(k); }
+  // Sentinel-2 cloudless is brighter than Blue Marble; 0.66 keeps the hand-over gentle
+  const k = 0.66 * (globeUniforms.uFlood.value ? 1 : Math.min(1.12, 0.12 + 1.05 * Math.max(0, ndl)));
+  for (const t of cache.values()) if (t.mesh) { t.mesh.material.opacity = Math.min(1, (now - t.born) / 1000) * fade; t.mesh.material.color.setScalar(k); }
 }

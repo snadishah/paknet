@@ -46,6 +46,12 @@ export function buildLabels(G) {
 // Show labels whose band contains the current range, best priority first, no overlaps.
 const v = new THREE.Vector3(), toCam = new THREE.Vector3(), boxes = [];
 let frameNo = 0;
+// Is the point hidden by the Earth? (does the segment camera → point cross the sphere?)
+function behindEarth(p) {
+  const c = camera.position; toCam.copy(p).sub(c);
+  const a = toCam.lengthSq(), b = 2 * c.dot(toCam), cc = c.lengthSq() - 6370 * 6370, disc = b * b - 4 * a * cc;
+  if (disc <= 0) return false; const t = (-b - Math.sqrt(disc)) / (2 * a); return t > 0 && t < 0.999;
+}
 export function updateLabels(layers) {
   if ((frameNo++ & 1) === 1) return; // every other frame is plenty
   const range = pose.range, alt = altitudeKm; boxes.length = 0; let shown = 0;
@@ -55,7 +61,8 @@ export function updateLabels(layers) {
     if (want && shown >= MAX_LABELS) want = false;
     if (want) {
       // behind the Earth? (the camera must be on the outer side of the point's horizon plane)
-      toCam.copy(camera.position).sub(l.pos); if (toCam.dot(l.pos) < 0 && l.pos.lengthSq() < 7000 * 7000) want = false;
+      if (l.extraVisible && !l.extraVisible()) want = false;
+      else if (behindEarth(l.pos)) want = false;
     }
     let sx = 0, sy = 0;
     if (want) {

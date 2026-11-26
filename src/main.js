@@ -18,7 +18,8 @@ import { createInterdomain } from './sim/interdomain.js';
 import { DV_ROUND_S } from './sim/params.js';
 import { renderer, labelRenderer, scene, camera, setLift } from './render/scene.js';
 import { buildGlobe, updateGlobe } from './render/globe.js';
-import { initTiles, updateTiles } from './render/tiles.js';
+import { initTiles, updateTiles, tileDebug } from './render/tiles.js';
+import { initSatellites, updateSatellites } from './render/satellites.js';
 import { drawNetwork, glyphUniforms } from './render/network.js';
 import { buildLabels, updateLabels, hasCallouts } from './render/labels.js';
 import { initPackets, drawPackets, packetPos, packetUniforms } from './render/packets.js';
@@ -35,7 +36,8 @@ import { initInspector } from './ui/inspector.js';
 import { initMetrics } from './ui/metrics.js';
 import { initStories } from './ui/story.js';
 import { initSources } from './ui/sources.js';
-import { initShell } from './ui/shell.js';
+import { initShell, clock as shellClock } from './ui/shell.js';
+import { initSatelliteUI } from './ui/satui.js';
 import { createFailures } from './scenarios/failures.js';
 import { createSecurity } from './scenarios/security.js';
 import { createRoutingDemos } from './scenarios/routing-demos.js';
@@ -72,6 +74,11 @@ initMetrics(ctx);
 ctx.stories = initStories(ctx);
 initSources();
 const shell = ctx.shell = initShell(ctx);
+// satellites follow the shell's clock; PakSat links are redrawn when PakSat-MM1 moves
+let satLinksAt = 0;
+initSatellites(shellClock, () => { if (performance.now() - satLinksAt > 5000) { satLinksAt = performance.now(); view.refreshSatLinks(); } });
+ctx.setLayer('satellite', true);
+ctx.satui = initSatelliteUI(ctx);
 on('metrics:sample', m => { ctx.lastSample = m; });
 
 const { SCEN } = ctx.failures, { runHijack, runDDoS, runMalware } = ctx.security;
@@ -85,9 +92,11 @@ const settle = (ms = 2500) => new Promise(r => setTimeout(r, ms));
 window.__paknet = { ctx, shots: {
   'start': async () => { shell.start(true); await settle(500); },
   'pakistan': async () => { shell.start(true); await flyTo('pakistan', 10); await settle(1500); },
-  'karachi': async () => { shell.start(true); await flyTo({ lat: 24.86, lon: 67.0, range: 25, tilt: 50, heading: 10 }, 10); await settle(5000); },
+  'karachi': async () => { shell.start(true); await flyTo({ lat: 24.86, lon: 67.0, range: 25, tilt: 50, heading: 10 }, 10); await settle(9000); },
   'city-300m': async () => { shell.start(true); await flyTo({ lat: 24.85, lon: 67.02, range: 0.6, tilt: 60, heading: 20 }, 10); await settle(6000); },
   'info-card': async () => { shell.start(true); shell.searchGo('AAE-1'); await settle(3500); },
+  'sat-far': async () => { shell.start(true); shell.searchGo('PakSat-MM1'); await settle(4500); },
+  'sat-near': async () => { shell.start(true); shell.closeInfo(); shell.searchGo('Starlink'); await settle(4500); },
   'expert': async () => { shell.closeInfo(); shell.setExpert(true); await flyTo('pakistan', 10); await settle(1500); shell.setExpert(false); }
 } };
 
@@ -108,7 +117,7 @@ window.__paknet.zoomTest = async (stepMs = 0) => {
     setPose({ lat: 24.86, lon: 67.02, range: r0 * Math.pow(r1 / r0, i / N), heading: 0, tilt: Math.min(55, i * 1.6) });
     updateTiles(); setLift(Math.min(3, Math.max(0.002, altitudeKm * 0.0015)));
     if (stepMs) await new Promise(r => setTimeout(r, stepMs));
-    await new Promise(r => requestAnimationFrame(r)); out.push(+probeLuma().toFixed(1));
+    await new Promise(r => requestAnimationFrame(r)); out.push(+probeLuma().toFixed(1)); if (window.__paknet.debugZoom) console.log('step', i, out.at(-1), pose.range.toFixed(1), tileDebug());
   }
   return out;
 };
@@ -139,7 +148,7 @@ function stepWorld(sdt) {
 function frame(now) {
   const rawMs = now - last; const dt = Math.min(0.05, rawMs / 1000); last = now;
   const sdt = state.playing ? dt * state.speed : 0;
-  updateTour(); updateCamera(dt); updateGlobe(); updateTiles();
+  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites();
   // lift the network a little above the ground: metres in a city, a few km from space
   setLift(Math.min(3, Math.max(0.002, altitudeKm * 0.0015)));
   // network markers shrink when far away so the globe stays calm from space
