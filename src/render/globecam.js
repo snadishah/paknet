@@ -79,9 +79,11 @@ export function flyTo(k, dur) {
   // long hops rise above both ends, like a plane, so the Earth stays in view
   const peak = Math.max(a.range, b.range, Math.min(MAX_RANGE * 0.5, dist * 1.6));
   dur = dur ?? Math.min(3000, Math.max(1500, 1200 + Math.abs(Math.log(b.range / a.range)) * 180 + dist * 0.12));
-  if (reduceMotion) dur = 1;
+  if (reduceMotion) dur = Math.min(dur, 400); // a fade through dark instead of a flight (stepFly)
+  goal.lr = goal.lat = goal.lon = goal.heading = null;
   const va = new THREE.Vector3(...latLonToEcef(a.lat, a.lon, 0)).normalize(), vb = new THREE.Vector3(...latLonToEcef(b.lat, b.lon, 0)).normalize();
-  fly = { a, b, va, vb, peak, s: performance.now(), dur, dh: norm180(b.heading - a.heading) };
+  // the camera's current motion carries into the new flight and dies away (no stop-and-go jolt)
+  fly = { a, b, va, vb, peak, s: performance.now(), dur, dh: norm180(b.heading - a.heading), v0: { ...pv } };
   emit('view:changed', k);
   return new Promise(res => { fly.done = res; });
 }
@@ -90,7 +92,9 @@ export function stopFly() { if (fly) { const d = fly.done; fly = null; d?.(); } 
 
 const vtmp = new THREE.Vector3();
 function stepFly(now) {
-  const f = Math.min(1, (now - fly.s) / fly.dur), e = ease(f), { a, b } = fly;
+  const f = Math.min(1, (now - fly.s) / fly.dur), { a, b } = fly;
+  if (reduceMotion) { veil(1 - Math.abs(2 * f - 1)); if (f >= 0.5) Object.assign(pose, b); if (f >= 1) { veil(0); stopFly(); } return; }
+  const e = ease(f);
   // position: slerp between the two surface points
   const w = Math.acos(THREE.MathUtils.clamp(fly.va.dot(fly.vb), -1, 1));
   if (w > 1e-6) { vtmp.copy(fly.va).multiplyScalar(Math.sin((1 - e) * w) / Math.sin(w)).addScaledVector(fly.vb, Math.sin(e * w) / Math.sin(w)); }
@@ -101,17 +105,42 @@ function stepFly(now) {
   const lm = 2 * lp - (la + lb) / 2; // control point so the curve reaches lp at the middle
   pose.range = Math.exp((1 - e) * (1 - e) * la + 2 * (1 - e) * e * lm + e * e * lb);
   pose.heading = a.heading + fly.dh * e; pose.tilt = a.tilt + (b.tilt - a.tilt) * e;
+  // carried motion: starts at the old speed, gone after ~1 s (v·t·e^(−t/τ) returns to zero)
+  const t = now - fly.s, c = t * Math.exp(-t / CARRY_MS), v = fly.v0;
+  pose.lat = THREE.MathUtils.clamp(pose.lat + v.lat * c, -85, 85); pose.lon = norm180(pose.lon + v.lon * c);
+  pose.range = THREE.MathUtils.clamp(pose.range * Math.exp(v.lr * c), MIN_RANGE, MAX_RANGE); pose.heading += v.heading * c; pose.tilt = THREE.MathUtils.clamp(pose.tilt + v.tilt * c, 0, 85);
   if (f >= 1) { Object.assign(pose, b); stopFly(); }
+}
+const CARRY_MS = 220;
+// how the pose is moving right now (per ms), measured every frame
+const pv = { lat: 0, lon: 0, lr: 0, heading: 0, tilt: 0 }, last = { ...pose, t: 0 };
+function measure(now) {
+  const dt = now - last.t;
+  if (last.t && dt > 0 && dt < 200) { const k = 0.5; pv.lat += ((pose.lat - last.lat) / dt - pv.lat) * k; pv.lon += (norm180(pose.lon - last.lon) / dt - pv.lon) * k; pv.lr += (Math.log(pose.range / last.range) / dt - pv.lr) * k; pv.heading += (norm180(pose.heading - last.heading) / dt - pv.heading) * k; pv.tilt += ((pose.tilt - last.tilt) / dt - pv.tilt) * k; }
+  else pv.lat = pv.lon = pv.lr = pv.heading = pv.tilt = 0;
+  Object.assign(last, pose); last.t = now;
+}
+// reduced motion: the view changes behind a short fade through dark
+let veilEl = null;
+function veil(o) {
+  if (!veilEl) { veilEl = document.createElement('div'); veilEl.style.cssText = 'position:fixed;inset:0;background:#05070a;pointer-events:none;z-index:9;opacity:0'; document.body.appendChild(veilEl); }
+  veilEl.style.opacity = o.toFixed(3);
 }
 
 // ---------- user input ----------
 const el = renderer.domElement;
 const vel = { lat: 0, lon: 0 };
+// wheel and keys set goals; the camera glides to them (a damped spring, no steps)
+const goal = { lr: null, lat: null, lon: null, heading: null };
 let drag = null; const pointers = new Map(); let pinch = null;
 export const input = { enabled: true, onInteract: null };
 function interact() { stopFly(); input.onInteract?.(); }
 const kmPerPx = () => 2 * Math.min(pose.range, 30000) * Math.tan(camera.fov * D / 2) / innerHeight;
 
+function panDelta(dx, dy) { // screen pixels → degrees north / east
+  const k = kmPerPx() / 111.2, h = pose.heading * D;
+  return [(dy * Math.cos(h) + dx * Math.sin(h)) * k, ((-dx * Math.cos(h) + dy * Math.sin(h)) * k) / Math.max(0.2, Math.cos(pose.lat * D))];
+}
 function panBy(dx, dy) {
   const k = kmPerPx() / 111.2, h = pose.heading * D;
   const north = (dy * Math.cos(h) + dx * Math.sin(h)) * k, east = (-dx * Math.cos(h) + dy * Math.sin(h)) * k;
@@ -148,21 +177,23 @@ el.addEventListener('contextmenu', ev => ev.preventDefault());
 el.addEventListener('wheel', ev => {
   if (!input.enabled) return; ev.preventDefault(); interact();
   const dy = ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY;
-  zoomBy(Math.exp(THREE.MathUtils.clamp(dy, -200, 200) * 0.0016));
+  goal.lr = THREE.MathUtils.clamp((goal.lr ?? Math.log(pose.range)) + THREE.MathUtils.clamp(dy, -200, 200) * 0.0016, Math.log(MIN_RANGE), Math.log(MAX_RANGE)); // eased in updateCamera
 }, { passive: false });
 
 // Keyboard: arrows pan, +/- zoom, [ ] rotate (when the canvas area has focus, i.e. no input field).
 export function keyNav(ev) {
-  const step = 40;
-  switch (ev.key) {
-    case 'ArrowLeft': interact(); panBy(step, 0); return true;
-    case 'ArrowRight': interact(); panBy(-step, 0); return true;
-    case 'ArrowUp': interact(); panBy(0, step); return true;
-    case 'ArrowDown': interact(); panBy(0, -step); return true;
-    case '+': case '=': interact(); zoomBy(0.8); return true;
-    case '-': case '_': interact(); zoomBy(1.25); return true;
-    case '[': interact(); pose.heading = norm180(pose.heading + 10); return true;
-    case ']': interact(); pose.heading = norm180(pose.heading - 10); return true;
+  const step = 40, pan = (dx, dy) => { const [n, e] = panDelta(dx, dy); goal.lat = (goal.lat ?? pose.lat) + n; goal.lon = (goal.lon ?? pose.lon) + e; };
+  const zoom = f => { goal.lr = THREE.MathUtils.clamp((goal.lr ?? Math.log(pose.range)) + Math.log(f), Math.log(MIN_RANGE), Math.log(MAX_RANGE)); };
+  const turn = d => { goal.heading = (goal.heading ?? pose.heading) + d; };
+  switch (ev.key) { // each key sets a goal; updateCamera glides there
+    case 'ArrowLeft': interact(); pan(step, 0); return true;
+    case 'ArrowRight': interact(); pan(-step, 0); return true;
+    case 'ArrowUp': interact(); pan(0, step); return true;
+    case 'ArrowDown': interact(); pan(0, -step); return true;
+    case '+': case '=': interact(); zoom(0.8); return true;
+    case '-': case '_': interact(); zoom(1.25); return true;
+    case '[': interact(); turn(10); return true;
+    case ']': interact(); turn(-10); return true;
   }
   return false;
 }
@@ -171,13 +202,19 @@ export function keyNav(ev) {
 // With stopAt set, the spin eases to a stop at that longitude (Pakistan comes into view).
 export const spin = { on: false, rate: 3, stopAt: null };
 
-export function setPose(p) { stopFly(); Object.assign(pose, p); apply(); }
+export function setPose(p) { stopFly(); goal.lr = goal.lat = goal.lon = goal.heading = null; Object.assign(pose, p); apply(); }
 export function updateCamera(dt) {
-  if (fly) stepFly(performance.now());
+  const now = performance.now();
+  if (fly) stepFly(now);
   else {
+    const k = 1 - Math.exp(-dt * 12);
+    if (goal.lr != null) { const lr = Math.log(pose.range); pose.range = Math.exp(lr + (goal.lr - lr) * k); if (Math.abs(goal.lr - lr) < 1e-4) goal.lr = null; }
+    if (goal.lat != null) { pose.lat = THREE.MathUtils.clamp(pose.lat + (goal.lat - pose.lat) * k, -85, 85); pose.lon = norm180(pose.lon + norm180(goal.lon - pose.lon) * k); if (Math.abs(goal.lat - pose.lat) + Math.abs(norm180(goal.lon - pose.lon)) < 1e-6) goal.lat = goal.lon = null; }
+    if (goal.heading != null) { pose.heading = norm180(pose.heading + norm180(goal.heading - pose.heading) * k); if (Math.abs(norm180(goal.heading - pose.heading)) < 0.01) goal.heading = null; }
     if (spin.on && !drag) { const left = spin.stopAt == null ? 1 : THREE.MathUtils.smoothstep(spin.stopAt - pose.lon, 0, 30); pose.lon = norm180(pose.lon + spin.rate * Math.max(left, spin.stopAt == null ? 1 : 0) * dt); }
     if (!drag && (Math.abs(vel.lat) + Math.abs(vel.lon) > 1e-7)) { pose.lat = THREE.MathUtils.clamp(pose.lat + vel.lat, -85, 85); pose.lon = norm180(pose.lon + vel.lon); vel.lat *= 0.9; vel.lon *= 0.9; }
   }
+  measure(now);
   apply();
 }
 apply();

@@ -43,7 +43,7 @@ export function initShell(ctx) {
     if (sh.started) return; sh.started = true; spin.on = false;
     ui('intro').classList.add('gone'); setTimeout(() => ui('intro').style.display = 'none', 650);
     body.classList.add('started'); labelState.enabled = true; netRoot.visible = true; fadeIn(netRoot, 800); // the network fades in
-    if (skip) setPose({ ...poseOf('pakistan') }); // Start: the tour (ui/tour.js) takes the camera from here
+    if (skip) flyTo('pakistan', 1600); // a short flight, never a jump (Start: the tour, ui/tour.js, takes the camera from here)
     emit('shell:started', { skip });
 
   }
@@ -252,7 +252,7 @@ export function initShell(ctx) {
     if (!location.hash) return false;
     const h = new URLSearchParams(location.hash.slice(1)); if (!h.has('v') && !h.has('f')) return false;
     start(true);
-    const v = (h.get('v') || '').split(',').map(Number); if (v.length === 5 && v.every(Number.isFinite)) setPose({ lat: v[0], lon: v[1], range: v[2], heading: v[3], tilt: v[4] });
+    const v = (h.get('v') || '').split(',').map(Number); if (v.length === 5 && v.every(Number.isFinite)) flyTo({ lat: v[0], lon: v[1], range: v[2], heading: v[3], tilt: v[4] }, 2200); // a link flies in
     if (h.get('t')) { const t = Date.parse(h.get('t') + 'Z'); if (Number.isFinite(t)) { setLive(false); clock.t = t; } }
     if (h.get('r')) setRate(+h.get('r'));
     sh.setFloodLight(h.get('l') === 'flood');
