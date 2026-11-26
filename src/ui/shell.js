@@ -227,6 +227,7 @@ export function initShell(ctx) {
   input.onInteract = () => { if (!sh.started) start(true); };
 
   // ---------- deep links: #v=lat,lon,range,heading,tilt&f=focus&t=ISO&r=rate&l=flood&x=expert ----------
+  let lastHash = '';
   function writeHash() {
     if (!sh.started) return;
     const h = new URLSearchParams();
@@ -234,7 +235,7 @@ export function initShell(ctx) {
     if (sh.selected?.name) h.set('f', sh.selected.name); else if (sh.selected?.cable) h.set('f', sh.selected.cable.name);
     if (!clock.live) h.set('t', new Date(clock.t).toISOString().slice(0, 16)); if (clock.rate !== 1) h.set('r', clock.rate);
     if (flood) h.set('l', 'flood'); if (sh.expert) h.set('x', '1');
-    const s = '#' + h.toString().replace(/%2C/g, ','); if (s !== location.hash) history.replaceState(null, '', s);
+    const s = '#' + h.toString().replace(/%2C/g, ','); if (s !== location.hash) { history.replaceState(null, '', s); } lastHash = location.hash;
   }
   sh.writeHash = writeHash;
   function readHash() {
@@ -251,6 +252,8 @@ export function initShell(ctx) {
   }
   sh.readHash = readHash;
   on('view:changed', () => setTimeout(writeHash, 3200));
+  // pasting a bookmarked link into the address bar of an open page
+  addEventListener('hashchange', () => { if (location.hash !== lastHash) readHash(); });
   let hashT = 0;
 
   // ---------- per frame ----------

@@ -15,6 +15,9 @@ import { buildTopology } from './graph/topology.js';
 import { createNetwork } from './sim/network.js';
 import { createTraffic } from './sim/traffic.js';
 import { createInterdomain } from './sim/interdomain.js';
+import { addOffices, createOffices } from './sim/offices.js';
+import { updateCity, cityState } from './render/city.js';
+import { initTraceroute } from './ui/traceroute.js';
 import { DV_ROUND_S } from './sim/params.js';
 import { renderer, labelRenderer, scene, camera, setLift } from './render/scene.js';
 import { buildGlobe, updateGlobe } from './render/globe.js';
@@ -22,7 +25,7 @@ import { initTiles, updateTiles, tileDebug } from './render/tiles.js';
 import { initSatellites, updateSatellites } from './render/satellites.js';
 import { drawNetwork, glyphUniforms } from './render/network.js';
 import { buildLabels, updateLabels, hasCallouts } from './render/labels.js';
-import { initPackets, drawPackets, packetPos, packetUniforms } from './render/packets.js';
+import { initPackets, drawPackets, packetPos, packetUniforms, setTrailStep } from './render/packets.js';
 import { burst, markCut, unmarkCut, clearHighlight, hasHighlight, updateFx } from './render/fx.js';
 import { flyTo, updateCamera, altitudeKm, pose, setPose, spin } from './render/globecam.js';
 import { updateTour } from './render/camera.js';
@@ -47,11 +50,13 @@ const T0 = performance.now(); window.__paknetTiming = {};
 const globeReady = buildGlobe();
 initTiles();
 const G = buildTopology();
+addOffices(G); // five illustrative office hosts (leaf nodes: routes between cities don't change)
 const view = drawNetwork(G);
 buildLabels(G);
 initPackets(G);
 const net = createNetwork(G);
 const traffic = createTraffic(G, net);
+const offices = createOffices(G, net, traffic);
 
 /* ---------- simulation → rendering ---------- */
 on('edge:cut', e => { markCut(e); burst(e.cutPos, '#e5484d', 0.5, 1); traffic.onCut(e); });
@@ -61,7 +66,7 @@ on('topology:changed', ({ cutEdges }) => { if (hasHighlight() && cutEdges.length
 on('ospf:lsa', ({ router }) => { if (state.protocol === 'OSPF' && G.nodes[router].tier !== 'intl') burst(lift(G.nodes[router].pos, 0.02), '#5fc4b0', 0.14, 0.7); });
 
 /* ---------- scenarios + UI ---------- */
-const ctx = { G, net, traffic, view, flyTo, interdomain: createInterdomain() };
+const ctx = { G, net, traffic, offices, view, flyTo, interdomain: createInterdomain() };
 ctx.setLayer = initPanel(ctx);
 ctx.failures = createFailures(ctx);
 ctx.security = createSecurity(ctx);
@@ -79,6 +84,7 @@ let satLinksAt = 0;
 initSatellites(shellClock, () => { if (performance.now() - satLinksAt > 5000) { satLinksAt = performance.now(); view.refreshSatLinks(); } });
 ctx.setLayer('satellite', true);
 ctx.satui = initSatelliteUI(ctx);
+ctx.trace = initTraceroute(ctx);
 on('metrics:sample', m => { ctx.lastSample = m; });
 
 const { SCEN } = ctx.failures, { runHijack, runDDoS, runMalware } = ctx.security;
@@ -89,7 +95,7 @@ window.__sim = { SCEN, runHijack, runDDoS, runMalware, setTab, traceRoute: ctx.r
   traffic, net, interdomain: ctx.interdomain, stories: () => ctx.stories, shell, G, pose };
 // Screenshot set-ups used by scripts/verify.mjs (each resolves once the camera has arrived).
 const settle = (ms = 2500) => new Promise(r => setTimeout(r, ms));
-window.__paknet = { ctx, shots: {
+window.__paknet = { ctx, debug: { scene, cityState }, shots: {
   'start': async () => { shell.start(true); await settle(500); },
   'pakistan': async () => { shell.start(true); await flyTo('pakistan', 10); await settle(1500); },
   'karachi': async () => { shell.start(true); await flyTo({ lat: 24.86, lon: 67.0, range: 25, tilt: 50, heading: 10 }, 10); await settle(9000); },
@@ -97,6 +103,8 @@ window.__paknet = { ctx, shots: {
   'info-card': async () => { shell.start(true); shell.searchGo('AAE-1'); await settle(3500); },
   'sat-far': async () => { shell.start(true); shell.searchGo('PakSat-MM1'); await settle(4500); },
   'sat-near': async () => { shell.start(true); shell.closeInfo(); shell.searchGo('Starlink'); await settle(4500); },
+  'traceroute': async () => { shell.start(true); const o = offices.byKey.karachi; ctx.trace.open('karachi', 'youtube'); await flyTo({ lat: o.lat, lon: o.lon, range: 1.1, tilt: 58, heading: 25 }, 10); await settle(9000); },
+  'traceroute-pk': async () => { shell.start(true); ctx.trace.open('karachi', 'whatsapp'); await flyTo('pakistan', 10); await settle(3000); },
   'expert': async () => { shell.closeInfo(); shell.setExpert(true); await flyTo('pakistan', 10); await settle(1500); shell.setExpert(false); }
 } };
 
@@ -110,6 +118,14 @@ function probeLuma() {
   for (let i = 0; i < d.length; i += 4) s += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
   return s / (d.length / 4);
 }
+// Memory check for verify: geometries/textures before a city visit, inside, and after leaving.
+window.__paknet.cityMemoryTest = async () => {
+  shell.start(true); const mem = () => ({ ...renderer.info.memory });
+  setPose({ lat: 29.2, lon: 69.4, range: 2700, heading: 0, tilt: 18 }); await settle(1500); const before = mem();
+  setPose({ lat: 24.8495, lon: 67.0105, range: 1.1, heading: 25, tilt: 58 }); await settle(4000); const inside = mem();
+  setPose({ lat: 29.2, lon: 69.4, range: 2700, heading: 0, tilt: 18 }); await settle(11000); const after = mem();
+  return { before, inside, after };
+};
 window.__paknet.setStep = i => { const r0 = 27000, r1 = 0.3, N = 48; setPose({ lat: 24.86, lon: 67.02, range: r0 * Math.pow(r1 / r0, i / N), heading: 0, tilt: Math.min(55, i * 1.6) }); };
 window.__paknet.zoomTest = async (stepMs = 0) => {
   shell.start(true); const out = []; const r0 = 27000, r1 = 0.3, N = 48;
@@ -147,8 +163,15 @@ function stepWorld(sdt) {
 
 function frame(now) {
   const rawMs = now - last; const dt = Math.min(0.05, rawMs / 1000); last = now;
-  const sdt = state.playing ? dt * state.speed : 0;
-  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites();
+  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updateCity(G.OFFICES);
+  // Slow motion near the ground: a 1 km hop takes microseconds of network time, so
+  // close up the simulation runs slower (down to 1/300) and you can watch each hop.
+  // The time of day is not affected (shell clock), and offices keep sending steadily.
+  const slow = Math.min(1, Math.max(1 / 300, altitudeKm / 250));
+  const sdt = state.playing ? dt * state.speed * slow : 0;
+  if (state.playing) offices.spawn(dt);
+  setTrailStep(Math.min(0.035, Math.max(0.00004, altitudeKm * 0.00012)));
+  const slowEl = ui('tbSlow'); if (slowEl) { const on = slow < 0.9; slowEl.classList.toggle('on', on); if (on) slowEl.innerHTML = `<span class="w">Slow motion </span>×1/${Math.round(1 / slow)}`; }
   // lift the network a little above the ground: metres in a city, a few km from space
   setLift(Math.min(3, Math.max(0.002, altitudeKm * 0.0015)));
   // network markers shrink when far away so the globe stays calm from space

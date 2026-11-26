@@ -57,6 +57,8 @@ const page = {
         .replace('/*SOURCES*/', () => JSON.stringify(readSources()).replace(/</g, '\\u003c'));
       mkdirSync(join(dist, 'assets'), { recursive: true });
       if (existsSync(join(root, 'assets'))) cpSync(join(root, 'assets'), join(dist, 'assets'), { recursive: true });
+      // baked city buildings are loaded at runtime (only when you zoom into a city)
+      if (existsSync(join(root, 'src/data/cities'))) cpSync(join(root, 'src/data/cities'), join(dist, 'assets/cities'), { recursive: true });
       writeFileSync(join(dist, 'index.html'), html);
       console.log(`built dist/ (${(dirSize(dist) / 1048576).toFixed(2)} MB)`);
     });

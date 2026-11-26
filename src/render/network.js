@@ -22,7 +22,7 @@ export const ONWARD = {
 
 const TIER_STYLE = { // [shape (0 dot, 1 ring, 2 square, 3 diamond), size px, colour]
   core: [1, 11, '#f4f1ea'], agg: [0, 5.5, '#dfe6ea'], intl: [1, 9, '#9cc7e0'], cls: [2, 8, '#f0a35b'], ixp: [3, 9, '#e8c35a'],
-  dc: [2, 7, '#b9a3f0'], gw: [0, 7, '#b9a3f0'], vsat: [0, 5, '#b9a3f0'], tower: [3, 5, '#b9a3f0'], access: [0, 3, '#c9d2d6'], office: [2, 10, '#ffffff']
+  dc: [2, 7, '#b9a3f0'], gw: [0, 7, '#b9a3f0'], vsat: [0, 5, '#b9a3f0'], tower: [3, 5, '#b9a3f0'], access: [0, 3, '#c9d2d6'], office: [2, 11, '#f0c27a']
 };
 
 export const glyphUniforms = { uScale: { value: 1 }, uPR: { value: renderer.getPixelRatio() } };
@@ -60,7 +60,7 @@ export function drawNetwork(G) {
   // globe position of every node (render-only)
   for (const n of nodes) n.gpos = n.tier === 'sat' ? paksatPos : toGlobe(n.pos.x, n.pos.y, 0);
   const gBorders = layer('borders'), gCables = layer('cables'), gBackbone = layer('backbone'), gMW = layer('microwave', false), gSat = layer('satellite', false),
-    gPlanned = layer('planned', false), gCities = layer('cities', false), gLastMile = layer('lastmile', false), gRouters = layer('routers'), gGate = layer('gateways');
+    gPlanned = layer('planned', false), gCities = layer('cities', false), gLastMile = layer('lastmile', false), gRouters = layer('routers'), gGate = layer('gateways'), gOff = layer('offices');
   layer('packets'); layer('heat', false); layer('fx'); layer('labels');
 
   // borders: Pakistan's provinces (thin) and the neighbours' outlines (fainter)
@@ -82,7 +82,9 @@ export function drawNetwork(G) {
     gBackbone.add(fatSegs(segsOf(edges.filter(e => e.type === 'aerial' || e.type === 'xborder')), { color: 0xe6ebee, linewidth: 1.0, opacity: 0.55, dashed: true, dashSize: 6, gapSize: 5 }));
     gBackbone.add(fatSegs(segsOf(edges.filter(e => e.type === 'microwave')), { color: 0xe6ebee, linewidth: 0.9, opacity: 0.45, dashed: true, dashSize: 3, gapSize: 4 }));
     gMW.add(fatSegs(segsOf(edges.filter(e => e.type === 'mwbackup')), { color: 0xb9a3f0, linewidth: 1.2, opacity: 0.8, dashed: true, dashSize: 3, gapSize: 3 }));
-    gLastMile.add(fatSegs(segsOf(edges.filter(e => e.type === 'access' || e.type === 'mwaccess')), { color: 0xc9d2d6, linewidth: 0.6, opacity: 0.25 }));
+    gLastMile.add(fatSegs(segsOf(edges.filter(e => (e.type === 'access' || e.type === 'mwaccess') && !e.office)), { color: 0xc9d2d6, linewidth: 0.6, opacity: 0.25 }));
+    // each illustrative office's line to its city router
+    gOff.add(fatSegs(segsOf(edges.filter(e => e.office)), { color: 0xf0c27a, linewidth: 1.6, opacity: 0.85 }));
   }
   gBackbone.children.forEach(c => c.userData.o = c.material.opacity);
 
@@ -119,7 +121,8 @@ export function drawNetwork(G) {
     [gPlanned, by(n => n.tier === 'cls' && n.planned)],
     [gSat, by(n => n.tier === 'gw' || n.tier === 'vsat')],
     [gMW, by(n => n.tier === 'tower')],
-    [gCities, accessNodes]
+    [gCities, accessNodes],
+    [gOff, by(n => n.tier === 'office')]
   ];
   const markers = groups.map(([g, list]) => { const p = nodePoints(list); g.add(p); return p; });
   onResize(() => { glyphUniforms.uPR.value = renderer.getPixelRatio(); });

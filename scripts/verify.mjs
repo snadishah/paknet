@@ -63,6 +63,11 @@ for (const vp of VIEWPORTS) {
     const z = await page.evaluate(() => window.__paknet?.zoomTest?.(150)).catch(e => (errors.push('zoomTest: ' + e.message), null));
     if (z) { v.zoomMinLuma = Math.min(...z.slice(6)); v.zoomLuma = z; v.zoomMaxJump = +Math.max(...z.slice(2).map((x, i) => Math.abs(x - 2 * z[i + 1] + z[i]) / Math.max(20, z[i + 1]))).toFixed(2); } // sudden spikes, not steady change
   }
+  // City view memory: geometries come back to the baseline after leaving the city
+  if (vp.frames && v.readyMs != null) {
+    const m = await page.evaluate(() => window.__paknet?.cityMemoryTest?.()).catch(e => (errors.push('cityMemoryTest: ' + e.message), null));
+    if (m) { v.cityMem = m; v.cityDisposed = m.inside.geometries > m.before.geometries && m.after.geometries <= m.before.geometries + 2; }
+  }
   // Extra shots the app offers (window.__paknet.shots: name → async setup)
   const names = await page.evaluate(() => Object.keys(window.__paknet?.shots || {})).catch(() => []);
   for (const n of names) {
@@ -89,6 +94,7 @@ report.checks = {
   drawCallsUnder100: mac.maxDrawCalls == null ? null : mac.maxDrawCalls <= 100,
   assetsUnder25MB: distMB <= 25,
   p95Under20ms_smoke: mac.p95 == null ? null : mac.p95 <= 20,
+  cityMemoryReturns: mac.cityDisposed ?? null,
   zoomNoBlackFrame: mac.zoomMinLuma == null ? null : mac.zoomMinLuma > 20,
   zoomNoPop: mac.zoomMaxJump == null ? null : mac.zoomMaxJump < 0.15
 };
@@ -105,6 +111,7 @@ const lines = [
   `console errors: mac ${mac.errorCount}, phone ${phone.errorCount}  (${ok(report.checks.noConsoleErrors)})`,
   `first error: ${(mac.errors[0] || phone.errors[0] || 'none').slice(0, 140)}`,
   `zoom space→300 m: min brightness ${mac.zoomMinLuma ?? '—'} (${ok(report.checks.zoomNoBlackFrame)}), biggest sudden change ${mac.zoomMaxJump ?? '—'} (${ok(report.checks.zoomNoPop)}); warnings ${mac.warnings.length}`,
+  `city memory (geometries before/inside/after): ${mac.cityMem ? [mac.cityMem.before.geometries, mac.cityMem.inside.geometries, mac.cityMem.after.geometries].join(' / ') : '—'} (${ok(report.checks.cityMemoryReturns)})`,
   `screenshots: ${mac.shots.length + phone.shots.length} in .verify/ (${[...mac.shots, ...phone.shots].slice(0, 6).join(', ')}${mac.shots.length + phone.shots.length > 6 ? ', …' : ''})`,
   `overall: ${Object.entries(report.checks).every(([k, c]) => c !== false || k.endsWith('_smoke')) ? 'PASS' : 'FAIL'}  (details: .verify/report.json)`
 ];

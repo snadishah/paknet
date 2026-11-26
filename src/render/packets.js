@@ -8,6 +8,9 @@ import { renderer, layers } from './scene.js';
 import { toGlobe } from './geo3.js';
 
 const TRAIL = 4;
+// Trail spacing (flat units): ~4 km from space, a few metres in a city view.
+let trailStep = 0.035;
+export const setTrailStep = s => { trailStep = s; };
 const pGeo = new THREE.BufferGeometry();
 const pPos = new Float32Array(MAXP * TRAIL * 3), pCol = new Float32Array(MAXP * TRAIL * 3), pSize = new Float32Array(MAXP * TRAIL), pAlpha = new Float32Array(MAXP * TRAIL);
 pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute('aColor', new THREE.BufferAttribute(pCol, 3));
@@ -44,13 +47,18 @@ function hopPos(path, d, out) {
   samplePath(path, d, tmp); return toGlobe(tmp[0], tmp[1], 0, out);
 }
 
+// The office whose traffic is being followed: its dots are drawn white and a little bigger.
+let hiOffice = null;
+export const setHighlightOffice = k => { hiOffice = k; };
+const WHITE = new THREE.Color(1, 1, 1);
+
 export function drawPackets(packets) {
   let j = 0;
   for (const pk of packets) {
-    const col = colorOf(pk.color);
+    const hi = hiOffice && pk.opt?.office === hiOffice; const col = hi ? WHITE : colorOf(pk.color);
     for (let k = 0; k < TRAIL; k++) {
-      hopPos(pk.path, pk.d - k * 0.035, v); const o = j * 3; pPos[o] = v.x; pPos[o + 1] = v.y; pPos[o + 2] = v.z;
-      pCol[o] = col.r; pCol[o + 1] = col.g; pCol[o + 2] = col.b; pSize[j] = pk.size * (1 - k * 0.2); pAlpha[j] = k === 0 ? 1 : 0.5 - k * 0.12; j++;
+      hopPos(pk.path, pk.d - k * trailStep, v); const o = j * 3; pPos[o] = v.x; pPos[o + 1] = v.y; pPos[o + 2] = v.z;
+      pCol[o] = col.r; pCol[o + 1] = col.g; pCol[o + 2] = col.b; pSize[j] = (hi ? pk.size * 1.35 : pk.size) * (1 - k * 0.2); pAlpha[j] = k === 0 ? 1 : 0.5 - k * 0.12; j++;
     }
   }
   pGeo.setDrawRange(0, j);

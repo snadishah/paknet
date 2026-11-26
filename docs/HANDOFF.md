@@ -1,16 +1,17 @@
-# Handoff — after Phase 2 (satellites near and far)
+# Handoff — after Phase 3 (offices + visual traceroute)
 
 **Done**
-- `scripts/fetch-orbits.mjs` (`npm run orbits`) → `src/data/satellites.json` (234 KB, fetched 2026-11-26): PakSat-MM1 + 1R, PRSS-1/PakTES-1A/PRSC (eyes), Starlink/OneWeb/Kuiper (sampled 300 each of 11,194 / 651 / 391), Qianfan 275, GPS 32, BeiDou 37; Telesat Lightspeed: none in orbit.
-- `src/sat/` (pure): `catalog.js` (groups, honest roles and card text), `propagate.js` (satellite.js; null-safe), `worker.js` (SGP4 off the main thread, ≤ 5 Hz).
-- `render/satellites.js`: one Points for all satellites (hollow rings = "coming soon", grey = retired), GEO belt ring, sample orbit tracks (one line object) → 3 draw calls; positions interpolated on the orbit each frame; PakSat-MM1 coverage disc ("approximate coverage", fades out below 9,000 km); PakSat network links and satellite packets now follow the propagated MM1 position.
-- `ui/satui.js`: Layers → Satellites (Far / Near / Eyes in space / Navigation, one plain sentence each), search (PakSat-MM1, PakSat-1R, Starlink, …), click a satellite → card (launch, orbit, role, licence status; Expert: NORAD, COSPAR, epoch, live position).
-- Tile streaming fixed: stale queued requests dropped, centre-first loading, coarse cover tiles, re-shown tiles fade; tile cap 50.
+- `src/sim/offices.js` (pure): 5 illustrative offices added as host leaves behind their city router (`addOffices`, before `createNetwork`); read-only `getPath`, `pathTo`, `getFlowsFrom`, `traceroute`; office traffic = small real bundles (0.002 Gbit, 6/s per office at peak × time-of-day curve). Destinations: YouTube (W cable → "Google server — illustrative"), WhatsApp to Dubai (W cable), email to Lahore/Karachi (through the nearest IXP, stays in Pakistan).
+- `scripts/fetch-buildings.mjs` (`npm run buildings [-- city]`) → `src/data/cities/*.json` (9–50 KB each; Quetta radius 900 m because OSM is sparse there). Copied to `dist/assets/cities/` and loaded only when you zoom in.
+- `render/city.js`: one merged mesh per city + highlighted office building, ENU frame in metres (no jitter), fades in below 30 km, disposed above 70 km (verify: geometries 150 → 152 → 38).
+- `ui/traceroute.js`: office cards ("Follow its traffic"), numbered clickable hops (plain names, jobs, delay measured on each link now; Expert: hop id, queue, load), destination chips, route + illustrative onward arc highlighted, "the road just changed" note when routing changes. Office dots are white.
+- Slow motion near the ground (down to ×1/300, shown in the time bar) so 1 km hops are watchable; time of day unaffected.
+- Hash links now also apply on `hashchange`.
 
-**Evidence**: 83/83 tests (PakSat-MM1 at 38.2° ± 0.5°, GEO height, stays put a week). Verify PASS: 0 console errors, max 71 draw calls, zoom smooth (biggest sudden change 0.12).
+**Evidence**: 89/89 tests (offices: attachment, routes between cities unchanged, hops == routing path, cable cut changes path, real flows). Verify PASS: 0 errors, max 81 draw calls, zoom smooth, city memory returns.
 
-**Skipped / simplified**: no 3D models for PakSat (points only; LOD models were optional); no runtime orbit refresh (snapshot only — rerun `npm run orbits` before the demo).
+**Known issues**: office building = biggest OSM building within 120 m of the point (illustrative); the "measured" average needs a few delivered parcels before it shows.
 
-**Next**: Phase 3 (offices + visual traceroute).
+**Next**: Phase 4 (tour, presentation mode, glossary).
 
-**Files**: src/sat/*, src/render/{satellites,network,labels,tiles,globecam}.js, src/ui/{satui,shell}.js, src/main.js, src/template.html, scripts/fetch-orbits.mjs, src/data/satellites.json, tests/satellites.test.js.
+**Files**: src/sim/offices.js, src/render/{city,network,packets}.js, src/ui/{traceroute,shell}.js, src/main.js, src/template.html, scripts/{fetch-buildings,build,verify}.mjs, src/data/cities/*, tests/offices.test.js.
