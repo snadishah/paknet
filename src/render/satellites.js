@@ -151,9 +151,12 @@ export function initSatellites(clock, onMove) {
 }
 export const satState = { clock: null, onMove: null, ringT: -1e15, mm1Label: null, r1Label: null };
 
+// Quality fallback: draw only every `step`-th "coming soon" satellite.
+let sampleStep = 1;
+export function setSatSample(step) { sampleStep = step; applyLayers(); }
 export function applyLayers() {
   if (!N) { geoRing.visible = satLayers.far; return; }
-  list.forEach((s, i) => { vis[i] = satLayers[s.g.layer] ? 1 : 0; });
+  list.forEach((s, i) => { vis[i] = satLayers[s.g.layer] && (s.role !== 'soon' || i % sampleStep === 0) ? 1 : 0; });
   geo.attributes.aVis.needsUpdate = true;
   geoRing.visible = satLayers.far; cap.visible = satLayers.far; satState.capOn = satLayers.far;
   satState.ringT = -1e15; // recompute tracks for the visible groups

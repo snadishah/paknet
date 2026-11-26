@@ -272,7 +272,7 @@ export function initShell(ctx) {
     const inf = renderer.info; stats.calls = inf.render.calls; stats.triangles = inf.render.triangles; stats.textures = inf.memory.textures; stats.geometries = inf.memory.geometries;
     if (sh.started) stats.maxCalls = Math.max(stats.maxCalls, stats.calls);
     pf.n++; pf.ms = pf.ms * 0.9 + rawMs * 0.1;
-    if (body.classList.contains('perf') && performance.now() - pf.t > 500) { pf.fps = pf.n * 1000 / (performance.now() - pf.t); pf.n = 0; pf.t = performance.now(); perfEl.textContent = `fps ${pf.fps.toFixed(0)}  frame ${pf.ms.toFixed(1)} ms\ncalls ${stats.calls}  tris ${(stats.triangles / 1000).toFixed(0)}k\ntextures ${stats.textures}  geoms ${stats.geometries}\nalt ${altitudeKm.toFixed(altitudeKm < 10 ? 2 : 0)} km  pr ${renderer.getPixelRatio()}`; }
+    if (body.classList.contains('perf') && performance.now() - pf.t > 500) { pf.fps = pf.n * 1000 / (performance.now() - pf.t); pf.n = 0; pf.t = performance.now(); perfEl.textContent = `fps ${pf.fps.toFixed(0)}  frame ${pf.ms.toFixed(1)} ms\ncalls ${stats.calls}  tris ${(stats.triangles / 1000).toFixed(0)}k\ntextures ${stats.textures}  geoms ${stats.geometries}\nalt ${altitudeKm.toFixed(altitudeKm < 10 ? 2 : 0)} km  pr ${renderer.getPixelRatio()}  quality ${sh.qualityLevel?.() ?? 0}`; }
   };
   return sh;
 }

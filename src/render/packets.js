@@ -50,12 +50,15 @@ function hopPos(path, d, out) {
 // The office whose traffic is being followed: its dots are drawn white and a little bigger.
 let hiOffice = null;
 export const setHighlightOffice = k => { hiOffice = k; };
+// In the DDoS story the attackers are a grey crowd, not red.
+let atkGrey = false; export const setAttackGrey = v => { atkGrey = v; };
+const GREY = new THREE.Color(0.62, 0.65, 0.68);
 const WHITE = new THREE.Color(1, 1, 1);
 
 export function drawPackets(packets) {
   let j = 0;
   for (const pk of packets) {
-    const hi = hiOffice && pk.opt?.office === hiOffice; const col = hi ? WHITE : colorOf(pk.color);
+    const hi = hiOffice && pk.opt?.office === hiOffice; const col = hi ? WHITE : atkGrey && pk.cls === 'atk' ? GREY : colorOf(pk.color);
     for (let k = 0; k < TRAIL; k++) {
       hopPos(pk.path, pk.d - k * trailStep, v); const o = j * 3; pPos[o] = v.x; pPos[o + 1] = v.y; pPos[o + 2] = v.z;
       pCol[o] = col.r; pCol[o + 1] = col.g; pCol[o + 2] = col.b; pSize[j] = (hi ? pk.size * 1.35 : pk.size) * (1 - k * 0.2); pAlpha[j] = k === 0 ? 1 : 0.5 - k * 0.12; j++;

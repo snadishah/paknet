@@ -1,23 +1,42 @@
 // Effects on the globe: bursts, route highlight, cut marks, shields.
 // Callers may pass flat map positions (the simulator's) or globe positions; G3 handles both.
 // Sizes are given in flat units (1 ≈ 111 km) as before and converted to km here.
+// Draw calls stay constant: all bursts are one Points object, all cut lines one
+// line object and all cut "X" marks one Points object, however many there are.
 import * as THREE from 'three';
 import { KM_PER_UNIT } from '../geo/globe.js';
 import { buildPath } from '../routing/paths.js';
-import { layers, fatLine, disposeLine } from './scene.js';
+import { layers, fatLine, fatSegs, disposeLine, camera, renderer, onResize } from './scene.js';
 import { G3, faceUp, mapPolyline, edgeGlobe } from './geo3.js';
 import { altitudeKm } from './globecam.js';
 
 const gFX = () => layers.fx;
 const K = KM_PER_UNIT;
 
-const bursts = []; const burstGeo = new THREE.RingGeometry(0.75, 1, 48);
+// ---------- bursts: expanding rings, one Points object (≤ 300 at once) ----------
+const MAXB = 300;
+const bPos = new Float32Array(MAXB * 3), bCol = new Float32Array(MAXB * 3), bSize = new Float32Array(MAXB), bAlpha = new Float32Array(MAXB);
+const bGeo = new THREE.BufferGeometry();
+bGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3)); bGeo.setAttribute('aColor', new THREE.BufferAttribute(bCol, 3));
+bGeo.setAttribute('aSize', new THREE.BufferAttribute(bSize, 1)); bGeo.setAttribute('aAlpha', new THREE.BufferAttribute(bAlpha, 1));
+const projScale = () => renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
+const bMat = new THREE.ShaderMaterial({
+  // no depth test: a big ring must not be cut in half by the globe; rings behind the Earth are skipped in updateFx
+  transparent: true, depthWrite: false, depthTest: false, uniforms: { uProj: { value: projScale() } },
+  vertexShader: `attribute vec3 aColor; attribute float aSize; attribute float aAlpha; uniform float uProj; varying vec3 vC; varying float vA;
+    void main(){ vC=aColor; vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.); gl_PointSize = min(512., aSize * uProj / -mv.z); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `varying vec3 vC; varying float vA; void main(){ float r=length(gl_PointCoord-.5)*2.; float a = smoothstep(.84,.9,r) * (1.-smoothstep(.96,1.,r)); if (a<=0.) discard; gl_FragColor=vec4(vC, a*vA); }`
+});
+const bPoints = new THREE.Points(bGeo, bMat); bPoints.frustumCulled = false; bPoints.renderOrder = 8;
+onResize(() => { bMat.uniforms.uProj.value = projScale(); });
+const bursts = []; const tmpC = new THREE.Color();
 export function burst(pos, color = '#dc2626', s = 0.2, life = 0.8) {
-  const m = new THREE.Mesh(burstGeo, new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
-  faceUp(m, G3(pos)); m.renderOrder = 8; gFX().add(m); bursts.push({ m, t: 0, life, s: s * K });
-  if (bursts.length > 100) { const b = bursts.shift(); gFX().remove(b.m); b.m.material.dispose(); }
+  if (!bPoints.parent) gFX().add(bPoints);
+  if (bursts.length >= MAXB) bursts.shift();
+  bursts.push({ p: G3(pos), c: tmpC.set(color).toArray(), t: 0, life, s: s * K });
 }
 
+// ---------- route highlight ----------
 let hiLines = [];
 export const hasHighlight = () => hiLines.length > 0;
 export function clearHighlight() { hiLines.forEach(l => { gFX().remove(l); disposeLine(l); }); hiLines = []; }
@@ -28,23 +47,30 @@ export function highlightPath(src, pe) {
   b.userData.anim = true; a.renderOrder = b.renderOrder = 7; gFX().add(a, b); hiLines.push(a, b); return p;
 }
 
-const cutMarks = new Map();
-const mRed = new THREE.MeshBasicMaterial({ color: 0xe5484d }), mWhite = new THREE.MeshBasicMaterial({ color: 0xffffff });
-export function markCut(e) {
-  const gp = edgeGlobe(e), mid = gp[Math.floor(gp.length * (e.cable ? 0.3 : 0.5))]; const g = new THREE.Group();
-  const l = fatLine(gp, { color: 0xe5484d, linewidth: 2.4, opacity: 1, dashed: true, dashSize: 8, gapSize: 6 }); l.renderOrder = 7; g.add(l);
-  const x = new THREE.Group(); const b1 = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.2), mRed); b1.rotation.z = 0.78; const b2 = b1.clone(); b2.rotation.z = -0.78;
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(0.75, 32), mWhite); disc.position.z = -0.001; x.add(disc, b1, b2);
-  faceUp(x, mid); x.renderOrder = 9; g.add(x); g.userData = { x, line: l };
-  gFX().add(g); cutMarks.set(e.id, g); e.cutPos = mid;
-  scaleMarks();
+// ---------- cut marks: red dashed lines + an X, two draw calls for all of them ----------
+const cutMarks = new Map(); // edge id → { e, mid }
+let cutLines = null, cutX = null;
+const xMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, uniforms: { uPR: { value: renderer.getPixelRatio() } },
+  vertexShader: 'uniform float uPR; void main(){ gl_PointSize = 18. * uPR; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+  fragmentShader: `void main(){ vec2 p = gl_PointCoord*2.-1.; float r = length(p); if (r > 1.) discard;
+    float d = min(abs(p.x-p.y), abs(p.x+p.y)) / 1.4142; float x = (1.-smoothstep(.12,.2,d)) * step(r,.62);
+    gl_FragColor = x > .5 ? vec4(.9,.28,.3,1.) : vec4(1.,1.,1.,.95*(1.-smoothstep(.85,1.,r))); }`
+});
+function rebuildCuts() {
+  if (cutLines) { gFX().remove(cutLines); disposeLine(cutLines); cutLines = null; }
+  if (cutX) { gFX().remove(cutX); cutX.geometry.dispose(); cutX = null; }
+  if (!cutMarks.size) return;
+  const segs = []; for (const { e } of cutMarks.values()) { const gp = edgeGlobe(e); for (let i = 1; i < gp.length; i++) segs.push({ a: gp[i - 1], b: gp[i] }); }
+  cutLines = fatSegs(segs, { color: 0xe5484d, linewidth: 2.4, opacity: 1, dashed: true, dashSize: 8, gapSize: 6 }); cutLines.renderOrder = 7; gFX().add(cutLines);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([...cutMarks.values()].flatMap(c => [c.mid.x, c.mid.y, c.mid.z]), 3));
+  cutX = new THREE.Points(g, xMat); cutX.frustumCulled = false; cutX.renderOrder = 9; gFX().add(cutX);
 }
-export function unmarkCut(e) { const g = cutMarks.get(e.id); if (g) { gFX().remove(g); disposeLine(g.userData.line); cutMarks.delete(e.id); } }
+export function markCut(e) { const gp = edgeGlobe(e), mid = gp[Math.floor(gp.length * (e.cable ? 0.3 : 0.5))]; e.cutPos = mid; cutMarks.set(e.id, { e, mid }); rebuildCuts(); }
+export function unmarkCut(e) { if (cutMarks.delete(e.id)) rebuildCuts(); }
+export function setMarkScale() {}
 
-// Cut marks and shields keep a readable screen size as the camera zooms.
-function scaleMarks() { const s = Math.max(0.05, altitudeKm * 0.012); for (const g of cutMarks.values()) g.userData.x.scale.setScalar(s); }
-export function setMarkScale() { scaleMarks(); }
-
+// ---------- shields ----------
 const shields = [];
 export function shieldAt(node, r = 0.42) {
   const g = new THREE.Group(), R = r * K;
@@ -55,13 +81,19 @@ export function shieldAt(node, r = 0.42) {
 }
 export function clearShields() { shields.forEach(s => { gFX().remove(s); s.traverse(o => { if (o.isLine2) disposeLine(o); else if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } }); }); shields.length = 0; }
 
+const tc = new THREE.Vector3();
+const behind = p => { tc.copy(camera.position).sub(p); return tc.dot(p) < 0 && p.lengthSq() < 6500 * 6500; };
 export function updateFx(dt) {
+  let j = 0;
   for (let i = bursts.length - 1; i >= 0; i--) {
     const b = bursts[i]; b.t += dt; const f = b.t / b.life;
-    if (f >= 1) { gFX().remove(b.m); b.m.material.dispose(); bursts.splice(i, 1); continue; }
+    if (f >= 1) { bursts.splice(i, 1); continue; }
+    if (behind(b.p)) continue;
     // never smaller than a few pixels' worth, never huge from space
-    const s = Math.max(b.s, altitudeKm * 0.01) * (0.3 + f); b.m.scale.setScalar(s); b.m.material.opacity = (1 - f) * 0.9;
+    const s = Math.max(b.s, altitudeKm * 0.01) * (0.3 + f) * 2;
+    bPos[j * 3] = b.p.x; bPos[j * 3 + 1] = b.p.y; bPos[j * 3 + 2] = b.p.z; bCol.set(b.c, j * 3); bSize[j] = s; bAlpha[j] = (1 - f) * 0.9; j++;
   }
+  bGeo.setDrawRange(0, j); bPoints.visible = j > 0;
+  for (const a of ['position', 'aColor', 'aSize', 'aAlpha']) bGeo.attributes[a].needsUpdate = true;
   hiLines.forEach(l => { if (l.userData.anim) l.material.dashOffset -= dt * 20; });
-  if (cutMarks.size) scaleMarks();
 }

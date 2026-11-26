@@ -76,6 +76,11 @@ for (const vp of VIEWPORTS) {
     const m = await page.evaluate(() => window.__paknet?.cityMemoryTest?.()).catch(e => (errors.push('cityMemoryTest: ' + e.message), null));
     if (m) { v.cityMem = m; v.cityDisposed = m.inside.city && !m.after.city && m.after.geometries <= m.before.geometries + 2; } // loaded inside, gone after, no leak
   }
+  // Every scenario plays to the end without errors
+  if (vp.frames && v.readyMs != null) {
+    const sm = await page.evaluate(() => window.__paknet?.scenarioSmoke?.()).catch(e => (errors.push('scenarioSmoke: ' + e.message), null));
+    if (sm) { v.scenarios = sm; v.scenariosOk = Object.values(sm).every(r => r.learned && !r.error); }
+  }
   // Extra shots the app offers (window.__paknet.shots: name → async setup)
   const names = await page.evaluate(() => Object.keys(window.__paknet?.shots || {})).catch(() => []);
   for (const n of names) {
@@ -103,6 +108,7 @@ report.checks = {
   assetsUnder25MB: distMB <= 25,
   p95Under20ms_smoke: mac.p95 == null ? null : mac.p95 <= 20,
   cityMemoryReturns: mac.cityDisposed ?? null,
+  scenariosEndToEnd: mac.scenariosOk ?? null,
   zoomNoBlackFrame: mac.zoomMinLuma == null ? null : mac.zoomMinLuma > 20,
   zoomNoPop: mac.zoomMaxJump == null ? null : mac.zoomMaxJump < 0.15
 };
@@ -120,6 +126,7 @@ const lines = [
   `first error: ${(mac.errors[0] || phone.errors[0] || 'none').slice(0, 140)}`,
   `zoom space→300 m: min brightness ${mac.zoomMinLuma ?? '—'} (${ok(report.checks.zoomNoBlackFrame)}), biggest sudden change ${mac.zoomMaxJump ?? '—'} (${ok(report.checks.zoomNoPop)}); warnings ${mac.warnings.length}`,
   `city memory (geometries before/inside/after): ${mac.cityMem ? [mac.cityMem.before.geometries, mac.cityMem.inside.geometries, mac.cityMem.after.geometries].join(' / ') : '—'} (${ok(report.checks.cityMemoryReturns)})`,
+  `scenarios end to end: ${mac.scenarios ? Object.values(mac.scenarios).filter(r => r.learned && !r.error).length + '/' + Object.keys(mac.scenarios).length : '—'} (${ok(report.checks.scenariosEndToEnd)})`,
   `screenshots: ${mac.shots.length + phone.shots.length} in .verify/ (${[...mac.shots, ...phone.shots].slice(0, 6).join(', ')}${mac.shots.length + phone.shots.length > 6 ? ', …' : ''})`,
   `overall: ${Object.entries(report.checks).every(([k, c]) => c !== false || k.endsWith('_smoke')) ? 'PASS' : 'FAIL'}  (details: .verify/report.json)`
 ];

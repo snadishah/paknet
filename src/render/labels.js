@@ -86,9 +86,10 @@ export function updateLabels(layers) {
 
 // Story callouts: a card pinned to a place on the map (flat or globe position).
 const callouts = [];
-export function addCallout(pos, html) {
-  const d = document.createElement('div'); d.className = 'callout'; d.innerHTML = `<i></i>${html}`;
+export function addCallout(pos, html, cls = '') {
+  const d = document.createElement('div'); d.className = 'callout ' + cls; d.innerHTML = cls ? html : `<i></i>${html}`;
   const o = new CSS2DObject(d); o.position.copy(G3(pos)); scene.add(o); callouts.push(o); return o;
 }
+export function removeCallout(o) { const i = callouts.indexOf(o); if (i >= 0) callouts.splice(i, 1); scene.remove(o); o.element.remove(); }
 export function clearCallouts() { callouts.forEach(o => { scene.remove(o); o.element.remove(); }); callouts.length = 0; }
 export const hasCallouts = () => callouts.length > 0;

@@ -11,6 +11,7 @@ Computer Networks course project (SEECS, NUST), instructor **Ms. Maryam Sajjad**
 - `npm test` (Vitest, logic only). Use `npx vitest run --reporter=dot` for short output.
 - `npm run verify`: build, serve, headless Chromium at 1440×900 and 390×844, screenshots + `.verify/report.json` (checks, p50/p95 frame ms, draw calls, console errors, dist size). Prints a 10-line summary. Headless uses software GL: frame times are a smoke test only.
 - `npm run orbits` (CelesTrak → `src/data/satellites.json`), `npm run buildings` (Overpass → `src/data/cities/*.json`). Rarely needed; both keep the committed snapshot if offline.
+- `npm run size`: bundle-size report (biggest inputs of main.js, every shipped asset) → `.verify/size.json`. `node scripts/simplify-borders.mjs` regenerates `src/data/borders.json` (neighbour outlines for the globe) from `data/countries.json`.
 - `npm run experiment`, `npm run report` (experiments, charts with Python/matplotlib, Word report → `docs/PAKNET-report.docx`).
 - `npm run data`: regenerate `data/*.json` from the npm geo packages. Rarely needed.
 - Dev machine is a **Mac**; keep scripts cross-platform (Node only, no bash-only or Windows-only commands).

@@ -3,7 +3,7 @@
 // borders, and every node as a small screen-space marker (one Points object per layer).
 // Also creates the remaining layer groups in their original order.
 import * as THREE from 'three';
-import COUNTRIES from '../../data/countries.json';
+import COUNTRIES from '../data/borders.json'; // simplified by scripts/simplify-borders.mjs
 import { PROV } from '../geo/coast.js';
 import { latLonToFlat, greatCircle, GEO_ALT } from '../geo/globe.js';
 import { layer, fatLine, fatSegs, camera, renderer, disposeLine, onResize } from './scene.js';

@@ -20,6 +20,7 @@ import { updateCity, cityState } from './render/city.js';
 import { initTraceroute } from './ui/traceroute.js';
 import { initGlossary } from './ui/glossary.js';
 import { initTour } from './ui/tour.js';
+import { initScenarios } from './ui/scenarios.js';
 import { DV_ROUND_S } from './sim/params.js';
 import { renderer, labelRenderer, scene, camera, setLift } from './render/scene.js';
 import { buildGlobe, updateGlobe } from './render/globe.js';
@@ -31,6 +32,7 @@ import { initPackets, drawPackets, packetPos, packetUniforms, setTrailStep } fro
 import { burst, markCut, unmarkCut, clearHighlight, hasHighlight, updateFx } from './render/fx.js';
 import { flyTo, updateCamera, altitudeKm, pose, setPose, spin } from './render/globecam.js';
 import { updateTour } from './render/camera.js';
+import { watchFrame, qualityState } from './render/quality.js';
 import { layers } from './render/scene.js';
 import { ui, setTab } from './ui/dom.js';
 import { initPanel } from './ui/panel.js';
@@ -81,6 +83,7 @@ initMetrics(ctx);
 ctx.stories = initStories(ctx);
 initSources();
 const shell = ctx.shell = initShell(ctx);
+shell.qualityLevel = () => qualityState.level;
 // satellites follow the shell's clock; PakSat links are redrawn when PakSat-MM1 moves
 let satLinksAt = 0;
 initSatellites(shellClock, () => { if (performance.now() - satLinksAt > 5000) { satLinksAt = performance.now(); view.refreshSatLinks(); } });
@@ -88,6 +91,7 @@ ctx.setLayer('satellite', true);
 ctx.satui = initSatelliteUI(ctx);
 ctx.trace = initTraceroute(ctx);
 initGlossary();
+ctx.scen = initScenarios(ctx);
 ctx.tour = initTour(ctx);
 on('metrics:sample', m => { ctx.lastSample = m; });
 
@@ -99,7 +103,7 @@ window.__sim = { SCEN, runHijack, runDDoS, runMalware, setTab, traceRoute: ctx.r
   traffic, net, interdomain: ctx.interdomain, stories: () => ctx.stories, shell, G, pose };
 // Screenshot set-ups used by scripts/verify.mjs (each resolves once the camera has arrived).
 const settle = (ms = 2500) => new Promise(r => setTimeout(r, ms));
-window.__paknet = { ctx, debug: { scene, cityState }, shots: {
+window.__paknet = { ctx, debug: { scene, cityState, qualityState }, shots: {
   'start': async () => { shell.start(true); await settle(500); },
   'pakistan': async () => { shell.start(true); await flyTo('pakistan', 10); await settle(1500); },
   'karachi': async () => { shell.start(true); await flyTo({ lat: 24.86, lon: 67.0, range: 25, tilt: 50, heading: 10 }, 10); await settle(9000); },
@@ -109,7 +113,12 @@ window.__paknet = { ctx, debug: { scene, cityState }, shots: {
   'sat-near': async () => { shell.start(true); shell.closeInfo(); shell.searchGo('Starlink'); await settle(4500); },
   'traceroute': async () => { shell.start(true); const o = offices.byKey.karachi; ctx.trace.open('karachi', 'youtube'); await flyTo({ lat: o.lat, lon: o.lon, range: 1.1, tilt: 58, heading: 25 }, 10); await settle(9000); },
   'traceroute-pk': async () => { shell.start(true); ctx.trace.open('karachi', 'whatsapp'); await flyTo('pakistan', 10); await settle(3000); },
-  'tour-1': async () => { shell.closeInfo(); ctx.trace.close(); ctx.tour.startTour(); await settle(3500); },
+  'scenario-aae1': async () => { ctx.tour.finish(); ctx.scen.start('aae1'); await settle(9000); },
+  'scenario-kkh': async () => { ctx.scen.start('kkh'); await settle(14000); },
+  'scenario-ddos': async () => { ctx.scen.start('ddos'); await settle(16000); },
+  'scenario-hijack': async () => { ctx.scen.start('hijack'); await settle(12000); },
+  'scenario-rip': async () => { ctx.scen.start('rip'); await settle(14000); },
+  'tour-1': async () => { ctx.scen.stop(true); shell.closeInfo(); ctx.trace.close(); ctx.tour.startTour(); await settle(3500); },
   'tour-3': async () => { ctx.tour.go(2); await settle(3500); },
   'tour-8': async () => { ctx.tour.go(7); await settle(3500); ctx.tour.finish(); },
   'present': async () => { ctx.tour.startPresent(); ctx.tour.go(1); await settle(3500); },
@@ -133,6 +142,20 @@ window.__paknet.cityMemoryTest = async () => {
   setPose({ lat: 24.8495, lon: 67.0105, range: 1.1, heading: 25, tilt: 58 }); await settle(4000); const inside = { ...mem(), city: !!cityState.loaded.karachi };
   setPose({ lat: 29.2, lon: 69.4, range: 2700, heading: 0, tilt: 18 }); await settle(11000); const after = { ...mem(), city: !!cityState.loaded.karachi };
   return { before, inside, after };
+};
+// Scenario smoke test for verify: every scenario from start to "What did we learn?" by stepping
+// through its beats (1.5 s of real time per scenario), recording errors and the final sentence.
+window.__paknet.scenarioSmoke = async () => {
+  shell.start(true); const out = {};
+  for (const id of ctx.scen.ORDER) {
+    try {
+      ctx.scen.start(id); await settle(800);
+      for (let k = 0; k < 12 && !document.querySelector('#scen .learn'); k++) { ctx.scen.stepNext(); await settle(120); }
+      out[id] = { learned: !!document.querySelector('#scen .learn'), metric: document.getElementById('scMetric')?.textContent || '' };
+    } catch (e) { out[id] = { error: e.message }; }
+    ctx.scen.stop(true);
+  }
+  return out;
 };
 window.__paknet.setStep = i => { const r0 = 27000, r1 = 0.3, N = 48; setPose({ lat: 24.86, lon: 67.02, range: r0 * Math.pow(r1 / r0, i / N), heading: 0, tilt: Math.min(55, i * 1.6) }); };
 window.__paknet.zoomTest = async (stepMs = 0) => {
@@ -172,6 +195,7 @@ function stepWorld(sdt) {
 function frame(now) {
   const rawMs = now - last; const dt = Math.min(0.05, rawMs / 1000); last = now;
   updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updateCity(G.OFFICES);
+  document.body.classList.toggle('city-on', Object.keys(cityState.loaded).length > 0); // OSM credit while buildings are shown
   // Slow motion near the ground: a 1 km hop takes microseconds of network time, so
   // close up the simulation runs slower (down to 1/300) and you can watch each hop.
   // The time of day is not affected (shell clock), and offices keep sending steadily.
@@ -186,10 +210,12 @@ function frame(now) {
   const s = Math.max(0.45, Math.min(1, 1.25 - Math.log10(Math.max(1, pose.range)) * 0.17));
   glyphUniforms.uScale.value = s; packetUniforms.uScale.value = Math.max(0.6, s);
   shell.frame(dt, rawMs);
+  watchFrame(rawMs);
   if (state.playing && ui('kClock')) ui('kClock').textContent = fmtClock(state.simHour);
   stepWorld(sdt);
   drawPackets(traffic.packets);
   updateFx(dt);
+  ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame
   updateLabels(layers);
   ctx.inspector.frame();
   renderer.render(scene, camera); if (hasCallouts()) labelRenderer.render(scene, camera);

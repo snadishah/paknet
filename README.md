@@ -29,6 +29,19 @@ Other commands:
 - `npm run verify` builds the app, opens it in a hidden browser at laptop and phone sizes, takes screenshots and checks for errors. The results are in `.verify/`.
 - Add `?perf=1` to the address (e.g. `http://localhost:4173/?perf=1`) to see frame rate and draw calls.
 
+## How to use it
+
+- **Start** plays a short tour (8 steps). Press **?** any time to see it again, or **Skip intro** to go straight in.
+- **Drag** to move, **scroll or pinch** to zoom (from space down to a street), **right-drag or two fingers** to tilt and turn.
+- **Search** (top left, or press **/**): try "Karachi", "PakSat", "AAE-1", "Lahore office".
+- **Click anything** (a city, a cable, a satellite, an office) for a plain-English card. "Expert details" holds the numbers.
+- **Offices**: click an office and "Follow its traffic" to see every stop its parcels make (a visual traceroute).
+- **What can go wrong?** (top right) plays one of ten short stories: cable cuts, a landslide, attacks, the 2008 YouTube hijack and more.
+- **Presentation mode**: press **P** (or the screen button). Use the arrow keys or a clicker; **Esc** leaves.
+- **Expert** (top right) brings back the full control panels: routing protocols, metrics, security tables.
+- The time bar plays the day faster (1×, 10×, 60×, 1 hour per second); **LIVE** returns to now. Close to the ground the parcels move in slow motion so you can follow them.
+- Every view has its own link: copy the address bar to bookmark a moment for your presentation.
+
 ## Data sources
 - Earth: NASA Blue Marble and Black Marble (public domain; not endorsed by NASA)
 - Close-up imagery: Sentinel-2 cloudless by EOX (CC BY 4.0)

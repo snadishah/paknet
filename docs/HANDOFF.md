@@ -1,14 +1,17 @@
-# Handoff — after Phase 4 (tour, presentation, glossary)
+# Handoff — after Phase 5 (scenarios, each with its own animation)
 
 **Done**
-- `src/stories/captions.js` (pure): the 8 tour captions + presentation captions; `src/stories/kids.js`: what / why bad / how it heals / what we learned for all 10 scenarios (used in Phase 5). `tests/captions.test.js`: every caption ≤ 25 words and Flesch–Kincaid grade ≤ 3 (on-screen taught words such as "internet", "satellite", "YouTube" count as one syllable; titles: ≤ 8 words).
-- `ui/tour.js`: hand-rolled story engine (steps = camera + enter/leave + caption). Start → 8-step tour (Back/Next/Skip, ← → Esc, focus on Next), "?" replays, the last step pulses the offices and ends when one is clicked. Presentation mode (P or the screen button): full screen, big caption bar, cursor hidden, ← → / PageUp / PageDown / space, Esc leaves; order space → Pakistan → Karachi office traceroute → satellites → [scenario slides, Phase 5] → defence loop card.
-- `ui/glossary.js`: tooltips (hover, focus, tap) for packet, router, cable, IXP, BGP, latency, satellite, DNS, RPKI, DDoS, botnet, OSPF, RIP … in tour captions, info cards and the traceroute.
-- Satellite snapshot now loads at runtime (`assets/satellites.json`): bundle 1.35 → 1.12 MB.
-- Offline: the tile loader backs off for 30 s after a failure (one failed request, not dozens); verify counts optional-internet failures separately and does one warm-up load.
+- `ui/scenarios.js`: 10 scenarios started from one click ("What can go wrong?" button, search, presentation slides): AAE-1 cut, Red Sea cuts (3 in sequence, camera on the Red Sea), KKH landslide, Gwadar what-if ("Imaginary scenario" badge), DDoS, compromised phones, 2008 YouTube hijack, 2021 Facebook outage, RIP count-to-infinity, OSPF convergence. Each: ≤ 42 s, Pause / Next step / Start again / Done, the 3 kid sentences appear as it plays, one measured before/after sentence, Expert details, ends with "What did we learn?". All world changes go through the simulator (cuts, BGP actions, attacks, protocols).
+- `render/scenefx.js`: sparks, red glow, self-drawing cable, sliding rocks, ripple waves, fading roads, circling "confused" parcels, secret-signal lines, phones lighting up, pinned bubbles (alarm bell, RPKI stamp, step counters, stopwatch). Attack dots are grey in the DDoS story.
+- Draw calls kept flat: all bursts are one Points object; all cut lines one object; all cut X marks one Points object; scenario lines merged.
+- verify: new end-to-end check runs all 10 scenarios to "What did we learn?" (10/10).
 
-**Evidence**: 153/153 tests. Verify PASS: 0 console errors, ready 0.64 s (warm), max 81 draw calls, zoom smooth (0.07), city memory returns.
+**Decisions**: the scenario story clock follows wall time (capped 0.25 s/frame) so it isn't slowed by slow frames; the simulation itself still follows the time bar / slow motion.
 
-**Next**: Phase 5 (scenarios with their own animations; they register presentation slides via `ctx.scenarioSlides`).
+**Known issues**: hijack "share of the world" comes from the simplified 15-AS BGP model (can read 100%); Red Sea cut points are drawn on the illustrative onward route.
 
-**Files**: src/stories/{captions,kids}.js, src/ui/{tour,glossary,shell,traceroute,satui}.js, src/render/{satellites,tiles}.js, src/main.js, src/template.html, scripts/{build,verify}.mjs, tests/captions.test.js.
+**Next**: Phase 6 (cleanup, dynamic quality fallback, references/README, fresh review, final evidence).
+
+**Files**: src/ui/scenarios.js, src/render/{scenefx,fx,labels,packets}.js, src/main.js, src/template.html, scripts/verify.mjs.
+
+**Phase 6 started (in this commit, not yet fully verified):** dynamic quality fallback (`render/quality.js`: p95 > 25 ms for 3 s → pixel ratio 1, then every 3rd "coming soon" satellite; 8 s grace at load), neighbour borders simplified (`scripts/simplify-borders.mjs` → `src/data/borders.json`, 290 → 86 KB), `npm run size` bundle report, OSM credit shown while buildings are on screen, Expert drawer recoloured to the dark theme, README "How to use it", REFERENCES §8.3 scenario notes. **Still to do:** run `npm test && npm run verify` on this state and look at `mac-expert.png`; act on the fresh-context review; final evidence pack; final HANDOFF.

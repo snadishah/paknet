@@ -469,6 +469,9 @@ These come from the research brief that defines the redesign ("Master Prompt", N
 - The five offices (Karachi, Lahore, Islamabad, Peshawar, Quetta), their locations and the example destinations ("YouTube video", "WhatsApp message to Dubai", "Google server") — see Phase 3.
 - PakSat-MM1's coverage disc ("approximate coverage").
 - As before: the network inside Pakistan (corridors, operators per corridor).
+- Scenario visuals (Phase 5): the Red Sea cut points are drawn on the illustrative onward route near Jeddah and Sudan (the real fault positions are only known approximately, §5); the KKH landslide (rocks near Chilas, then the microwave towers failing one by one) is a teaching scenario, not a recorded event; the "Facebook" point (Luleå, Sweden, a real Meta data-centre town) is illustrative; the DDoS target, the scrubbing centre and the twelve compromised phones near Mardan are illustrative; the Gwadar cable is a what-if (badge "Imaginary scenario").
+- Office traffic volume (6 parcels per second per office at the evening peak, 0.002 Gbit each) is chosen for visibility; it does not change the network's load.
+- Slow motion near the ground (down to ×1/300) is a display choice: the simulator's delays are unchanged, only shown slower.
 
 ## Source list
 
