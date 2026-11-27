@@ -36,7 +36,7 @@ export function paksat() {
   for (const [x, y] of [[-1, -0.9], [1, -0.9], [-1, 0.9], [1, 0.9]]) k.cyl(0.06, 0.18, x, y, H / 2, 0x6a6d70, 'metal', 8, 0.03);
   k.box(0.22, 0.22, 0.35, 0.8, 0.6, H / 2, 0x2b2f33, 'metal').box(0.22, 0.22, 0.35, -0.8, 0.6, H / 2, 0x2b2f33, 'metal');
   k.dish(0.5, 0, -0.6, H / 2 + 0.05, 0, 90, WHITE);
-  const body = k.build();
+  const body = k.build(); body.children.forEach(foil);
 
   // solar wings along ±y: a yoke and three 2.3 × 2.0 m panels each, cells with silver grid lines
   const wings = [-1, 1].map(s => {
@@ -49,7 +49,31 @@ export function paksat() {
       for (let g = 1; g < 4; g++) w.box(2.3, 0.012, 0.045, 0, yc - 1 + g * 0.5, -0.022, SILVER, 'metal');
       w.box(2.32, 2.02, 0.03, 0, yc, -0.06, 0xdde1e4, 'matte'); // white back side
     }
-    const g = w.build(); return g;
+    const g = w.build(); g.children.forEach(cells); return g;
   });
   return { body, wings };
+}
+
+// Gold multi-layer insulation is crinkled foil: its normals wobble at a ~15 cm scale (object space, metres),
+// only where the colour is gold, so the silver radiators and white antennas stay smooth.
+function foil(mesh) {
+  if (mesh.userData.surface !== 'metal') return;
+  mesh.material.roughness = 0.3;
+  mesh.material.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vObjP;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjP = position;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vObjP;').replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      float gold = smoothstep(.08, .25, vColor.r - vColor.b);
+      vec3 q = vObjP * 40.;
+      vec3 w = vec3(sin(q.y * 1.3 + 2. * sin(q.z * .7)), sin(q.z * 1.1 + 2. * sin(q.x * .9)), sin(q.x * 1.2 + 2. * sin(q.y * .8)));
+      normal = normalize(normal + gold * .32 * w);`);
+  };
+}
+// Solar cells: deep blue with a faint violet sheen at grazing angles (anti-reflective coating).
+function cells(mesh) {
+  if (mesh.userData.surface !== 'glass') return;
+  mesh.material.onBeforeCompile = sh => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <dithering_fragment>', `#include <dithering_fragment>
+      float graze = 1. - abs(dot(normalize(vViewPosition), normal));
+      gl_FragColor.rgb += vec3(.18, .1, .35) * pow(graze, 3.) * .6;`);
+  };
 }

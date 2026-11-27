@@ -12,7 +12,7 @@ import { paksatPos } from './network.js';
 import { addLabel } from './labels.js';
 import { fromLatLon } from './geo3.js';
 import { busyBegin } from '../busy.js';
-import { paksatShown } from './paksat3d.js';
+import { paksatShown, paksatClose } from './paksat3d.js';
 
 export const satLayers = { far: true, soon: false, eyes: false, nav: false };
 export const satMeta = { fetched: null, groups: {} };
@@ -149,8 +149,7 @@ export function initSatellites(clock, onMove) {
   satState.mm1Label = addLabel('PakSat-MM1', new THREE.Vector3(), { cls: 'sat', minR: 4000, maxR: 1e9, prio: 1, key: 'sat:mm1', layer: null });
   satState.r1Label = addLabel('PakSat-1R (retired)', new THREE.Vector3(), { cls: 'sat dim', minR: 30000, maxR: 1e9, prio: 6, key: 'sat:1r' });
   satState.mm1Label.extraVisible = () => satLayers.far; satState.r1Label.extraVisible = () => satLayers.far;
-  satState.capLabel = addLabel('PakSat-MM1: approximate coverage', fromLatLon(-12, 38.2), { cls: 'sat dim', minR: 12000, maxR: 1e9, prio: 7, key: 'sat:cap' });
-  satState.capLabel.extraVisible = () => satLayers.far;
+  // the coverage disc has no label of its own (it sat on the Earth): PakSat-MM1's card explains it
 }
 export const satState = { started: false, clock: null, onMove: null, ringT: -1e15, mm1Label: null, r1Label: null };
 
@@ -168,9 +167,9 @@ const p0 = new THREE.Vector3(), p1 = new THREE.Vector3();
 export function updateSatellites() {
   if (!N) return; // snapshot not loaded yet
   const t = satState.clock.t, rate = satState.clock.rate;
-  if (iMM1 >= 0) visT[iMM1] = paksatShown() ? 0 : satLayers.far ? 1 : 0; // up close the 3D model replaces the dot
+  if (iMM1 >= 0) visT[iMM1] = paksatShown() ? 0 : satLayers.far ? 1 : 0; // the 3D model replaces the dot
   // the orbit rings: not on the first screen (they cut through the title) nor right next to the satellite
-  if (tracks) tracks.visible = !!satState.started && !paksatShown();
+  if (tracks) tracks.visible = !!satState.started && !paksatClose();
   const now = performance.now(), step = Math.min(1, (now - lastVis) / 400); lastVis = now; let moved = false;
   for (let i = 0; i < N; i++) if (vis[i] !== visT[i]) { vis[i] = visT[i] > vis[i] ? Math.min(visT[i], vis[i] + step) : Math.max(visT[i], vis[i] - step); moved = true; }
   if (moved) geo.attributes.aVis.needsUpdate = true;
@@ -205,11 +204,12 @@ const v = new THREE.Vector3(), toCam = new THREE.Vector3();
 export function pickSatellite(x, y) {
   let best = -1, bd = 144;
   for (let i = 0; i < N; i++) {
-    if (!vis[i]) continue; v.fromArray(pos, i * 3);
+    const model = i === iMM1 && paksatShown(); // PakSat-MM1 is a 3D model (~64 px), not a dot
+    if (!vis[i] && !model) continue; v.fromArray(pos, i * 3);
     toCam.copy(camera.position).sub(v); if (v.lengthSq() < (R + 3000) ** 2 && toCam.dot(v) < 0) continue; // behind the Earth
     v.project(camera); if (v.z > 1) continue;
     const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight, d = (sx - x) ** 2 + (sy - y) ** 2;
-    if (d < bd) { bd = d; best = i; }
+    if (d < (model ? Math.max(bd, 40 * 40) : bd)) { bd = d; best = i; }
   }
   return best < 0 ? null : satDescribe(best);
 }

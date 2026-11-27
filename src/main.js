@@ -26,7 +26,7 @@ import { renderer, labelRenderer, scene, camera, setLift } from './render/scene.
 import { buildGlobe, updateGlobe } from './render/globe.js';
 import * as THREE from 'three';
 import { initTiles, updateTiles, tileDebug, tileState } from './render/tiles.js';
-import { initSatellites, updateSatellites } from './render/satellites.js';
+import { initSatellites, updateSatellites, satState, satLayers } from './render/satellites.js';
 import { drawNetwork, glyphUniforms } from './render/network.js';
 import { buildLabels, updateLabels, hasCallouts } from './render/labels.js';
 import { initPackets, drawPackets, packetPos, packetUniforms, setTrailStep } from './render/packets.js';
@@ -53,7 +53,7 @@ import { createSecurity } from './scenarios/security.js';
 import { createRoutingDemos } from './scenarios/routing-demos.js';
 import { updateFades } from './render/fade3d.js';
 import { initLandmarks, updateLandmarks, landmarkState } from './render/landmarks.js';
-import { updatePaksat3d, PAKSAT_VIEW, paksatShown as paksatShownNow } from './render/paksat3d.js';
+import { updatePaksat3d, PAKSAT_VIEW, paksatClose } from './render/paksat3d.js';
 import { initWatch } from './ui/watch.js';
 
 /* ---------- build ---------- */
@@ -240,7 +240,7 @@ function stepWorld(sdt) {
 
 function frame(now) {
   const rawMs = now - last; const dt = Math.min(0.05, rawMs / 1000); last = now;
-  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updatePaksat3d(); updateCity(G.OFFICES); updateLandmarks();
+  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updatePaksat3d(satState.started && satLayers.far, satState.mm1Label); updateCity(G.OFFICES); updateLandmarks();
   document.body.classList.toggle('city-on', Object.keys(cityState.loaded).length > 0); // OSM credit while buildings are shown
   // our own road overlay when the imagery has no road labels: eased in below ~1,400 km
   const rl = layers.roads?.userData.lines;
@@ -264,7 +264,7 @@ function frame(now) {
   stepWorld(sdt);
   drawPackets(traffic.packets);
   const netNow = traffic.engine.now; updateOnward(netNow - (lastNet ?? netNow)); lastNet = netNow;
-  view.satLinkFade(altitudeKm, paksatShownNow()); view.borderFade(altitudeKm);
+  view.satLinkFade(altitudeKm, paksatClose()); view.borderFade(altitudeKm);
   updateFx(dt); updateFades(dt); // after the effects, so a fade wins over their own opacity for its 300 ms
   ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame
   ctx.watch.tick(Math.min(0.25, rawMs / 1000));

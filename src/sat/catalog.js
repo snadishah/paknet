@@ -25,7 +25,7 @@ export const GROUPS = {
 export const SAT_INFO = {
   59915: { title: 'PakSat-MM1', kick: "Pakistan's internet satellite", tags: [['Carries Pakistani traffic', 'live']],
     what: "Pakistan's own communication satellite. It sits 35,786 km above the equator, so it seems to stand still over one spot.",
-    why: 'Big dishes in Karachi, Lahore and Islamabad and small dishes in far-away towns talk to it. Places with no cables can still get online.',
+    why: 'Big dishes in Karachi, Lahore and Islamabad and small dishes in far-away towns talk to it. Places with no cables can still get online. The shaded circle on the Earth shows roughly the area it can reach.',
     facts: [['Launched', '30 May 2024 (Long March 3B)'], ['In service since', '18 Sep 2024'], ['Orbit', 'Geostationary, 38.2°E'], ['Radio bands', 'C, Ku, Ka and L (48 transponders)']] },
   37779: { title: 'PakSat-1R', kick: 'Retired satellite', tags: [['Retired Aug 2026', 'grey']],
     what: "Pakistan's older communication satellite, launched in 2011.",
