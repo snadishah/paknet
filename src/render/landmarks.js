@@ -1,6 +1,6 @@
 // Representative 3D models at the network's sites (docs/ROUND2.md §3): landing stations, exchanges
 // (IXPs), data centres, satellite ground stations, city exchanges (core routers), the offices with their
-// network rooms, the KKH microwave towers and the Khunjerab Pass. Built in code (models/), placed in a
+// network rooms, the KKH microwave towers and the Khunjerab Pass; the planned Gwadar station see-through. Built in code (models/), placed in a
 // local East-North-Up frame in metres, shown only when the camera is close enough for them to be more
 // than a speck, faded in and out, and freed when the camera leaves. Each model is ≤ 5 draw calls.
 import * as THREE from 'three';
@@ -46,7 +46,8 @@ export function initLandmarks(G, offices) {
       const e = G.cableEdges.find(c => c.a === n.id && c.gpts?.length > 2);
       let sea = -Math.PI / 2; if (e) { const q = e.gpts[Math.min(e.gpts.length - 1, 3)], { e: E, n: N } = enuBasis(ll.lat, ll.lon), o = latLonToEcef(ll.lat, ll.lon, 0); const d = [q.x - o[0], q.y - o[1], q.z - o[2]]; sea = Math.atan2(d[0] * N[0] + d[1] * N[1] + d[2] * N[2], d[0] * E[0] + d[1] * E[1] + d[2] * E[2]); }
       add('cls:' + n.id, ll, () => M.landingStation({ seaward: sea, variant: v++ }));
-    } else if (n.tier === 'ixp') add('ixp:' + n.id, ll, () => M.dataCentre({ size: 1, sign: 0xe8c35a }), 0.3);
+    } else if (n.tier === 'cls' && n.planned) add('cls:' + n.id, ll, () => M.landingStation({ seaward: -Math.PI / 2, variant: v++ }), 0, { ghost: true }); // Gwadar: planned, so a see-through "what if" model facing the sea (south)
+    else if (n.tier === 'ixp') add('ixp:' + n.id, ll, () => M.dataCentre({ size: 1, sign: 0xe8c35a }), 0.3);
     else if (n.tier === 'dc') add('dc:' + n.id, ll, () => M.dataCentre({ size: /Tier III/.test(n.name) ? 1.6 : 1.2, sign: 0xb9a3f0 }), -0.4);
     else if (n.tier === 'gw') { const { az, el } = azEl(ll.lat, ll.lon, sat); add('gw:' + n.id, ll, () => M.groundStation({ az, el }), 0); }
     else if (n.tier === 'core') add('core:' + n.id, offset(ll, 900, 700), () => M.exchange(), 0.2); // beside the city centre
@@ -74,6 +75,7 @@ export const clearZones = () => sites.map(s => ({ lat: s.lat, lon: s.lon, r: s.o
 function show(s) {
   const r = s.make(), kit = r.kit || r; s.group = enuGroup(s.lat, s.lon, s.rot);
   const body = kit.build(); s.group.add(body);
+  if (s.ghost) body.traverse(o => { if (o.isMesh) { o.material.dispose(); o.material = new THREE.MeshStandardMaterial({ color: 0xa8d4ee, transparent: true, opacity: 0.38, roughness: 0.15, metalness: 0.2, emissive: 0x1c3a4e, emissiveIntensity: 0.8, depthWrite: false }); } });
   if (r.leds) { // the rack's status lights: small boxes whose colours follow the office's traffic
     const g = new THREE.BoxGeometry(0.05, 0.05, 0.05), geos = r.leds.map(([x, y, z]) => g.clone().translate(x, y, z));
     const merged = mergeBoxes(geos); g.dispose();

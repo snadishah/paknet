@@ -5,10 +5,13 @@
 // deck with the antennas faces down (−z). Returns the body and the two wings (turned to face the sun).
 import { Kit } from './kit.js';
 
+// weathered: colours halfway to grey
+const fade = hex => { const r = hex >> 16 & 255, g = hex >> 8 & 255, b = hex & 255, y = (r + g + b) / 3; return (Math.round((r + y) / 2) << 16) | (Math.round((g + y) / 2) << 8) | Math.round((b + y) / 2); };
 const GOLD = 0xc9a04a, GOLD2 = 0xb38a36, SILVER = 0xd5d9dc, CELL = 0x1b2a4a, WHITE = 0xeeeeea;
 
-export function paksat() {
-  const k = new Kit(), W = 2.4, Dp = 2.1, H = 3.6; // bus: 2.4 × 2.1 × 3.6 m
+// retired: PakSat-1R after its end of life: weathered colours and solar wings folded against the bus.
+export function paksat({ retired = false } = {}) {
+  const k = new Kit(retired ? fade : undefined), W = 2.4, Dp = 2.1, H = 3.6; // bus: 2.4 × 2.1 × 3.6 m
   // the bus in gold multi-layer insulation: slightly varied panels read as crinkled foil
   for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) {
     const c = (i + j) % 2 ? GOLD : GOLD2;
@@ -40,7 +43,11 @@ export function paksat() {
 
   // solar wings along ±y: a yoke and three 2.3 × 2.0 m panels each, cells with silver grid lines
   const wings = [-1, 1].map(s => {
-    const w = new Kit();
+    const w = new Kit(retired ? fade : undefined);
+    if (retired) { // folded: the three panels stacked flat against the north / south face
+      for (let p = 0; p < 3; p++) w.box(2.3, 0.05, 2.0, 0, s * (Dp / 2 + 0.08 + p * 0.07), -1.4, p ? 0xb8bcbf : CELL, p ? 'matte' : 'glass');
+      return w.build();
+    }
     w.bar([0, s * Dp / 2, 0], [0, s * (Dp / 2 + 1.4), 0], 0.06, SILVER);
     for (let p = 0; p < 3; p++) {
       const yc = s * (Dp / 2 + 1.4 + 1.0 + p * 2.05);

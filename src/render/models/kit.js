@@ -16,11 +16,11 @@ const SURFACES = {
 const c3 = new THREE.Color();
 
 export class Kit {
-  constructor() { this.parts = { matte: [], metal: [], glass: [], light: [], thin: [] }; }
+  constructor(tint = null) { this.parts = { matte: [], metal: [], glass: [], light: [], thin: [] }; this.tint = tint; } // tint: hex → hex for every part (e.g. weathered)
   // any geometry, in metres, already placed
   add(g, color, surf = 'matte') {
     g.deleteAttribute('uv'); if (g.index) g = g.toNonIndexed();
-    c3.set(color); const n = g.attributes.position.count, a = new Float32Array(n * 3);
+    c3.set(this.tint ? this.tint(color) : color); const n = g.attributes.position.count, a = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { a[i * 3] = c3.r; a[i * 3 + 1] = c3.g; a[i * 3 + 2] = c3.b; }
     g.setAttribute('color', new THREE.BufferAttribute(a, 3)); this.parts[surf].push(g); return this;
   }

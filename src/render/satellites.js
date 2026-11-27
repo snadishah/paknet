@@ -12,7 +12,7 @@ import { paksatPos } from './network.js';
 import { addLabel } from './labels.js';
 import { fromLatLon } from './geo3.js';
 import { busyBegin } from '../busy.js';
-import { paksatShown, paksatClose } from './paksat3d.js';
+import { paksatShown, paksat1RShown, paksatClose } from './paksat3d.js';
 
 export const satLayers = { far: true, soon: false, eyes: false, nav: false };
 export const satMeta = { fetched: null, groups: {} };
@@ -167,7 +167,8 @@ const p0 = new THREE.Vector3(), p1 = new THREE.Vector3();
 export function updateSatellites() {
   if (!N) return; // snapshot not loaded yet
   const t = satState.clock.t, rate = satState.clock.rate;
-  if (iMM1 >= 0) visT[iMM1] = paksatShown() ? 0 : satLayers.far ? 1 : 0; // the 3D model replaces the dot
+  if (iMM1 >= 0) visT[iMM1] = paksatShown() ? 0 : satLayers.far ? 1 : 0; // the 3D models replace the dots
+  if (i1R >= 0) visT[i1R] = paksat1RShown() ? 0 : satLayers.far ? 1 : 0;
   // the orbit rings: not on the first screen (they cut through the title) nor right next to the satellite
   if (tracks) tracks.visible = !!satState.started && !paksatClose();
   const now = performance.now(), step = Math.min(1, (now - lastVis) / 400); lastVis = now; let moved = false;
@@ -204,7 +205,7 @@ const v = new THREE.Vector3(), toCam = new THREE.Vector3();
 export function pickSatellite(x, y) {
   let best = -1, bd = 144;
   for (let i = 0; i < N; i++) {
-    const model = i === iMM1 && paksatShown(); // PakSat-MM1 is a 3D model (~64 px), not a dot
+    const model = (i === iMM1 && paksatShown()) || (i === i1R && paksat1RShown()); // 3D models (~64 px), not dots
     if (!vis[i] && !model) continue; v.fromArray(pos, i * 3);
     toCam.copy(camera.position).sub(v); if (v.lengthSq() < (R + 3000) ** 2 && toCam.dot(v) < 0) continue; // behind the Earth
     v.project(camera); if (v.z > 1) continue;

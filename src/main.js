@@ -242,7 +242,7 @@ function stepWorld(sdt) {
 
 function frame(now) {
   const rawMs = now - last; const dt = Math.min(0.05, rawMs / 1000); last = now;
-  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updatePaksat3d(satState.started && satLayers.far, satState.mm1Label); updateCity(G.OFFICES); updateLandmarks(); updateGroundCables();
+  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updatePaksat3d(satState.started && satLayers.far, { label: satState.mm1Label }, { pos: satState.r1Label?.pos, label: satState.r1Label }); updateCity(G.OFFICES); updateLandmarks(); updateGroundCables();
   document.body.classList.toggle('city-on', Object.keys(cityState.loaded).length > 0); // OSM credit while buildings are shown
   // our own road overlay when the imagery has no road labels: eased in below ~1,400 km
   const rl = layers.roads?.userData.lines;
