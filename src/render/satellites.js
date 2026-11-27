@@ -152,7 +152,7 @@ export function initSatellites(clock, onMove) {
   satState.capLabel = addLabel('PakSat-MM1: approximate coverage', fromLatLon(-12, 38.2), { cls: 'sat dim', minR: 12000, maxR: 1e9, prio: 7, key: 'sat:cap' });
   satState.capLabel.extraVisible = () => satLayers.far;
 }
-export const satState = { clock: null, onMove: null, ringT: -1e15, mm1Label: null, r1Label: null };
+export const satState = { started: false, clock: null, onMove: null, ringT: -1e15, mm1Label: null, r1Label: null };
 
 // Quality fallback: draw only every `step`-th "coming soon" satellite.
 let sampleStep = 1;
@@ -169,6 +169,8 @@ export function updateSatellites() {
   if (!N) return; // snapshot not loaded yet
   const t = satState.clock.t, rate = satState.clock.rate;
   if (iMM1 >= 0) visT[iMM1] = paksatShown() ? 0 : satLayers.far ? 1 : 0; // up close the 3D model replaces the dot
+  // the orbit rings: not on the first screen (they cut through the title) nor right next to the satellite
+  if (tracks) tracks.visible = !!satState.started && !paksatShown();
   const now = performance.now(), step = Math.min(1, (now - lastVis) / 400); lastVis = now; let moved = false;
   for (let i = 0; i < N; i++) if (vis[i] !== visT[i]) { vis[i] = visT[i] > vis[i] ? Math.min(visT[i], vis[i] + step) : Math.max(visT[i], vis[i] - step); moved = true; }
   if (moved) geo.attributes.aVis.needsUpdate = true;
@@ -214,7 +216,7 @@ export function pickSatellite(x, y) {
 
 export function satDescribe(i) {
   const s = list[i];
-  return { name: s.name, sat: true, index: i, describe: () => {
+  return { name: s.name, norad: s.norad, sat: true, index: i, describe: () => {
     const live = () => { const p = new THREE.Vector3().fromArray(pos, i * 3); const ll = ecefToLatLon(p.x, p.y, p.z); return [['Now over', `${ll.lat.toFixed(1)}°, ${ll.lon.toFixed(1)}°`], ['Height', `${Math.round(ll.alt).toLocaleString()} km`]]; };
     const base = [['NORAD id', s.norad], ['COSPAR id', s.omm.OBJECT_ID], ['Orbit data epoch', String(s.omm.EPOCH).slice(0, 16)], ['Snapshot fetched', String(SNAP.fetched).slice(0, 10)]];
     const info = SAT_INFO[s.norad];

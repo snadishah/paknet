@@ -9,6 +9,8 @@ import { camera, scene } from './scene.js';
 import { fromLatLon, G3 } from './geo3.js';
 import { pose, altitudeKm } from './globecam.js';
 
+const PANELS = ['infocard', 'scen', 'trace', 'tourcard', 'search', 'tools', 'timebar', 'watch', 'wcap', 'panel', 'busy'];
+const OPEN_ON = new Set(['infocard', 'scen', 'trace', 'tourcard', 'watch', 'wcap', 'busy']); // these are open only with the class "on"
 const MAX_LABELS = 14; // calm, but room for the destinations abroad
 const layerEl = document.createElement('div'); layerEl.id = 'maplabels'; document.getElementById('app').appendChild(layerEl);
 export const labelState = { enabled: true, extra: null }; // extra: (label) => bool overrides
@@ -57,6 +59,8 @@ function behindEarth(p) {
 export function updateLabels(layers) {
   if ((frameNo++ & 1) === 1) return; // every other frame is plenty
   const range = pose.range, alt = altitudeKm; boxes.length = 0; let shown = 0;
+  // open panels count as taken space: a label never hides half under a card or a bar
+  for (const id of PANELS) { const el = document.getElementById(id); if (!el || !el.offsetParent || (OPEN_ON.has(id) && !el.classList.contains('on'))) continue; const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) boxes.push([r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]); }
   for (const l of labels) {
     let want = labelState.enabled && range >= l.minR && range <= l.maxR && (!l.layer || layers[l.layer]?.visible !== false);
     if (labelState.extra) { const x = labelState.extra(l); if (x != null) want = x; }

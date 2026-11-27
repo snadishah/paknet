@@ -20,7 +20,7 @@
   --acc: #2f6f53; --acc-ink: #24573f; --acc-soft: #e6f0ea;
   --bad: #b93a2e; --bad-soft: #fbeeec; --warn: #a85d0c; --warn-soft: #fcf3e6;
   --f: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --t-xs: 11px; --t-sm: 12px; --t-md: 13px; --t-lg: 15px; --t-xl: 20px;
+  --t-xs: 12px; --t-sm: 13px; --t-md: 14px; --t-lg: 15px; --t-xl: 20px; /* text ≥ 14 px for reading, 12 px only for fine print */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s6: 24px;
   --r-md: 12px; --r-lg: 16px;
   --sh: 0 1px 2px rgba(20,40,30,.06), 0 6px 24px rgba(20,40,30,.08);
@@ -70,7 +70,7 @@ body.panel-open #header { max-width: calc(100vw - var(--rail-w) - var(--panel-w)
 
 /* rail */
 #rail { position: fixed; right: var(--gutter); top: var(--gutter); bottom: var(--gutter); width: var(--rail-w); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--s2) 0; z-index: 6; }
-#rail button { width: 46px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 5px; border-radius: 10px; font-size: 10px; font-weight: 600; color: var(--mute); }
+#rail button { width: 46px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 5px; border-radius: 10px; font-size: 11px; font-weight: 600; color: var(--mute); }
 #rail button:hover { background: var(--surface-2); color: var(--ink); }
 #rail button.on { background: var(--acc-soft); color: var(--acc); }
 #rail .sep { width: 28px; height: 1px; background: var(--line); margin: var(--s2) 0; flex: none; } #rail .grow { flex: 1; }
@@ -222,7 +222,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
   body.story-mode .st-chapters, body.story-mode .handle { display: none; }
   body.story-mode .st-timeline { display: flex; position: relative; margin: 0 6px 10px; padding-top: 4px; }
   .st-timeline::before { content: ''; position: absolute; left: 0; right: 0; top: 9px; height: 2px; background: var(--surface-3); }
-  .st-timeline span { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--mute); }
+  .st-timeline span { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--mute); }
   .st-timeline span i { width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-strong); }
   .st-timeline span.done i { background: var(--ink-2); border-color: var(--ink-2); } .st-timeline span.now i { background: var(--bad); border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); } .st-timeline span.now { color: var(--ink); font-weight: 600; }
   .st-timeline span:not(.now) b { display: none; } .st-timeline b { font-weight: 600; white-space: nowrap; }
@@ -298,7 +298,7 @@ body.started .chrome { opacity: 1; pointer-events: auto; }
 /* info card */
 #infocard { position: fixed; right: 16px; top: 72px; width: min(360px, calc(100vw - 32px)); z-index: 11; padding: 18px 18px 14px; display: none; max-height: calc(100vh - 170px); overflow: auto; }
 #infocard.on { display: block; }
-#infocard .kick { font-size: 14px; color: var(--sp-acc); margin: 0 0 4px; } #infocard h3 { margin: 0 32px 10px 0; font-size: 20px; line-height: 1.25; }
+#infocard .kick { font-size: 14px; color: var(--sp-acc); margin: 0 40px 4px 0; } /* clear of the close button */ #infocard h3 { margin: 0 32px 10px 0; font-size: 20px; line-height: 1.25; }
 #infocard p { margin: 0 0 10px; font-size: 15px; line-height: 1.5; color: #dde4e9; } #infocard p b { color: #fff; font-weight: 600; }
 #infocard .why { color: #c5d0d7; } #infocard .tag { display: inline-block; font-size: 14px; padding: 2px 8px; border-radius: 10px; background: rgba(240,163,91,.18); color: #f3c08f; margin: 0 6px 8px 0; }
 #infocard .tag.grey { background: rgba(255,255,255,.1); color: #c9d2d8; } #infocard .tag.live { background: rgba(63,178,127,.2); color: #8fdcb7; }
@@ -320,9 +320,15 @@ body.started .chrome { opacity: 1; pointer-events: auto; }
 @media (max-width: 760px) { #timebar { bottom: 44px; } #credits .long { display: none; } }
 @media (max-width: 600px) { #timebar { bottom: 40px; } #timebar .speeds .sbtn { padding: 0 7px; min-width: 34px; } #timebar .clock { min-width: 84px; padding: 0 4px; } #timebar .clock small { display: none; } }
 /* credits */
-#credits { position: fixed; left: 0; right: 0; bottom: 0; z-index: 14; padding: 6px 16px 8px; font-size: 11px; line-height: 1.35; color: rgba(220,228,233,.62); text-align: center; pointer-events: auto; background: linear-gradient(transparent, rgba(0,0,0,.5)); }
+#credits { position: fixed; left: 0; right: 0; bottom: 0; z-index: 14; padding: 6px 16px 8px; font-size: 12px; line-height: 1.35; color: rgba(220,228,233,.62); text-align: center; pointer-events: auto; background: linear-gradient(transparent, rgba(0,0,0,.5)); }
 #credits a { color: inherit; } #credits .tiles, #credits .osm, #credits .roads { display: none; } body.tiles-on #credits .tiles, body.city-on #credits .osm, body.roads-on #credits .roads { display: inline; }
 #credits .esri { font-weight: 600; }
+/* phones: the credits are one line at the very bottom (the full list is under Sources), the time bar sits just above,
+   and the slow-motion note is left out so the clock and LIVE always fit */
+@media (max-width: 600px) {
+  #credits { padding: 4px 12px 6px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #timebar, #watch { bottom: 30px !important; } #timebar .slowmo, #timebar .slowmo.on { display: none !important; }
+}
 /* loading indicator: shows while imagery, buildings or data are still arriving */
 #busy { position: fixed; left: 16px; bottom: 40px; z-index: 13; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; font-size: var(--t-sm); font-weight: 500; opacity: 0; transform: translateY(4px); transition: opacity .35s ease, transform .35s ease; pointer-events: none; }
 #busy.on { opacity: 1; transform: none; }
@@ -330,7 +336,7 @@ body.started .chrome { opacity: 1; pointer-events: auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) { #busy { bottom: auto; top: 16px; left: auto; right: 16px; width: 32px; padding: 0; justify-content: center; } #busy .txt { display: none; } }
 @media (prefers-reduced-motion: reduce) { #busy .ring { animation-duration: 2.4s; } }
-@media (max-width: 600px) { #credits { font-size: 10px; padding: 4px 10px 6px; } }
+@media (max-width: 600px) { #credits { font-size: 11px; padding: 4px 10px 6px; } }
 #hint { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 11; padding: 10px 16px; font-size: 15px; max-width: calc(100vw - 32px); text-align: center; opacity: 0; transition: opacity .4s; pointer-events: none; }
 #hint.on { opacity: 1; }
 body.expert #infocard { right: auto; left: 16px; top: 72px; }
@@ -643,7 +649,7 @@ body.expert #trace { top: auto; bottom: 100px; }
 <aside id="infocard" class="glass" aria-live="polite"></aside>
 <div id="timebar" class="glass chrome" role="toolbar" aria-label="Time">
   <button class="sbtn" id="tbPlay" aria-label="Pause"><svg class="ico2"><use href="#s-pause"/></svg></button>
-  <div class="speeds" role="group" aria-label="Speed"><button class="sbtn on" data-rate="1">1×</button><button class="sbtn" data-rate="10">10×</button><button class="sbtn" data-rate="60">60×</button><button class="sbtn" data-rate="3600">1 h/s</button></div>
+  <div class="speeds" role="group" aria-label="Speed"><button class="sbtn on" data-rate="1">1×</button><button class="sbtn" data-rate="10">10×</button><button class="sbtn" data-rate="60">60×</button><button class="sbtn" data-rate="3600" title="One hour of the day every second" aria-label="One hour of the day every second">1 h/s</button></div>
   <span class="slowmo" id="tbSlow" title="Close to the ground, parcels are shown in slow motion">Slow motion</span>
   <div class="clock" id="tbClock" aria-live="off">--:--<small>Pakistan time</small></div>
   <button class="sbtn live on" id="tbLive" aria-label="Back to now"><i></i>LIVE</button>

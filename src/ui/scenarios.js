@@ -31,16 +31,17 @@ export function initScenarios(ctx) {
   const loss = () => ctx.lastSample?.lossPct ?? 0;
   const routeKm = (a, b) => { const r = net.route(a.id, b.id); return r ? r.edges.reduce((s, e) => s + e.len * KM_PER_UNIT, 0) : null; };
   const routeMs = (a, b) => { const r = net.route(a.id, b.id); return r ? r.edges.reduce((s, e) => s + edgeDelayMs(e), 0) : null; };
-  const cutCable = (id) => { const c = cable(id); c.edges.forEach(net.cutEdge); net.topologyChanged(c.edges, 'BGP'); return c.edges[0].cutPos || c.edges[0].gpts[Math.floor(c.edges[0].gpts.length * 0.3)]; };
+  // at: where the real fault was ({ lat, lon }), so the mark is drawn there and not just near Karachi
+  const cutCable = (id, at = null) => { const c = cable(id); c.edges.forEach(e => { e.cutAt = at; }); c.edges.forEach(net.cutEdge); net.topologyChanged(c.edges, 'BGP'); return c.edges[0].cutPos || c.edges[0].gpts[Math.floor(c.edges[0].gpts.length * 0.3)]; };
 
   // ---------- the ten scenarios ----------
   // beats: [seconds, fn(s)]; phases: when to show the kid sentences; metric(s) → plain words.
   const S = {
     aae1: {
-      camera: { lat: 23.6, lon: 64.6, range: 1500, tilt: 30, heading: 0 }, dur: 30, phases: [0, 6, 14],
+      camera: { lat: 24.8, lon: 58.5, range: 2700, tilt: 25, heading: 0 }, dur: 30, phases: [0, 6, 14], // Qatar and Karachi in view
       before: s => { s.cap0 = traffic.intlCapacityTbps(); s.u0 = busiest(); },
-      beats: [[3, s => { const p = cutCable('AAE1'); fx.spark(p); fx.glow(p); }], [5, () => ctx.setLayer('heat', true)], [16, () => flyTo({ lat: 24.4, lon: 66.3, range: 700, tilt: 35 })]],
-      metric: s => `Room on the sea roads: ${f1(s.cap0)} → ${f1(traffic.intlCapacityTbps())} Tbps. Busiest cable: ${pct(s.u0)} → ${pct(busiest())} full.`,
+      beats: [[3, s => { const p = cutCable('AAE1', { lat: 25.9, lon: 52.3 }); fx.spark(p); fx.glow(p); }], [5, () => ctx.setLayer('heat', true)], [16, () => flyTo({ lat: 24.4, lon: 66.3, range: 700, tilt: 35 })]],
+      metric: s => `Room on the sea roads: ${f1(s.cap0)} → ${f1(traffic.intlCapacityTbps())} trillion bits a second. Busiest cable: ${pct(s.u0)} → ${pct(busiest())} full.`,
       expert: () => [['Cut', 'AAE-1, both directions (Jan 2025 fault near Qatar)'], ['Routing', 'BGP re-convergence (timer, see CLAUDE.md "mocked")'], ['Model', 'Operators move traffic to their other cables (PTCL: IMEWE, SMW4)']]
     },
     redsea: {
@@ -51,7 +52,7 @@ export function initScenarios(ctx) {
         [6, () => { const p = fromLatLon(21.1, 38.85); cutCable('IMEWE'); fx.spark(p); fx.glow(p, { sizeKm: 160 }); }],
         [12, () => { const p = fromLatLon(19.6, 38.4); cutCable('PEACE'); fx.spark(p); fx.glow(p, { sizeKm: 160 }); shell.hint('Six weeks later, near Sudan, one more cable broke.', 4000); }],
         [15, () => ctx.setLayer('heat', true)], [20, () => flyTo({ lat: 23.8, lon: 63.5, range: 1700, tilt: 28 })]],
-      metric: s => `Room on the sea roads: ${f1(s.cap0)} → ${f1(traffic.intlCapacityTbps())} Tbps. Busiest cable left: ${pct(busiest())} full (was ${pct(s.u0)}).`,
+      metric: s => `Room on the sea roads: ${f1(s.cap0)} → ${f1(traffic.intlCapacityTbps())} trillion bits a second. Busiest cable left: ${pct(busiest())} full (was ${pct(s.u0)}).`,
       expert: () => [['Sep 2025', 'SMW4 + IMEWE cut near Jeddah (SMW5, AAE-1, PEACE unaffected)'], ['20 Oct 2025', 'PEACE cut near Sudan (separate event, shown in sequence)'], ['Cut points', 'Red Sea positions drawn on the illustrative onward route']]
     },
     kkh: {
@@ -62,7 +63,7 @@ export function initScenarios(ctx) {
         [3.5, () => { const e = kkhFibre(); net.cutEdge(e); net.topologyChanged([e], 'OSPF'); ctx.setLayer('microwave', true); fx.spark(e.cutPos || e.gpts[0]); }],
         [11, s => { s.towerTimer = setInterval(() => { if (!state.playing) return; const e = G.edges.find(x => x.type === 'mwbackup' && !x.cut); if (!e) { clearInterval(s.towerTimer); return; } net.cutEdge(e); net.topologyChanged([e], 'OSPF'); fx.spark(e.gpts[e.gpts.length - 1], 3); }, 450); }],
         [26, () => flyTo('pakistan')]],
-      metric: s => `Road to China: big glass cable (${Math.round(s.fib)} Gbps) → radio towers (${Math.round(s.mw)} Gbps) → none. China-bound parcels now wait; the rest use the sea cables.`,
+      metric: s => `Road to China: big glass cable (${Math.round(s.fib)} billion bits a second) → radio towers (${Math.round(s.mw)} billion) → none. China-bound parcels now wait; the rest use the sea cables.`,
       stop: s => clearInterval(s.towerTimer),
       expert: () => [['Cut', 'KKH fibre Chilas–Gilgit, then the 26-link microwave backup, tower by tower (illustrative landslide)'], ['Routing', 'OSPF re-converges after each cut']]
     },
@@ -70,7 +71,7 @@ export function initScenarios(ctx) {
       imaginary: true, camera: { lat: 24.2, lon: 61.2, range: 1300, tilt: 25, heading: 0 }, dur: 30, phases: [0, 4, 14],
       before: s => { s.km0 = routeKm(N('Gwadar'), G.INTL.W); s.ms0 = routeMs(N('Gwadar'), G.INTL.W); },
       beats: [[3, () => fx.drawLine(G.plannedEdges[0].gpts, { dur: 5 })], [8.5, () => { if (!state.plannedActive) failures.SCEN.gwadar(); }]],
-      metric: s => { const km = routeKm(N('Gwadar'), G.INTL.W), ms = routeMs(N('Gwadar'), G.INTL.W); return `From Gwadar to the Gulf: ${Math.round(s.km0).toLocaleString()} km → ${Math.round(km).toLocaleString()} km of cable, ${f1(s.ms0)} → ${f1(ms)} ms. (Imaginary.)`; },
+      metric: s => { const km = routeKm(N('Gwadar'), G.INTL.W), ms = routeMs(N('Gwadar'), G.INTL.W); return `From Gwadar to the Gulf: ${Math.round(s.km0).toLocaleString()} km → ${Math.round(km).toLocaleString()} km of cable, ${f1(s.ms0)} → ${f1(ms)} thousandths of a second. (Imaginary.)`; },
       stop: () => { if (state.plannedActive) failures.SCEN.gwadar(); ui('scGwadar')?.classList.remove('on'); },
       expert: () => [['What-if', 'Gwadar landing + CPEC Phase II fibre (not built; progress unverified)'], ['Measured', 'Shortest route Gwadar → Gulf endpoint, before and after']]
     },
@@ -221,7 +222,7 @@ export function initScenarios(ctx) {
   // ---------- picker (tools button), search and presentation slides ----------
   const menu = ui('menuScen');
   menu.innerHTML = '<h6>What can go wrong?</h6>' + ORDER.map(id => `<button class="mi" data-s="${id}"><b>${esc(KIDS[id].title)}</b><small>${esc(KIDS[id].what)}</small></button>`).join('');
-  menu.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { menu.classList.remove('on'); ui('tScen').classList.remove('on'); start(b.dataset.s); });
+  menu.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { menu.classList.remove('on'); ui('tScen').classList.remove('on'); ctx.watch?.leave(false); start(b.dataset.s); }); // one mode at a time
   ui('tScen').onclick = ev => { ev.stopPropagation(); const o = !menu.classList.contains('on'); menu.classList.toggle('on', o); ui('tScen').classList.toggle('on', o); ui('tScen').setAttribute('aria-expanded', o); };
   document.addEventListener('click', ev => { if (!ev.target.closest('#menuScen') && !ev.target.closest('#tScen')) { menu.classList.remove('on'); ui('tScen').classList.remove('on'); } });
   shell.addSearch({ name: 'Telesat Lightspeed', sub: 'Coming soon — none in orbit yet', go: () => shell.showInfo({ kick: 'Low-orbit internet satellites', title: 'Telesat Lightspeed', tags: [['Coming soon — not yet licensed in Pakistan (as of late 2026)', 'grey'], ['No satellites in orbit yet (CelesTrak, Nov 2026)', 'grey']], what: 'A planned swarm of internet satellites from Telesat (Canada).', why: 'None are flying yet, so there is nothing to show on the globe.' }) });

@@ -83,11 +83,12 @@ export function initTour(ctx) {
     const mode = run.mode; run.steps = null; run.i = -1; run.mode = null;
     ui('tourcard').classList.remove('on'); ui('capbar').classList.remove('on');
     document.body.classList.remove('touring', 'presenting');
-    if (mode === 'tour') { store.set('paknet.tourSeen', '1'); shell.hint('Click an office, a cable or a city to learn more. Press ? to see the tour again.', 6000); }
+    if (mode === 'tour') { store.set('paknet.tourSeen', '1'); shell.hint(matchMedia('(pointer: coarse)').matches ? 'Tap an office, a cable or a city to learn more.' : 'Click an office, a cable or a city to learn more. Press ? to see the tour again.', 6000); }
     if (mode === 'present' && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   }
 
   function startTour() {
+    ctx.watch?.leave(false); // one mode at a time
     if (run.mode) finish();
     run.mode = 'tour'; run.steps = TOUR.map(stepOf); document.body.classList.add('touring');
     shell.closeInfo(); go(0);

@@ -6,14 +6,13 @@ import * as THREE from 'three';
 import COUNTRIES from '../data/borders.json'; // simplified by scripts/simplify-borders.mjs
 import { PROV } from '../geo/coast.js';
 import { latLonToFlat, greatCircle, GEO_ALT } from '../geo/globe.js';
-import { layer, fatLine, fatSegs, camera, renderer, disposeLine, onResize } from './scene.js';
+import { layer, layers, fatLine, fatSegs, camera, renderer, disposeLine, onResize } from './scene.js';
 import { toGlobe, fromLatLon, edgeGlobe, mapPolyline, setRoadGeometry } from './geo3.js';
 import { routeCable, routeBorder, drawOnward } from './onward.js';
 
 // PakSat-MM1's position (ECEF km). Phase 2's satellite module updates it from the orbit data.
 export const paksatPos = fromLatLon(0, 38.2, GEO_ALT);
 
-// Illustrative onward routes beyond the map edge (real end points, guessed paths).
 
 const TIER_STYLE = { // [shape (0 dot, 1 ring, 2 square, 3 diamond), size px, colour]
   core: [1, 11, '#f4f1ea'], agg: [0, 5.5, '#dfe6ea'], intl: [1, 9, '#9cc7e0'], cls: [2, 8, '#f0a35b'], ixp: [3, 9, '#e8c35a'],
@@ -123,10 +122,18 @@ export function drawNetwork(G, ROADS = null) {
   let satLines = null;
   function refreshSatLinks() {
     if (satLines) { gSat.remove(satLines); disposeLine(satLines); }
-    satLines = fatSegs(satEdges.map(e => ({ a: nodes[e.a].tier === 'sat' ? nodes[e.b].gpos : nodes[e.a].gpos, b: paksatPos })), { color: 0xb9a3f0, linewidth: 0.9, opacity: 0.45, dashed: true, dashSize: 400, gapSize: 300 });
-    gSat.add(satLines);
+    // thin and faint: many sites share the one satellite, and dashes read as rain (Quality Bar: clean)
+    satLines = fatSegs(satEdges.map(e => ({ a: nodes[e.a].tier === 'sat' ? nodes[e.b].gpos : nodes[e.a].gpos, b: paksatPos })), { color: 0xb9a3f0, linewidth: 0.7, opacity: 0.2 });
+    satLines.userData.o = 0.2; gSat.add(satLines);
   }
   refreshSatLinks();
+  // from close up the links only slice across the view: they fade out below ~2,000 km
+  const satLinkFade = (alt, nearSat = false) => { if (satLines) satLines.material.opacity = nearSat ? 0 : satLines.userData.o * THREE.MathUtils.smoothstep(alt, 1200, 4000); };
+  // the national outline is simplified to ~1 km: from space it is crisp, close up it would zig-zag
+  // across streets and the harbour, so it fades out below ~400 km (the imagery shows the real coast)
+  const pakLines = layers.pakborder ? layers.pakborder.children.filter(c => c.material) : [];
+  pakLines.forEach(c => { c.userData.o ??= c.material.opacity; });
+  const borderFade = alt => { const k = THREE.MathUtils.smoothstep(alt, 90, 420); pakLines.forEach(c => { c.material.opacity = c.userData.o * k; }); };
 
   // node markers, one Points object per layer
   const by = f => nodes.filter(f);
@@ -160,5 +167,5 @@ export function drawNetwork(G, ROADS = null) {
   }
   const isVisible = o => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
 
-  return { markers, pick, refreshSatLinks, setAccScale() {}, pickables: [], accMesh: null };
+  return { markers, pick, refreshSatLinks, satLinkFade, borderFade, setAccScale() {}, pickables: [], accMesh: null };
 }

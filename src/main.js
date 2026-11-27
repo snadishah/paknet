@@ -53,7 +53,7 @@ import { createSecurity } from './scenarios/security.js';
 import { createRoutingDemos } from './scenarios/routing-demos.js';
 import { updateFades } from './render/fade3d.js';
 import { initLandmarks, updateLandmarks, landmarkState } from './render/landmarks.js';
-import { updatePaksat3d, PAKSAT_VIEW } from './render/paksat3d.js';
+import { updatePaksat3d, PAKSAT_VIEW, paksatShown as paksatShownNow } from './render/paksat3d.js';
 import { initWatch } from './ui/watch.js';
 
 /* ---------- build ---------- */
@@ -79,7 +79,7 @@ on('edge:cut', e => { markCut(e); burst(e.cutPos, '#e5484d', 0.5, 1); traffic.on
 on('edge:restore', unmarkCut);
 on('topology:changed', ({ cutEdges }) => { if (hasHighlight() && cutEdges.length) clearHighlight(); });
 // OSPF flooding wave: a ring at each router the moment a new LSA reaches it
-on('ospf:lsa', ({ router }) => { if (state.protocol === 'OSPF' && G.nodes[router].tier !== 'intl') burst(lift(G.nodes[router].pos, 0.02), '#5fc4b0', 0.14, 0.7); });
+on('ospf:lsa', ({ router }) => { if (state.protocol === 'OSPF' && document.body.classList.contains('expert') && G.nodes[router].tier !== 'intl') burst(lift(G.nodes[router].pos, 0.02), '#5fc4b0', 0.14, 0.7); });
 
 /* ---------- scenarios + UI ---------- */
 const ctx = { G, net, traffic, offices, view, flyTo, interdomain: createInterdomain() };
@@ -143,6 +143,8 @@ window.__paknet = { ctx, debug: { scene, camera, renderer, cityState, qualitySta
   'present': async () => { ctx.tour.startPresent(); ctx.tour.go(1); await settle(3500); },
   'expert': async () => { ctx.tour.finish(); ctx.scen.stop(true); shell.closeInfo(); shell.setExpert(true); await flyTo('pakistan', 10); await settle(2500); } // last shot: Expert stays on for the screenshot
 } };
+// every screenshot set-up starts clean: the story player and any scenario left over from a test step aside
+for (const [k, f] of Object.entries(window.__paknet.shots)) if (k !== 'watch') window.__paknet.shots[k] = async () => { ctx.watch?.leave(false); if (!k.startsWith('scenario') && ctx.scen.current) ctx.scen.stop(true); return f(); };
 
 // Zoom check for verify: from 27,000 km down to 300 m over Karachi in 48 steps,
 // rendering each step and measuring the average screen brightness. A black frame
@@ -262,6 +264,7 @@ function frame(now) {
   stepWorld(sdt);
   drawPackets(traffic.packets);
   const netNow = traffic.engine.now; updateOnward(netNow - (lastNet ?? netNow), 2 * pose.range * Math.tan(camera.fov * Math.PI / 360) / innerHeight); lastNet = netNow;
+  view.satLinkFade(altitudeKm, paksatShownNow()); view.borderFade(altitudeKm);
   updateFx(dt); updateFades(dt); // after the effects, so a fade wins over their own opacity for its 300 ms
   ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame
   ctx.watch.tick(Math.min(0.25, rawMs / 1000));

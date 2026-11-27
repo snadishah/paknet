@@ -4,6 +4,7 @@
 // parcels and the real routes (the same traceroute and cables you can explore), captions fade in, and
 // any click pauses. Controls: play / pause, previous / next, 0.5× 1× 2×, chapter list; Esc leaves.
 import { ui } from './dom.js';
+import { on } from '../events.js';
 import { gloss } from './glossary.js';
 import { KIDS } from '../stories/kids.js';
 import { flyTo, flying, pose, input } from '../render/globecam.js';
@@ -66,14 +67,14 @@ export function initWatch(ctx) {
 
   function say(text) { const c = ui('wcap'); if (!text) { c.classList.remove('on'); return; } c.innerHTML = `<p class="chg">${gloss(text)}</p>`; c.classList.add('on'); }
   function chapter(i) {
-    ctx.trace.close(); ctx.scen.current && ctx.scen.stop(true); fol = null; say('');
+    w.inBeat = true; try { ctx.trace.close(); if (ctx.scen.current) ctx.scen.stop(true); } finally { w.inBeat = false; } fol = null; say('');
     w.ci = i; w.t = 0; w.next = 0; w.endAt = null; const c = w.ch[i];
     if (!c) { leave(); return; }
-    if (c.scenario) { ctx.scen.start(c.scenario); say(''); }
+    if (c.scenario) { w.inBeat = true; try { ctx.scen.start(c.scenario); } finally { w.inBeat = false; } say(''); } // our own doing: not a reason to stop
     render();
   }
   function beat(b) {
-    if (b.run) b.run();
+    w.inBeat = true; try { if (b.run) b.run(); } finally { w.inBeat = false; }
     if (b.cam) flyTo(typeof b.cam === 'function' ? b.cam() : b.cam, (b.fly || 3000) / w.speed); // a function: where it is now (the satellite)
     if (b.say !== undefined) say(b.say);
   }
@@ -121,12 +122,16 @@ export function initWatch(ctx) {
     document.body.classList.add('watching'); ui('watch').classList.add('on');
     chapter(at); setPlaying(true);
   }
-  function leave() {
+  // fly = false when the viewer chose something else (Expert, a search result, a scenario): their view wins
+  function leave(fly = true) {
     if (!w.on) return; w.on = false; w.playing = false; fol = null; say('');
     ctx.trace.close(); if (ctx.scen.current) ctx.scen.stop(true);
     document.body.classList.remove('watching'); ui('watch').classList.remove('on'); ui('wResume').classList.remove('on'); ui('wList').classList.remove('on');
-    flyTo('pakistan');
+    if (fly) flyTo('pakistan');
   }
+  // one mode at a time: Expert, the tour, a chosen scenario or a picked search result end the film
+  on('shell:expert', v => { if (v) leave(false); });
+  on('shell:select', n => { if (n && w.on && !w.inBeat) leave(false); }); // a real pick, not a card closing
 
   // controls
   ui('wPlay').onclick = () => setPlaying(!w.playing);

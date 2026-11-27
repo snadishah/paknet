@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { KM_PER_UNIT } from '../geo/globe.js';
 import { buildPath } from '../routing/paths.js';
 import { layers, fatLine, fatSegs, disposeLine, camera, renderer, onResize } from './scene.js';
-import { G3, faceUp, mapPolyline, edgeGlobe } from './geo3.js';
+import { G3, faceUp, mapPolyline, edgeGlobe, fromLatLon } from './geo3.js';
 import { altitudeKm } from './globecam.js';
 import { fadeIn, fadeOut } from './fade3d.js';
 
@@ -69,7 +69,8 @@ function rebuildCuts() {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([...cutMarks.values()].flatMap(c => [c.mid.x, c.mid.y, c.mid.z]), 3));
   cutX = new THREE.Points(g, xMat); cutX.frustumCulled = false; cutX.renderOrder = 9; gFX().add(cutX);
 }
-export function markCut(e) { const gp = edgeGlobe(e), mid = gp[Math.floor(gp.length * (e.cable ? 0.3 : 0.5))]; e.cutPos = mid; cutMarks.set(e.id, { e, mid }); rebuildCuts(); }
+// the mark goes where the real fault was, if the scenario knows (e.cutAt)
+export function markCut(e) { const gp = edgeGlobe(e), mid = e.cutAt ? fromLatLon(e.cutAt.lat, e.cutAt.lon) : gp[Math.floor(gp.length * (e.cable ? 0.3 : 0.5))]; e.cutPos = mid; cutMarks.set(e.id, { e, mid }); rebuildCuts(); }
 export function unmarkCut(e) { if (cutMarks.delete(e.id)) rebuildCuts(); }
 export function setMarkScale() {}
 export function setFxPixelRatio(pr) { xMat.uniforms.uPR.value = pr; bMat.uniforms.uPR.value = pr; bMat.uniforms.uProj.value = projScale(); }

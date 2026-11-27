@@ -20,6 +20,7 @@ import { initFades, patchHtml } from './fades.js';
 import { labelState } from '../render/labels.js';
 import { gloss } from './glossary.js';
 import { fadeIn } from '../render/fade3d.js';
+import { satState } from '../render/satellites.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const PKT = 5; // Pakistan Standard Time = UTC+5
@@ -45,7 +46,7 @@ export function initShell(ctx) {
   function start(skip = false) {
     if (sh.started) return; sh.started = true; spin.on = false;
     ui('intro').classList.add('gone'); setTimeout(() => ui('intro').style.display = 'none', 650);
-    body.classList.add('started'); labelState.enabled = true; netRoot.visible = true; fadeIn(netRoot, 800); // the network fades in
+    body.classList.add('started'); satState.started = true; labelState.enabled = true; netRoot.visible = true; fadeIn(netRoot, 800); // the network fades in
     if (skip) flyTo('pakistan', 1600); // a short flight, never a jump (Start: the tour, ui/tour.js, takes the camera from here)
     emit('shell:started', { skip });
 
@@ -147,6 +148,7 @@ export function initShell(ctx) {
   const RANGE = { core: 160, agg: 90, access: 40, cls: 6, ixp: 4, dc: 4, intl: 1400, gw: 8, vsat: 30, tower: 30, sat: 52000 };
   function nodeLatLon(n) { if (n.lat != null && n.tier !== 'sat') return { lat: n.lat, lon: n.lon }; const ll = flatToLatLon(n.pos.x, n.pos.y); return ll; }
   sh.nodeLatLon = nodeLatLon;
+  const dests = c => { const d = [...new Set(c.edges.flatMap(e => [e.onward, e.onwardGulf]).filter(Boolean).map(o => o.dest.name.split(',')[0]))]; return d.length ? ` and reaches ${d.length > 1 ? d.slice(0, -1).join(', ') + ' and ' + d.at(-1) : d[0]}` : ''; };
   function showNode(n, fly = false) {
     if (!n) return; sh.selected = n; emit('shell:select', n);
     if (n.describe) { showInfo(n.describe(sh)); return; }
@@ -155,6 +157,9 @@ export function initShell(ctx) {
     const showMe = () => n.tier === 'sat' ? flyTo('far') : flyTo({ lat: ll.lat, lon: ll.lon, range: RANGE[n.tier] || 200, tilt: n.tier === 'core' ? 35 : 25, heading: 0 });
     const tags = []; if (n.planned) tags.push(['Planned, not built']); if (n.note && /unverified|illustrative/i.test(n.note)) tags.push(['Unverified', 'grey']);
     if (['core', 'agg', 'access'].includes(n.tier) || n.kind === 'tower') tags.push(['Network inside Pakistan is illustrative', 'grey']);
+    // honest labels for what you see up close (render/landmarks.js)
+    if (['cls', 'ixp', 'dc', 'gw', 'core', 'tower'].includes(n.tier) && !n.planned) tags.push(['Representative 3D model', 'grey']);
+    if (['ixp', 'dc', 'gw'].includes(n.tier)) tags.push(['Approximate location', 'grey']);
     showInfo({
       kick: tierName(n), title: n.name, what, why, tags, showMe,
       expert: () => {
@@ -178,9 +183,9 @@ export function initShell(ctx) {
     const showMe = () => { const r = Math.hypot(mid.x, mid.y, mid.z); flyTo({ lat: Math.asin(mid.z / r) * 180 / Math.PI, lon: Math.atan2(mid.y, mid.x) * 180 / Math.PI, range: 1600, tilt: 20 }); };
     sh.selected = { cable: c }; emit('shell:select', { cable: c });
     showInfo({
-      kick: 'Undersea cable', title: c.name, tags: [[st, c.status === 'live' ? 'live' : 'grey'], ['Route beyond the map is illustrative', 'grey']],
+      kick: 'Undersea cable', title: c.name, tags: [[st, c.status === 'live' ? 'live' : 'grey'], [c.edges.some(e => e.onward?.approx) ? 'Route partly approximate' : 'Route from TeleGeography’s cable map', 'grey']],
       what: 'A cable on the sea floor, thinner than a garden hose inside, carrying light signals between countries.',
-      why: `${esc(c.op)} uses it to carry Pakistan's traffic to the rest of the world. Every one of these cables comes ashore near Karachi.`,
+      why: `${esc(c.op)} uses it to carry Pakistan's traffic to the rest of the world. It comes ashore near Karachi${dests(c)}.`,
       showMe, expert: () => [['Operator', c.op], ['Status', c.status], ['Directions', c.dirs.join(', ')], ['Share of PK traffic (model)', (c.share * 100).toFixed(0) + '%'], ['Busiest direction now', ((Math.max(0, ...c.edges.map(e => e.util || 0))) * 100).toFixed(0) + '%'], ...(c.note ? [['Note', c.note]] : [])]
     });
     if (fly) showMe();

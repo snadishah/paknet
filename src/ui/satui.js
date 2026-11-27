@@ -16,9 +16,10 @@ export function initSatelliteUI(ctx) {
   ];
   sh.pickExtra = (x, y) => pickSatellite(x, y);
 
-  const closeUp = ['Look at it up close', () => flyTo(PAKSAT_VIEW(), 4200)]; // a representative model (DFH-4 bus)
+  const closeUp = ['Look at it up close', () => flyTo(PAKSAT_VIEW(), 4200)]; // a representative model (DFH-4E platform)
+  const MODEL_TAG = ['Close-up: representative 3D model', 'grey'];
   const nearFar = [['Show near satellites', () => { set('soon', true); sh.renderLayers(); flyTo('near'); }], ['Show far satellites', () => { set('far', true); flyTo('far'); }]];
-  const card = s => { if (!s) { sh.hint('Satellites are still loading. Try again in a moment.', 3000); return; } const info = s.describe(); sh.showInfo({ ...info, buttons: s.norad === 59915 ? [closeUp, ...nearFar] : nearFar }); sh.selected = { name: s.name }; };
+  const card = s => { if (!s) { sh.hint('Satellites are still loading. Try again in a moment.', 3000); return; } const info = s.describe(); sh.showInfo({ ...info, tags: [...(info.tags || []), ...(s.norad === 59915 ? [MODEL_TAG] : [])], buttons: s.norad === 59915 ? [closeUp, ...nearFar] : nearFar }); sh.selected = { name: s.name }; };
   const showSat = (norad, view) => { set(norad === 37779 ? 'far' : 'far', true); card(findSat(norad)); flyTo(view); };
   sh.addSearch({ name: 'PakSat-MM1', alt: 'PakSat', sub: "Pakistan's internet satellite", go: () => showSat(59915, 'far') });
   sh.addSearch({ name: 'PakSat-1R', sub: 'Retired satellite (Aug 2026)', go: () => showSat(37779, 'far') });
@@ -29,6 +30,6 @@ export function initSatelliteUI(ctx) {
   sh.addSearch({ name: 'Satellites near', sub: 'Low orbit', go: () => nearFar[0][1]() });
   sh.addSearch({ name: 'Satellites far', sub: 'Geostationary', go: () => nearFar[1][1]() });
   // a click on PakSat-MM1 from the network node opens the satellite card too
-  const satNode = ctx.G.SAT; satNode.describe = () => { const s = findSat(59915); return s ? { ...s.describe(), buttons: [closeUp, ...nearFar] } : { title: 'PakSat-MM1', what: 'Loading…' }; };
+  const satNode = ctx.G.SAT; satNode.describe = () => { const s = findSat(59915); return s ? { ...s.describe(), tags: [...(s.describe().tags || []), MODEL_TAG], buttons: [closeUp, ...nearFar] } : { title: 'PakSat-MM1', what: 'Loading…' }; };
   return { set, card };
 }
