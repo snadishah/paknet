@@ -15,7 +15,7 @@ import { fromLatLon } from '../render/geo3.js';
 import { setAttackGrey } from '../render/packets.js';
 import { clearBursts } from '../render/fx.js';
 import { edgeCapacityGbps, edgeDelayMs } from '../sim/links.js';
-import { KM_PER_UNIT } from '../geo/globe.js';
+import { KM_PER_UNIT, ecefToLatLon } from '../geo/globe.js';
 import * as fx from '../render/scenefx.js';
 import { patchHtml } from './fades.js';
 
@@ -32,7 +32,7 @@ export function initScenarios(ctx) {
   const routeKm = (a, b) => { const r = net.route(a.id, b.id); return r ? r.edges.reduce((s, e) => s + e.len * KM_PER_UNIT, 0) : null; };
   const routeMs = (a, b) => { const r = net.route(a.id, b.id); return r ? r.edges.reduce((s, e) => s + edgeDelayMs(e), 0) : null; };
   // at: where the real fault was ({ lat, lon }), so the mark is drawn there and not just near Karachi
-  const cutCable = (id, at = null) => { const c = cable(id); c.edges.forEach(e => { e.cutAt = at; }); c.edges.forEach(net.cutEdge); net.topologyChanged(c.edges, 'BGP'); return c.edges[0].cutPos || c.edges[0].gpts[Math.floor(c.edges[0].gpts.length * 0.3)]; };
+  const cutCable = (id, at = null, via = null) => { const c = cable(id); c.edges.forEach(e => { e.cutAt = at; e.cutVia = via; }); c.edges.forEach(net.cutEdge); net.topologyChanged(c.edges, 'BGP'); return c.edges[0].cutPos || c.edges[0].gpts[Math.floor(c.edges[0].gpts.length * 0.3)]; };
 
   // ---------- the ten scenarios ----------
   // beats: [seconds, fn(s)]; phases: when to show the kid sentences; metric(s) → plain words.
@@ -40,7 +40,7 @@ export function initScenarios(ctx) {
     aae1: {
       camera: { lat: 24.8, lon: 58.5, range: 2700, tilt: 25, heading: 0 }, dur: 30, phases: [0, 6, 14], // Qatar and Karachi in view
       before: s => { s.cap0 = traffic.intlCapacityTbps(); s.u0 = busiest(); },
-      beats: [[3, s => { const p = cutCable('AAE1', { lat: 25.9, lon: 52.3 }); fx.spark(p); fx.glow(p); }], [5, () => ctx.setLayer('heat', true)], [16, () => flyTo({ lat: 24.4, lon: 66.3, range: 700, tilt: 35 })]],
+      beats: [[3, s => { const p = cutCable('AAE1', { lat: 25.9, lon: 52.3 }, [[25.12, 56.33], [25.9, 56.62], [26.6, 56.55], [26.45, 55.2]]); /* its branch into the Gulf towards Qatar (not in the route data): from Fujairah round Musandam to the fault */ fx.spark(p); fx.glow(p); }], [5, () => ctx.setLayer('heat', true)], [16, () => flyTo({ lat: 24.4, lon: 66.3, range: 700, tilt: 35 })]],
       metric: s => `Room on the sea roads: ${f1(s.cap0)} → ${f1(traffic.intlCapacityTbps())} trillion bits a second. Busiest cable: ${pct(s.u0)} → ${pct(busiest())} full.`,
       expert: () => [['Cut', 'AAE-1, both directions (Jan 2025 fault near Qatar)'], ['Routing', 'BGP re-convergence (timer, see CLAUDE.md "mocked")'], ['Model', 'Operators move traffic to their other cables (PTCL: IMEWE, SMW4)']]
     },
@@ -48,9 +48,9 @@ export function initScenarios(ctx) {
       camera: { lat: 19.8, lon: 41, range: 2600, tilt: 22, heading: 0 }, dur: 38, phases: [0, 9, 20],
       before: s => { s.cap0 = traffic.intlCapacityTbps(); s.u0 = busiest(); },
       beats: [
-        [3, () => { const p = fromLatLon(21.4, 38.95); cutCable('SMW4'); fx.spark(p); fx.glow(p, { sizeKm: 160 }); }],
-        [6, () => { const p = fromLatLon(21.1, 38.85); cutCable('IMEWE'); fx.spark(p); fx.glow(p, { sizeKm: 160 }); }],
-        [12, () => { const p = fromLatLon(19.6, 38.4); cutCable('PEACE'); fx.spark(p); fx.glow(p, { sizeKm: 160 }); shell.hint('Six weeks later, near Sudan, one more cable broke.', 4000); }],
+        [3, () => { const p = fromLatLon(21.4, 38.95); cutCable('SMW4', { lat: 21.4, lon: 38.95 }); fx.spark(p); fx.glow(p, { sizeKm: 160 }); }],
+        [6, () => { const p = fromLatLon(21.1, 38.85); cutCable('IMEWE', { lat: 21.1, lon: 38.85 }); fx.spark(p); fx.glow(p, { sizeKm: 160 }); }],
+        [12, () => { const p = fromLatLon(19.6, 38.4); cutCable('PEACE', { lat: 19.6, lon: 38.4 }); fx.spark(p); fx.glow(p, { sizeKm: 160 }); shell.hint('Six weeks later, near Sudan, one more cable broke.', 4000); }],
         [15, () => ctx.setLayer('heat', true)], [20, () => flyTo({ lat: 23.8, lon: 63.5, range: 1700, tilt: 28 })]],
       metric: s => `Room on the sea roads: ${f1(s.cap0)} → ${f1(traffic.intlCapacityTbps())} trillion bits a second. Busiest cable left: ${pct(busiest())} full (was ${pct(s.u0)}).`,
       expert: () => [['Sep 2025', 'SMW4 + IMEWE cut near Jeddah (SMW5, AAE-1, PEACE unaffected)'], ['20 Oct 2025', 'PEACE cut near Sudan (separate event, shown in sequence)'], ['Cut points', 'Red Sea positions drawn on the illustrative onward route']]
@@ -60,7 +60,7 @@ export function initScenarios(ctx) {
       before: s => { s.fib = edgeCapacityGbps(G, kkhFibre()); s.mw = edgeCapacityGbps(G, G.edges.find(e => e.type === 'mwbackup')); },
       beats: [
         [1, () => fx.rocks(35.45, 74.05, 210)],
-        [3.5, () => { const e = kkhFibre(); net.cutEdge(e); net.topologyChanged([e], 'OSPF'); ctx.setLayer('microwave', true); fx.spark(e.cutPos || e.gpts[0]); }],
+        [3.5, () => { const e = kkhFibre(), slide = fromLatLon(35.37, 74.0), at = e.gpts.reduce((a, p) => (p.distanceTo(slide) < a.distanceTo(slide) ? p : a)); e.cutAt = ecefToLatLon(at.x, at.y, at.z); net.cutEdge(e); /* the break is where the rocks reach the road */ net.topologyChanged([e], 'OSPF'); ctx.setLayer('microwave', true); fx.spark(e.cutPos || e.gpts[0]); }],
         [11, s => { s.towerTimer = setInterval(() => { if (!state.playing) return; const e = G.edges.find(x => x.type === 'mwbackup' && !x.cut); if (!e) { clearInterval(s.towerTimer); return; } net.cutEdge(e); net.topologyChanged([e], 'OSPF'); fx.spark(e.gpts[e.gpts.length - 1], 3); }, 450); }],
         [26, () => flyTo('pakistan')]],
       metric: s => `Road to China: big glass cable (${Math.round(s.fib)} billion bits a second) → radio towers (${Math.round(s.mw)} billion) → none. China-bound parcels now wait; the rest use the sea cables.`,

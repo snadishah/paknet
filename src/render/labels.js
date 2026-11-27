@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { CORE } from '../graph/topology.js';
-import { camera, scene } from './scene.js';
+import { camera, scene, labelRenderer } from './scene.js';
 import { fromLatLon, G3 } from './geo3.js';
 import { pose, altitudeKm } from './globecam.js';
 
@@ -61,6 +61,8 @@ export function updateLabels(layers) {
   const range = pose.range + (pose.alt || 0), alt = altitudeKm; boxes.length = 0; let shown = 0; // orbiting a point in space (PakSat): count its height too
   // open panels count as taken space: a label never hides half under a card or a bar
   for (const id of PANELS) { const el = document.getElementById(id); if (!el || !el.offsetParent || (OPEN_ON.has(id) && !el.classList.contains('on'))) continue; const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) boxes.push([r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]); }
+  // story bubbles (callouts) count as panels too, so a label never sits under one
+  for (const el of labelRenderer.domElement.children) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0 && el.style.display !== 'none') boxes.push([r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]); }
   for (const l of labels) {
     let want = labelState.enabled && range >= l.minR && range <= l.maxR && (!l.layer || layers[l.layer]?.visible !== false);
     if (labelState.extra) { const x = labelState.extra(l); if (x != null) want = x; }

@@ -41,24 +41,33 @@ export function waves(pos, { color = '#f0a35b', every = 0.7, count = 4, size = 8
 
 // Rocks sliding down a slope near (lat, lon) along a compass bearing, over `dur` seconds.
 export function rocks(lat, lon, bearingDeg = 200, { n = 60, distKm = 14, dur = 3.5 } = {}) {
-  const g = new THREE.BufferGeometry(), p = new Float32Array(n * 3), start = [], end = [];
+  const start = [], end = [], size = [], spin = [];
   const D = Math.PI / 180, kmLat = 1 / 111.2, kmLon = 1 / (111.2 * Math.cos(lat * D));
   for (let i = 0; i < n; i++) {
     const ox = (Math.random() - 0.5) * 6, oy = (Math.random() - 0.5) * 6, d = distKm * (0.6 + Math.random() * 0.5);
     start.push([lat + oy * kmLat, lon + ox * kmLon]);
     end.push([lat + (oy + Math.cos(bearingDeg * D) * d) * kmLat, lon + (ox + Math.sin(bearingDeg * D) * d) * kmLon]);
+    size.push(0.6 + Math.random() * 0.8); spin.push(new THREE.Vector3(Math.random(), Math.random(), Math.random()).multiplyScalar(4));
   }
-  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
-  const m = new THREE.PointsMaterial({ color: 0x8a6a4a, size: 5, sizeAttenuation: false, transparent: true, opacity: 0.95, depthWrite: false });
-  const pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.renderOrder = 9; own(pts);
-  let t = 0; const v = new THREE.Vector3();
+  // low-poly boulders (one instanced mesh), lit by the sun; at least ~6 px across so the slide reads from the air
+  const geo = new THREE.IcosahedronGeometry(1, 0), p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) * (0.8 + 0.4 * Math.sin(i * 12.9)), p.getY(i) * (0.7 + 0.3 * Math.cos(i * 7.3)), p.getZ(i) * 0.75);
+  geo.computeVertexNormals();
+  const m = new THREE.MeshStandardMaterial({ color: 0x8a6a4a, roughness: 0.95, flatShading: true, transparent: true });
+  const rk = new THREE.InstancedMesh(geo, m, n); rk.frustumCulled = false; rk.renderOrder = 9; own(rk);
+  let t = 0; const v = new THREE.Vector3(), o = new THREE.Object3D(), up = new THREE.Vector3(0, 0, 1);
   return add({
     update(dt) {
-      t += dt; const f = Math.min(1, t / dur);
-      for (let i = 0; i < n; i++) { const e = Math.min(1, f * (0.8 + (i % 5) * 0.08)); const ease = e * e; fromLatLon(start[i][0] + (end[i][0] - start[i][0]) * ease, start[i][1] + (end[i][1] - start[i][1]) * ease, 0.4, v); p.set([v.x, v.y, v.z], i * 3); }
-      g.attributes.position.needsUpdate = true; m.size = 4 + 3 * Math.min(1, 300 / Math.max(50, altitudeKm)); return true;
+      t += dt; const f = Math.min(1, t / dur), px = 2 * camera.position.distanceTo(v.copy(fromLatLon(lat, lon))) * Math.tan(camera.fov * Math.PI / 360) / innerHeight;
+      for (let i = 0; i < n; i++) {
+        const e = Math.min(1, f * (0.8 + (i % 5) * 0.08)), ease = e * e, r = Math.max(0.004, 3 * px) * size[i];
+        fromLatLon(start[i][0] + (end[i][0] - start[i][0]) * ease, start[i][1] + (end[i][1] - start[i][1]) * ease, 0, v);
+        o.position.copy(v).addScaledVector(v.clone().normalize(), r * 0.6); o.quaternion.setFromUnitVectors(up, v.normalize());
+        o.rotateX(spin[i].x * ease).rotateY(spin[i].y * ease).rotateZ(spin[i].z * ease); o.scale.setScalar(r); o.updateMatrix(); rk.setMatrixAt(i, o.matrix);
+      }
+      rk.instanceMatrix.needsUpdate = true; return true;
     },
-    dispose() { layers.fx.remove(pts); g.dispose(); m.dispose(); }
+    dispose() { layers.fx.remove(rk); geo.dispose(); m.dispose(); }
   });
 }
 

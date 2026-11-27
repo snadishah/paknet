@@ -1,11 +1,11 @@
-// Link-load layer: colours links green → yellow → red by measured utilisation (e.util, 0–1).
+// Link-load layer: colours links muted teal → amber → coral by measured utilisation (e.util, 0–1).
 import * as THREE from 'three';
 import { layers, fatSegs, disposeLine } from './scene.js';
 import { edgeGlobe } from './geo3.js';
 
 let heatObj = null;
 const HEAT_TYPES = ['fiber', 'microwave', 'aerial', 'subsea', 'xborder', 'mwbackup'];
-const c1 = new THREE.Color('#3fb27f'), c2 = new THREE.Color('#e8c35a'), c3 = new THREE.Color('#e5484d');
+const c1 = new THREE.Color('#3aa6a0'), c2 = new THREE.Color('#e0a54a'), c3 = new THREE.Color('#e8705f');
 
 export function drawHeat(G, net) {
   const gHeat = layers.heat;
