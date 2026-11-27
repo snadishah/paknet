@@ -8,6 +8,7 @@ import { gloss } from './glossary.js';
 import { DESTS } from '../sim/offices.js';
 import { mediumName } from './route.js';
 import { flyTo } from '../render/globecam.js';
+import { fromLatLon } from '../render/geo3.js';
 import { highlightPath, clearHighlight, hasHighlight } from '../render/fx.js';
 import { setHighlightOffice } from '../render/packets.js';
 import { addLabel, removeLabel } from '../render/labels.js';
@@ -126,7 +127,7 @@ export function initTraceroute(ctx) {
       buttons: [['Follow its traffic', () => { goInside(o); open(o.key); }]],
       expert: () => [['Node id', `#${o.id} (host)`], ['Attached to', `${o.parent.name} router #${o.parent.id}`], ['Buildings', cityState.loaded[o.key] ? `${cityState.loaded[o.key]} from OpenStreetMap` : cityState.failed[o.key] ? 'not available' : 'load when you zoom in'], ['Parcels in the network now', offices.getFlowsFrom(o.key).length]]
     });
-    addLabel(o.name, o.gpos, { cls: 'office', minR: 0.2, maxR: 700, prio: 0, node: o, key: 'office:' + o.key });
+    addLabel(`${o.name} · illustrative`, fromLatLon(o.lat, o.lon, 0.045), { cls: 'office', minR: 0, maxR: 700, prio: 0, node: o, key: 'office:' + o.key }); // above its roof
     shell.addSearch({ name: o.name, alt: o.parent.name + ' office', sub: 'Illustrative office', go: () => { shell.showNode(o); goInside(o); } });
   }
   shell.addSearch({ name: 'Offices', sub: 'Five illustrative offices', go: () => flyTo('pakistan') });

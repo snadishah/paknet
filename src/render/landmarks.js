@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { latLonToEcef, enuBasis, gcDistance, flatToLatLon } from '../geo/globe.js';
-import { scene, renderer, lightState } from './scene.js';
+import { scene, renderer, lightState, camera } from './scene.js';
 import { pose, altitudeKm } from './globecam.js';
 import { fadeIn, fadeOut } from './fade3d.js';
 import * as M from './models/buildings.js';
@@ -56,6 +56,7 @@ export function initLandmarks(G, offices) {
     } else if (n.name === 'Khunjerab Pass') add('kp', ll, () => M.khunjerab(), 0.6);
   }
   for (const o of offices) add('office:' + o.key, { lat: o.lat, lon: o.lon }, () => M.office({ name: o.name }), 0, { office: o.key });
+  beacons(offices);
   // abroad, where the cables and border roads end (onward.js): a landing station facing the way its cable
   // comes in, or across a border the neighbour's exchange
   for (const d of destinationSites()) {
@@ -67,7 +68,7 @@ export function initLandmarks(G, offices) {
 const offset = (ll, eastM, northM) => ({ lat: ll.lat + northM / 110540, lon: ll.lon + eastM / (111320 * Math.cos(ll.lat * Math.PI / 180)) });
 
 // Places where the city's OpenStreetMap buildings make room for a model: [{ lat, lon, r (m) }].
-export const clearZones = () => sites.map(s => ({ lat: s.lat, lon: s.lon, r: s.office ? 36 : 60 }));
+export const clearZones = () => sites.map(s => ({ lat: s.lat, lon: s.lon, r: s.office ? 34 : 60 })); // half the plot, m
 
 function show(s) {
   const r = s.make(), kit = r.kit || r; s.group = enuGroup(s.lat, s.lon, s.rot);
@@ -89,10 +90,33 @@ function mergeBoxes(list) {
   const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.BufferAttribute(pos, 3)); m.setAttribute('color', new THREE.BufferAttribute(col, 3)); m.userData.per = n / list.length; return m;
 }
 
+// A soft warm beam above each office so it can be found among the city's buildings from a few hundred
+// metres up to ~200 km; it gets taller and wider with height and is gone right next to the office.
+let beam = null; const o3 = new THREE.Object3D(), up = new THREE.Vector3(0, 0, 1);
+function beacons(offices) {
+  const geo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5); // unit, along z from 0 to 1
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uA: { value: 0 } },
+    vertexShader: `varying float vUp; void main(){ vUp = position.z; gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.); }`,
+    fragmentShader: `uniform float uA; varying float vUp; void main(){ gl_FragColor = vec4(vec3(.94,.66,.32) * pow(1. - vUp, 1.6) * uA, 1.); }`
+  });
+  beam = new THREE.InstancedMesh(geo, mat, offices.length); beam.frustumCulled = false; beam.renderOrder = 7;
+  beam.userData.at = offices.map(o => new THREE.Vector3(...latLonToEcef(o.lat, o.lon, 0.03)));
+  scene.add(beam);
+}
+function placeBeacons() {
+  const alt = altitudeKm, a = THREE.MathUtils.smoothstep(alt, 0.25, 0.6) * (1 - THREE.MathUtils.smoothstep(alt, 150, 300));
+  beam.material.uniforms.uA.value = 0.75 * a; beam.visible = a > 0.01; if (!beam.visible) return;
+  const kmPerPx = 2 * pose.range * Math.tan(camera.fov * Math.PI / 360) / innerHeight, r = 2.2 * kmPerPx, h = Math.min(8, Math.max(0.12, alt * 0.18));
+  beam.userData.at.forEach((p, i) => { o3.position.copy(p); o3.quaternion.setFromUnitVectors(up, p.clone().normalize()); o3.scale.set(r, r, h); o3.updateMatrix(); beam.setMatrixAt(i, o3.matrix); });
+  beam.instanceMatrix.needsUpdate = true;
+}
+
 let last = 0;
 const GREEN = [0.25, 0.95, 0.45], AMBER = [1, 0.7, 0.15], OFF = [0.08, 0.1, 0.09];
 export function updateLandmarks() {
   const now = performance.now();
+  if (beam) placeBeacons();
   if (now - last > 400) {
     last = now; let n = 0;
     for (const s of sites) {

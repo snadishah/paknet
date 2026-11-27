@@ -61,8 +61,9 @@ function buildCity(data, at) {
   data.b.forEach((row, i) => {
     const h = row[0], pts = []; for (let k = 1; k < row.length; k += 2) pts.push(new THREE.Vector2(row[k], row[k + 1]));
     if (i === data.officeIndex) return; // the office is a detailed model now
-    let cx = 0, cy = 0; pts.forEach(p => { cx += p.x; cy += p.y; }); cx /= pts.length; cy /= pts.length;
-    if (room.some(z => Math.abs(cx - z.x) < z.r && Math.abs(cy - z.y) < z.r)) return;
+    // any building whose footprint box reaches into a model's plot (a long block could cross it with its centre outside)
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; pts.forEach(p => { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); });
+    if (room.some(z => x0 < z.x + z.r && x1 > z.x - z.r && y0 < z.y + z.r && y1 > z.y - z.r)) return;
     try {
       const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: h, bevelEnabled: false, curveSegments: 1 });
       g.deleteAttribute('uv'); tint(g, PALETTE[(i * 7 + (h | 0)) % PALETTE.length]); geos.push(g);
