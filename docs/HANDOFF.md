@@ -1,4 +1,4 @@
-# Handoff: round 2 complete (Phases 0–5, branch `redesign`, not merged into `main`)
+# Handoff: round 2 complete (Phases 0–5, merged from `redesign` into `main` on 27 Nov)
 
 **Done**
 - **P1:** one imagery config (Esri → MapTiler → EOX → NASA, keys from `.env` at build time); feathered, brightness-matched tiles; OSM roads; Pakistan outline + dimmed neighbours; loading spinner; no debug text.
@@ -18,6 +18,6 @@
 - SEA-ME-WE 6 and 2Africa's Pakistan branch are approximate.
 - Headless frame times are SwiftShader-bound; check on the Mac with `?perf=1`.
 
-**Next**: your review; merge into `main` only when you say.
+**Next**: your review on `main`; regenerate the ArcGIS key.
 
 **Key files**: `src/config/imagery.js`, `src/render/{tiles,onward,landmarks,paksat3d,fade3d}.js`, `src/render/models/*`, `src/ui/{watch,fades}.js`, `scripts/{fetch-cables,fetch-roads,verify}.mjs`, `docs/REFERENCES.md` §9.
