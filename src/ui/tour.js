@@ -110,13 +110,13 @@ export function initTour(ctx) {
       if (['ArrowLeft', 'PageUp'].includes(ev.key)) { ev.preventDefault(); if (run.i > 0) go(run.i - 1); return true; }
       if (ev.key === 'Escape') { finish(); return true; }
     }
-    if ((ev.key === 'p' || ev.key === 'P') && !ev.metaKey && !ev.ctrlKey) { run.mode === 'present' ? finish() : startPresent(); return true; }
+    if ((ev.key === 'p' || ev.key === 'P') && !ev.metaKey && !ev.ctrlKey) { if (run.mode) finish(); ctx.watch?.on ? ctx.watch.leave() : ctx.watch?.start(); return true; } // P plays the story
     if (ev.key === '?') { startTour(); return true; }
     return false;
   };
   addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && run.mode === 'present') finish(); });
   ui('tHelp').onclick = () => { if (!shell.started) shell.start(true); startTour(); };
-  ui('tPresent').onclick = () => (run.mode === 'present' ? finish() : startPresent());
+  ui('tPresent').onclick = () => { if (run.mode) finish(); ctx.watch?.on ? ctx.watch.leave() : ctx.watch?.start(); }; // the story player
   // a click on an office during the last tour step ends the tour
   on('shell:select', n => { if (run.mode === 'tour' && run.steps[run.i]?.id === 'try' && n?.tier === 'office') finish(); });
   // Start (not "Skip intro") begins the tour

@@ -228,5 +228,5 @@ export function initScenarios(ctx) {
   for (const id of ORDER) shell.addSearch({ name: KIDS[id].title, sub: 'Scenario', go: () => start(id) });
   ctx.scenarioSlides = ORDER.map(id => ({ id: 'scen-' + id, text: KIDS[id].what, enter: () => start(id), leave: () => stop(true) }));
 
-  return { start, stop, stepNext, frame, get current() { return cur?.id || null; }, get t() { return cur?.t ?? 0; }, ORDER };
+  return { start, stop, stepNext, frame, get current() { return cur?.id || null; }, get t() { return cur?.t ?? 0; }, get dur() { return cur?.def.dur ?? 1; }, get ended() { return !!cur?.ended; }, ORDER };
 }

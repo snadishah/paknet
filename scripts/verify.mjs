@@ -87,6 +87,8 @@ for (const vp of VIEWPORTS) {
   if (vp.frames && v.readyMs != null) {
     const sm = await page.evaluate(() => window.__paknet?.scenarioSmoke?.()).catch(e => (errors.push('scenarioSmoke: ' + e.message), null));
     if (sm) { v.scenarios = sm; v.scenariosOk = Object.values(sm).every(r => r.learned && !r.error); }
+    // Watch the story: one press plays every chapter to the end with no input (at 8× to keep the run short)
+    v.watch = await page.evaluate(() => window.__paknet.watchTest?.(8, 240000)).catch(e => (errors.push('watchTest: ' + e.message), null));
   }
   // Extra shots the app offers (window.__paknet.shots: name → async setup)
   const names = await page.evaluate(() => Object.keys(window.__paknet?.shots || {})).catch(() => []);
@@ -118,6 +120,7 @@ report.checks = {
   cityMemoryReturns: mac.cityDisposed ?? null,
   noDebugTextOnScreen: mac.debugText == null ? null : !mac.debugText,
   scenariosEndToEnd: mac.scenariosOk ?? null,
+  watchPlaysToEnd: mac.watch ? mac.watch.done && mac.watch.seen === mac.watch.chapters : null,
   zoomNoBlackFrame: mac.zoomMinLuma == null ? null : mac.zoomMinLuma > 0.6,
   zoomNoPop: mac.zoomMaxJump == null ? null : mac.zoomMaxJump < 0.15
 };
@@ -136,6 +139,7 @@ const lines = [
   `zoom space→300 m: darkest frame vs neighbours ${mac.zoomMinLuma != null ? mac.zoomMinLuma.toFixed(2) : '—'} (${ok(report.checks.zoomNoBlackFrame)}), biggest sudden change ${mac.zoomMaxJump ?? '—'} (${ok(report.checks.zoomNoPop)}); warnings ${mac.warnings.length}`,
   `city memory (geometries before/inside/after): ${mac.cityMem ? [mac.cityMem.before.geometries, mac.cityMem.inside.geometries, mac.cityMem.after.geometries].join(' / ') : '—'} (${ok(report.checks.cityMemoryReturns)})`,
   `scenarios end to end: ${mac.scenarios ? Object.values(mac.scenarios).filter(r => r.learned && !r.error).length + '/' + Object.keys(mac.scenarios).length : '—'} (${ok(report.checks.scenariosEndToEnd)})`,
+  `watch the story: ${mac.watch ? `${mac.watch.seen}/${mac.watch.chapters} chapters, ${mac.watch.done ? 'played to the end' : 'did not finish'} in ${Math.round(mac.watch.ms / 1000)} s at 8×` : '—'} (${ok(report.checks.watchPlaysToEnd)})`,
   `imagery provider seen: ${mac.imagery ?? '—'}; debug text on screen: ${mac.debugText ? 'YES' : 'none'}`,
   `screenshots: ${mac.shots.length + phone.shots.length} in .verify/ (${[...mac.shots, ...phone.shots].slice(0, 6).join(', ')}${mac.shots.length + phone.shots.length > 6 ? ', …' : ''})`,
   `overall: ${Object.entries(report.checks).every(([k, c]) => c !== false || k.endsWith('_smoke')) ? 'PASS' : 'FAIL'}  (details: .verify/report.json)`

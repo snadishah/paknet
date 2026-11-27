@@ -54,6 +54,7 @@ import { createRoutingDemos } from './scenarios/routing-demos.js';
 import { updateFades } from './render/fade3d.js';
 import { initLandmarks, updateLandmarks, landmarkState } from './render/landmarks.js';
 import { updatePaksat3d, PAKSAT_VIEW } from './render/paksat3d.js';
+import { initWatch } from './ui/watch.js';
 
 /* ---------- build ---------- */
 const T0 = performance.now(); window.__paknetTiming = {};
@@ -105,6 +106,10 @@ ctx.trace = initTraceroute(ctx);
 initGlossary();
 ctx.scen = initScenarios(ctx);
 ctx.tour = initTour(ctx);
+// Watch the story: the film-like player (it owns the keyboard while it plays)
+ctx.watch = initWatch(ctx);
+{ const tk = shell.keyHook; shell.keyHook = ev => ctx.watch.key(ev) || tk?.(ev); }
+ui('btnWatch').onclick = () => ctx.watch.start();
 on('metrics:sample', m => { ctx.lastSample = m; });
 
 const { SCEN } = ctx.failures, { runHijack, runDDoS, runMalware } = ctx.security;
@@ -123,6 +128,7 @@ window.__paknet = { ctx, debug: { scene, camera, renderer, cityState, qualitySta
   'info-card': async () => { shell.start(true); shell.searchGo('AAE-1'); await settle(3500); },
   'sat-far': async () => { shell.start(true); shell.searchGo('PakSat-MM1'); await settle(4500); },
   'paksat-close': async () => { shell.start(true); await flyTo(PAKSAT_VIEW(), 10); await settle(3000); },
+  'watch': async () => { ctx.watch.start(1); await settle(12000); },
   'sat-near': async () => { shell.start(true); shell.closeInfo(); shell.searchGo('Starlink'); await settle(4500); },
   'traceroute': async () => { shell.start(true); const o = offices.byKey.karachi; ctx.trace.open('karachi', 'youtube'); await flyTo({ lat: o.lat, lon: o.lon, range: 1.1, tilt: 58, heading: 25 }, 10); await settle(9000); },
   'traceroute-pk': async () => { shell.start(true); ctx.trace.open('karachi', 'whatsapp'); await flyTo('pakistan', 10); await settle(3000); },
@@ -169,6 +175,13 @@ window.__paknet.scenarioSmoke = async () => {
     ctx.scen.stop(true);
   }
   return out;
+};
+// verify: one press of Watch plays every chapter to the end with no input (fast, to keep the run short)
+window.__paknet.watchTest = async (speed = 4, timeoutMs = 240000) => {
+  ctx.watch.start(); ctx.watch.setSpeed(speed); const t0 = performance.now(), seen = new Set();
+  while (ctx.watch.on && performance.now() - t0 < timeoutMs) { seen.add(ctx.watch.chapter); await new Promise(r => setTimeout(r, 250)); }
+  const done = !ctx.watch.on; if (!done) ctx.watch.leave(); ctx.watch.setSpeed(1);
+  return { done, chapters: ctx.watch.chapters, seen: seen.size, ms: Math.round(performance.now() - t0) };
 };
 window.__paknet.setPoseForTest = p => { shell.start(true); setPose(p); }; // screenshots of one place (scripts, verify)
 window.__paknet.setStep = i => { const r0 = 27000, r1 = 0.3, N = 48; setPose({ lat: 24.86, lon: 67.02, range: r0 * Math.pow(r1 / r0, i / N), heading: 0, tilt: Math.min(55, i * 1.6) }); };
@@ -251,6 +264,7 @@ function frame(now) {
   const netNow = traffic.engine.now; updateOnward(netNow - (lastNet ?? netNow), 2 * pose.range * Math.tan(camera.fov * Math.PI / 360) / innerHeight); lastNet = netNow;
   updateFx(dt); updateFades(dt); // after the effects, so a fade wins over their own opacity for its 300 ms
   ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame
+  ctx.watch.tick(Math.min(0.25, rawMs / 1000));
   updateLabels(layers);
   ctx.inspector.frame();
   renderer.render(scene, camera); if (hasCallouts()) labelRenderer.render(scene, camera);

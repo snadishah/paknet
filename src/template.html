@@ -334,6 +334,21 @@ body.started .chrome { opacity: 1; pointer-events: auto; }
 #hint { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 11; padding: 10px 16px; font-size: 15px; max-width: calc(100vw - 32px); text-align: center; opacity: 0; transition: opacity .4s; pointer-events: none; }
 #hint.on { opacity: 1; }
 body.expert #infocard { right: auto; left: 16px; top: 72px; }
+/* Watch the story */
+#intro .gos { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; } #intro .go.ghost { background: rgba(255,255,255,.08); color: #f2f5f7; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); }
+body.watching #search, body.watching #tools, body.watching #timebar, body.watching #hint, body.watching #tourcard, body.watching #capbar, body.watching #busy { display: none !important; }
+#watch { position: fixed; left: 50%; bottom: 34px; translate: -50% 0; z-index: 17; display: none; align-items: center; gap: 4px; padding: 4px 6px; max-width: calc(100vw - 32px); }
+#watch.on { display: flex; animation: fadeIn .3s ease both; }
+#watch .wmid { display: flex; flex-direction: column; gap: 5px; min-width: 210px; padding: 0 10px; font-size: 13px; font-weight: 600; color: var(--sp-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#watch .wbar { height: 3px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; } #watch .wbar i { display: block; height: 100%; width: 0; background: #7fd1a8; transition: width .25s linear; }
+#wSpeed { display: flex; gap: 2px; } #wSpeed button { height: 32px; padding: 0 9px; border-radius: 9px; background: none; color: var(--sp-ink); font: 600 12px var(--f); opacity: .7; } #wSpeed button.on { background: rgba(255,255,255,.14); opacity: 1; }
+#wList { position: absolute; bottom: calc(100% + 8px); right: 0; display: none; margin: 0; padding: 6px; list-style: none; max-height: 52vh; overflow: auto; border-radius: 14px; background: rgba(18,22,28,.96); border: 1px solid var(--sp-line); min-width: 280px; }
+#wList.on { display: block; animation: fadeIn .3s ease both; } #wList button { display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 9px; background: none; color: var(--sp-ink); font: 500 13px var(--f); } #wList button:hover { background: rgba(255,255,255,.08); } #wList button.on { background: rgba(127,209,168,.18); }
+#wcap { position: fixed; left: 50%; bottom: 96px; translate: -50% 0; z-index: 16; width: min(780px, calc(100vw - 32px)); text-align: center; pointer-events: none; opacity: 0; transition: opacity .5s ease; }
+#wcap.on { opacity: 1; } #wcap p { margin: 0; font: 600 22px/1.35 var(--f); color: #f4f6f8; text-shadow: 0 2px 4px rgba(0,0,0,.9), 0 0 24px rgba(0,0,0,.7); }
+#wResume { position: fixed; left: 50%; top: 45%; translate: -50% -50%; z-index: 18; display: none; align-items: center; gap: 10px; height: 52px; padding: 0 26px; border-radius: 26px; font: 600 17px var(--f); color: var(--sp-ink); }
+#wResume.on { display: flex; animation: fadeIn .3s ease both; }
+@media (max-width: 760px) { #watch .wmid { min-width: 0; flex: 1; } #wChapters { display: none; } #wcap p { font-size: 17px; } #wcap { bottom: 104px; } }
 body.presenting { cursor: none; }
 body.presenting #search, body.presenting #tools, body.presenting #timebar, body.presenting #hint, body.presenting #tourcard { display: none !important; }
 body.presenting #maplabels .ml { font-size: 17px; }
@@ -600,13 +615,14 @@ body.expert #trace { top: auto; bottom: 100px; }
   <symbol id="s-present" viewBox="0 0 20 20"><rect x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path d="M10 13.5V17M7 17h6"/></symbol>
   <symbol id="s-expert" viewBox="0 0 20 20"><path d="M3 5h9M15 5h2M3 10h3M9 10h8M3 15h7M13 15h4"/><circle cx="13.5" cy="5" r="1.5"/><circle cx="7.5" cy="10" r="1.5"/><circle cx="11.5" cy="15" r="1.5"/></symbol>
   <symbol id="s-play" viewBox="0 0 20 20"><path d="M6.5 4.5v11l9-5.5z" fill="currentColor"/></symbol>
+  <symbol id="s-next" viewBox="0 0 20 20"><path d="M5.5 4.5v11l8-5.5z" fill="currentColor"/><path d="M15 4.5v11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   <symbol id="s-pause" viewBox="0 0 20 20"><path d="M6 4.5v11M14 4.5v11" stroke-width="2.4"/></symbol>
   <symbol id="s-alert" viewBox="0 0 20 20"><path d="M10 3 17.5 16h-15z"/><path d="M10 8v4M10 14v.1"/></symbol>
   <symbol id="s-close" viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></symbol>
 </svg>
 <div id="intro" role="dialog" aria-label="Welcome">
   <h1>PAKNET <span>How Pakistan's internet travels</span></h1>
-  <button class="go" id="btnStart">Start</button>
+  <div class="gos"><button class="go" id="btnWatch">Watch the story</button><button class="go ghost" id="btnStart">Explore</button></div>
   <button class="skip" id="btnSkip">Skip intro</button>
 </div>
 <div id="search" class="glass chrome" role="search">
@@ -637,6 +653,19 @@ body.expert #trace { top: auto; bottom: 100px; }
 <div id="capbar" aria-live="polite"></div>
 <aside id="trace" class="glass" aria-label="Visual traceroute"></aside>
 <div id="busy" class="glass" role="status" aria-live="polite"><span class="ring" aria-hidden="true"></span><span class="txt"></span></div>
+<!-- Watch the story: the film-like player (src/ui/watch.js) -->
+<div id="wcap" aria-live="polite"></div>
+<button id="wResume" class="glass">Resume <svg class="ico2"><use href="#s-play"/></svg></button>
+<div id="watch" class="glass" role="toolbar" aria-label="Story player">
+  <button class="sbtn" id="wPrev" aria-label="Previous chapter"><svg class="ico2" style="transform:scaleX(-1)"><use href="#s-next"/></svg></button>
+  <button class="sbtn" id="wPlay" aria-label="Pause"><svg class="ico2"><use href="#s-pause"/></svg></button>
+  <button class="sbtn" id="wNext" aria-label="Next chapter"><svg class="ico2"><use href="#s-next"/></svg></button>
+  <div class="wmid"><span id="wTitle"></span><span class="wbar"><i id="wProg"></i></span></div>
+  <div id="wSpeed" role="group" aria-label="Speed"><button data-s="0.5">0.5×</button><button data-s="1">1×</button><button data-s="2">2×</button></div>
+  <button class="sbtn" id="wChapters" aria-label="Chapters">Chapters</button>
+  <button class="sbtn" id="wExit" aria-label="Leave the story">Explore</button>
+  <ul id="wList"></ul>
+</div>
 <div id="credits">Earth: NASA Blue Marble &amp; Black Marble<span class="long"> (public domain;</span> not endorsed by NASA<span class="long">)</span><span class="tiles" id="creditTiles"></span><span id="creditsMore"> · Orbital data: CelesTrak</span> · Cable routes © <a href="https://www.submarinecablemap.com" target="_blank" rel="noopener">TeleGeography</a><span class="long"> (CC BY-NC-SA 3.0)</span><span class="roads"> · Roads © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a></span><span class="osm"> · Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</span><span class="long"> · Network inside Pakistan is illustrative</span> · <button class="linkbtn" id="btnAbout2" style="color:inherit;text-decoration:underline">Sources</button></div>
 <script type="application/json" id="sourcesData">/*SOURCES*/</script>
 <div id="tip" class="card"></div>
