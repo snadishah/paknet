@@ -81,7 +81,7 @@ export function clearBursts() { bursts.length = 0; }
 const shields = [];
 export function shieldAt(node, r = 0.42) {
   const g = new THREE.Group(), R = r * K;
-  const d = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3fb27f, transparent: true, opacity: 0.14, depthWrite: false, side: THREE.DoubleSide }));
+  const d = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ toneMapped: false, color: 0x3fb27f, transparent: true, opacity: 0.14, depthWrite: false, side: THREE.DoubleSide }));
   d.rotation.x = Math.PI / 2;
   const ring = fatLine(Array.from({ length: 65 }, (_, i) => new THREE.Vector3(Math.cos(i / 64 * 6.283) * R, Math.sin(i / 64 * 6.283) * R, 0.5)), { color: 0x3fb27f, linewidth: 2, opacity: 0.9 });
   g.add(d, ring); faceUp(g, node.gpos || G3(node.pos)); gFX().add(g); shields.push(g); return g;

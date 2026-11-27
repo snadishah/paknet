@@ -87,7 +87,7 @@ class TileLayer {
     for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) { const p = j * (S + 1) + i, q = p + S + 1; idx.push(p, q, p + 1, p + 1, q, q + 1); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('muv', new THREE.Float32BufferAttribute(muv, 2)); g.setIndex(idx);
     const m = this.overlay
-      ? new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthTest: false, depthWrite: false })
+      ? new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false })
       : new THREE.ShaderMaterial({ uniforms: { map: { value: tex }, uOpacity: { value: 0 }, uFe: { value: new THREE.Vector2(1e9, 2e9) }, uGain: { value: t.gain ?? 1 }, ...shared }, vertexShader: imgVS, fragmentShader: imgFS, transparent: true, depthTest: false, depthWrite: true });
     const mesh = new THREE.Mesh(g, m); mesh.renderOrder = this.order + t.z * 0.001; mesh.userData.key = t.key; g.computeBoundingSphere(); return mesh;
   }

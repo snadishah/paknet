@@ -11,6 +11,7 @@ import { pose, altitudeKm } from './globecam.js';
 import { fadeIn, fadeOut } from './fade3d.js';
 import * as M from './models/buildings.js';
 import { destinationSites } from './onward.js';
+import { shadowsFor } from './shadows.js';
 
 const SHOW_ALT = 14; // km: models appear below this camera height
 const sites = []; // { key, lat, lon, rot, make, group, leds, office }
@@ -76,9 +77,9 @@ function show(s) {
   if (r.leds) { // the rack's status lights: small boxes whose colours follow the office's traffic
     const g = new THREE.BoxGeometry(0.05, 0.05, 0.05), geos = r.leds.map(([x, y, z]) => g.clone().translate(x, y, z));
     const merged = mergeBoxes(geos); g.dispose();
-    s.leds = new THREE.Mesh(merged, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true })); s.group.add(s.leds); s.ledN = r.leds.length;
+    s.leds = new THREE.Mesh(merged, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, toneMapped: false })); s.group.add(s.leds); s.ledN = r.leds.length;
   }
-  scene.add(s.group); s.group.updateMatrixWorld(true); fadeIn(s.group, 600);
+  shadowsFor(s.group); scene.add(s.group); s.group.updateMatrixWorld(true); fadeIn(s.group, 600);
 }
 function hide(s) {
   const g = s.group; s.group = null; s.leds = null;

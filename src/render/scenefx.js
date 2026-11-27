@@ -133,7 +133,7 @@ export const remove = a => { if (a && live.has(a)) { a.dispose(); live.delete(a)
 
 // A soft red dimming over a cable section near a point (the "cut" glow), fading after `life` s.
 export function glow(pos, { color = 0xe5484d, sizeKm = 120, life = 6 } = {}) {
-  const m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false }));
+  const m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: true, opacity: 0.35, depthWrite: false }));
   faceUp(m, pos); m.renderOrder = 6; own(m); let t = 0;
   return add({ update(dt) { t += dt; m.scale.setScalar(Math.max(sizeKm, altitudeKm * 0.04) * (1 + 0.1 * Math.sin(t * 4))); m.material.opacity = 0.35 * Math.max(0, 1 - t / life); return t < life; }, dispose() { layers.fx.remove(m); m.geometry.dispose(); m.material.dispose(); } });
 }

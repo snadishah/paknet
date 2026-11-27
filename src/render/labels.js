@@ -58,7 +58,7 @@ function behindEarth(p) {
 }
 export function updateLabels(layers) {
   if ((frameNo++ & 1) === 1) return; // every other frame is plenty
-  const range = pose.range, alt = altitudeKm; boxes.length = 0; let shown = 0;
+  const range = pose.range + (pose.alt || 0), alt = altitudeKm; boxes.length = 0; let shown = 0; // orbiting a point in space (PakSat): count its height too
   // open panels count as taken space: a label never hides half under a card or a bar
   for (const id of PANELS) { const el = document.getElementById(id); if (!el || !el.offsetParent || (OPEN_ON.has(id) && !el.classList.contains('on'))) continue; const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) boxes.push([r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]); }
   for (const l of labels) {

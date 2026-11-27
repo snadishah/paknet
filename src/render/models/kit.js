@@ -10,7 +10,7 @@ const SURFACES = {
   matte: () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0.04, envMapIntensity: 0.4 }),
   metal: () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.8, envMapIntensity: 0.8 }),
   glass: () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.06, metalness: 0.9, envMapIntensity: 1.4 }),
-  light: () => new THREE.MeshBasicMaterial({ vertexColors: true }),
+  light: () => new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
   thin: () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15, envMapIntensity: 0.5, side: THREE.DoubleSide }) // open shells: dishes
 };
 const c3 = new THREE.Color();

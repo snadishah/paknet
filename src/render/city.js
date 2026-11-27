@@ -10,6 +10,7 @@ import { latLonToEcef, enuBasis, gcDistance } from '../geo/globe.js';
 import { scene } from './scene.js';
 import { pose, altitudeKm, flightTarget } from './globecam.js';
 import { clearZones } from './landmarks.js';
+import { shadowsFor } from './shadows.js';
 import { globeUniforms } from './globe.js';
 const tmpUp = new THREE.Vector3();
 
@@ -70,7 +71,7 @@ function buildCity(data, at) {
     } catch { /* skip a bad footprint */ }
   });
   const g = new THREE.Group();
-  if (geos.length) { const merged = mergeGeometries(geos); geos.forEach(x => x.dispose()); const m = new THREE.Mesh(merged, facadeMaterial()); m.renderOrder = 2; g.add(m); }
+  if (geos.length) { const merged = mergeGeometries(geos); geos.forEach(x => x.dispose()); const m = new THREE.Mesh(merged, facadeMaterial()); m.renderOrder = 2; shadowsFor(m); g.add(m); }
   g.userData.meshes = g.children;
   return g;
 }

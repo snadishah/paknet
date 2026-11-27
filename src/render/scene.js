@@ -1,5 +1,6 @@
 // Renderer, camera, fat-line helpers and the layer registry.
-// The scene is in kilometres, ECEF axes (geo/globe.js). No shadows, no post-processing.
+// The scene is in kilometres, ECEF axes (geo/globe.js). Filmic tone mapping for the lit models (the globe,
+// imagery, lines and markers are not tone-mapped); sun shadows close up (shadows.js); no post-processing.
 import * as THREE from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
@@ -15,6 +16,7 @@ export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreferen
 renderer.setPixelRatio(quality.pixelRatio);
 renderer.setSize(innerWidth, innerHeight);
 renderer.setClearColor(0x000000, 1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.2;
 app.appendChild(renderer.domElement);
 // CSS2D renderer only for story callouts; map labels use their own DOM layer (labels.js).
 export const labelRenderer = new CSS2DRenderer();
@@ -32,7 +34,7 @@ scene.add(sunLight, sunLight.target, fillLight);
 
 // fat lines (screen-space width)
 const lineMats = [];
-export function lmat(o) { const m = new LineMaterial(Object.assign({ worldUnits: false, transparent: true, depthWrite: false }, o)); m.resolution.set(innerWidth, innerHeight); lineMats.push(m); return m; }
+export function lmat(o) { const m = new LineMaterial(Object.assign({ worldUnits: false, transparent: true, depthWrite: false, toneMapped: false }, o)); m.resolution.set(innerWidth, innerHeight); lineMats.push(m); return m; }
 export function forgetLineMat(m) { const i = lineMats.indexOf(m); if (i >= 0) lineMats.splice(i, 1); }
 const flat3 = pts => { const a = new Float32Array(pts.length * 3); pts.forEach((p, i) => { a[i * 3] = p.x; a[i * 3 + 1] = p.y; a[i * 3 + 2] = p.z; }); return a; };
 export function fatLine(pts, o) { const g = new LineGeometry(); g.setPositions(flat3(pts)); const l = new Line2(g, lmat(o)); if (o.dashed) l.computeLineDistances(); return l; }

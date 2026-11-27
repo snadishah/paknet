@@ -53,6 +53,7 @@ import { createSecurity } from './scenarios/security.js';
 import { createRoutingDemos } from './scenarios/routing-demos.js';
 import { updateFades } from './render/fade3d.js';
 import { initLandmarks, updateLandmarks, landmarkState } from './render/landmarks.js';
+import { initShadows, updateShadows } from './render/shadows.js';
 import { updatePaksat3d, PAKSAT_VIEW, paksatClose } from './render/paksat3d.js';
 import { initWatch } from './ui/watch.js';
 
@@ -71,7 +72,7 @@ const net = createNetwork(G);
 const traffic = createTraffic(G, net);
 const offices = createOffices(G, net, traffic);
 // 3D models at the network's sites; an office's rack lights follow how many of its parcels are on the way
-initLandmarks(G, offices.OFFICES);
+initLandmarks(G, offices.OFFICES); initShadows();
 landmarkState.activity = key => Math.min(1, offices.getFlowsFrom(key).length / 10);
 
 /* ---------- simulation → rendering ---------- */
@@ -258,7 +259,7 @@ function frame(now) {
   // network markers shrink when far away so the globe stays calm from space
   const s = Math.max(0.45, Math.min(1, 1.25 - Math.log10(Math.max(1, pose.range)) * 0.17));
   glyphUniforms.uScale.value = s; packetUniforms.uScale.value = Math.max(0.6, s);
-  shell.frame(dt, rawMs);
+  shell.frame(dt, rawMs); updateShadows(); // after the sun is placed
   watchFrame(rawMs);
   if (state.playing && ui('kClock')) ui('kClock').textContent = fmtClock(state.simHour);
   stepWorld(sdt);
