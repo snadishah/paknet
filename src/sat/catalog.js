@@ -7,7 +7,7 @@
 //       'eyes'   Earth observation (pictures, not internet)
 //       'nav'    navigation, not internet
 // orbit: 'geo' (far) or 'leo' / 'meo' (near / middle)
-export const SOON = 'Coming soon — not yet licensed in Pakistan (as of late 2026)';
+export const SOON = 'Not licensed in Pakistan yet (late 2026)';
 
 export const GROUPS = {
   paksat: { label: 'PakSat', role: 'pk', orbit: 'geo', layer: 'far' },

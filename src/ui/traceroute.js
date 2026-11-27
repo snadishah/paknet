@@ -19,7 +19,7 @@ import { patchHtml } from './fades.js';
 import { fadeIn, fadeOut } from '../render/fade3d.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const fmtMs = ms => (ms < 1 ? ms.toFixed(2) : ms < 10 ? ms.toFixed(1) : Math.round(ms)) + ' ms';
+const fmtMs = ms => (ms < 0.1 ? '<0.1' : ms < 10 ? ms.toFixed(1) : Math.round(ms)) + ' ms'; // one decimal at most: '0.4 ms', '<0.1 ms'
 const EXPLAIN = {
   youtube: 'A video comes from far away: the parcels leave Pakistan on an undersea cable to a Google server (illustrative location).',
   whatsapp: "Your message goes to WhatsApp's computers abroad, then on to your friend in Dubai. It crosses the sea too.",
@@ -63,12 +63,12 @@ export function initTraceroute(ctx) {
       const [name, job] = hopInfo(h, i, t);
       const how = h.edge ? `by ${mediumName(h.edge)}` : '';
       const ex = expert && h.edge ? `<small class="ex">${esc(slug(h.node))}.pk · #${h.node.id} · queue ${(h.queue * 100).toFixed(0)}% · link load ${(h.load * 100).toFixed(0)}%</small>` : '';
-      return `<li><button data-hop="${i}"><span class="n">${i + 1}</span><span class="t"><b>${esc(name)}</b><small>${esc(job)}${how ? ' · ' + esc(how) : ''}</small>${ex}</span><span class="d">${i ? '+' + fmtMs(h.ms) : ''}</span></button></li>`;
+      return `<li><button data-hop="${i}"><span class="n">${i + 1}</span><span class="t"><b>${esc(name)}</b><small>${esc(job)}</small>${how ? `<small class="how">${esc(how)}</small>` : ''}${ex}</span><span class="d">${i ? '+' + fmtMs(h.ms) : ''}</span></button></li>`;
     });
     const last = t.hops.at(-1);
     // past the simulator's sea point the parcels ride the same cable to its landing abroad: light in glass covers ~1 km every 5 µs
     const ce = t.path.edges.at(-1), on = t.cable && ((tr.dest === 'whatsapp' && ce?.onwardGulf) || ce?.onward), onKm = on ? on.cum.at(-1) : 0, onMs = onKm * 0.005;
-    if (t.far) rows.push(`<li><button data-far="1"><span class="n">${t.hops.length + 1}</span><span class="t"><b>${esc(t.far)}</b><small>${on ? `Along the same cable to ${esc(on.dest.name)} (${Math.round(onKm).toLocaleString('en')} km), then the server answers. Estimated, not simulated.` : 'Beyond our map: the server answers. Not simulated.'}</small></span><span class="d">${on ? `+≈${fmtMs(onMs)}` : '?'}</span></button></li>`);
+    if (t.far) rows.push(`<li><button data-far="1"><span class="n">${t.hops.length + 1}</span><span class="t"><b>${esc(t.far)}</b><small>${on ? `Along the same cable to ${esc(on.dest.name)} (${Math.round(onKm).toLocaleString('en')} km), then the server answers. Estimated, not simulated.` : 'Beyond our map: the server answers. Not simulated.'}</small></span><span class="d">${on ? `≈ ${fmtMs(onMs)}` : '?'}</span></button></li>`);
     const total = last.cum, measured = t.measuredMs;
     patchHtml(ui('trace'), `<div class="th"><div><p class="kick">Following parcels from</p><h3>${esc(t.office.name)}</h3><span class="tag grey">Illustrative office</span></div><button class="sbtn x" id="trX" aria-label="Close"><svg class="ico2"><use href="#s-close"/></svg></button></div>
       <div class="dests" role="group" aria-label="What is the office sending?">${Object.entries(DESTS).map(([k, d]) => `<button class="chipbtn ${k === tr.dest ? '' : 'ghost'}" data-dest="${k}" aria-pressed="${k === tr.dest}">${esc(t.office.key === 'lahore' && k === 'email' ? 'Email to a friend in Karachi' : d.label)}</button>`).join('')}</div>

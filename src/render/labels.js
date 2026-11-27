@@ -9,8 +9,11 @@ import { camera, scene, labelRenderer } from './scene.js';
 import { fromLatLon, G3 } from './geo3.js';
 import { pose, altitudeKm } from './globecam.js';
 
-const PANELS = ['infocard', 'scen', 'trace', 'tourcard', 'search', 'tools', 'timebar', 'watch', 'wcap', 'panel', 'busy'];
-const OPEN_ON = new Set(['infocard', 'scen', 'trace', 'tourcard', 'watch', 'wcap', 'busy']); // these are open only with the class "on"
+// Every on-screen panel, bar, card and menu: a label never sits on (or under) any of them. Which are open is read
+// from the page itself (display, visibility, opacity), so new panels only need adding here.
+const PANELS = ['infocard', 'scen', 'trace', 'tourcard', 'search', 'searchList', 'tools', 'menuLayers', 'menuScen', 'timebar', 'watch', 'wcap', 'wList', 'capbar', 'hint',
+  'credits', 'busy', 'header', 'rail', 'panel', 'strip', 'toasts', 'note', 'conv', 'insp', 'notice', 'about', 'tip', 'popLayers', 'popViews', 'popLegend'];
+const openNow = el => { if (!el || !el.getClientRects().length) return false; const cs = getComputedStyle(el); return cs.visibility !== 'hidden' && +cs.opacity > 0.05; };
 const MAX_LABELS = 14; // calm, but room for the destinations abroad
 const layerEl = document.createElement('div'); layerEl.id = 'maplabels'; document.getElementById('app').appendChild(layerEl);
 export const labelState = { enabled: true, extra: null, quiet: false }; // extra: (label) => bool overrides; quiet: no map labels (the PakSat close-up: the satellite fills the view)
@@ -56,13 +59,20 @@ function behindEarth(p) {
   const a = toCam.lengthSq(), b = 2 * c.dot(toCam), cc = c.lengthSq() - 6370 * 6370, disc = b * b - 4 * a * cc;
   if (disc <= 0) return false; const t = (-b - Math.sqrt(disc)) / (2 * a); return t > 0 && t < 0.999;
 }
+addEventListener('resize', () => { for (const l of labels) l.mw = 0; }); // sizes change with the window (the hero title scales)
 export function updateLabels(layers) {
   if ((frameNo++ & 1) === 1) return; // every other frame is plenty
   const range = pose.range + (pose.alt || 0), alt = altitudeKm; boxes.length = 0; let shown = 0; // orbiting a point in space (PakSat): count its height too
   // open panels count as taken space: a label never hides half under a card or a bar
-  for (const id of PANELS) { const el = document.getElementById(id); if (!el || !el.offsetParent || (OPEN_ON.has(id) && !el.classList.contains('on'))) continue; const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) boxes.push([r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]); }
-  // story bubbles (callouts) count as panels too, so a label never sits under one
-  for (const el of labelRenderer.domElement.children) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0 && el.style.display !== 'none') boxes.push([r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]); }
+  // (fixed panels have no offsetParent, so visibility is read from their style: that check used to skip them all)
+  for (const id of PANELS) { const el = document.getElementById(id); if (!openNow(el)) continue; const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0) boxes.push([r.left - 6, r.top - 6, r.right + 6, r.bottom + 6]); }
+  // story bubbles (callouts): one a panel would cover fades away; the others count as panels, so a label never sits under one
+  const panelBoxes = boxes.slice(), bubbleBoxes = [];
+  for (const el of labelRenderer.domElement.children) {
+    const r = el.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0 && el.style.display !== 'none')) continue;
+    const covered = [...panelBoxes, ...bubbleBoxes].some(o => r.left < o[2] && r.right > o[0] && r.top < o[3] && r.bottom > o[1]) || r.left < 8 || r.right > innerWidth - 8 || r.top < 8 || r.bottom > innerHeight - 8;
+    el.classList.toggle('covered', covered); if (!covered) { const b = [r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]; boxes.push(b); bubbleBoxes.push(b); } // a later bubble that would overlap this one waits
+  }
   for (const l of labels) {
     let want = labelState.enabled && range >= l.minR && range <= l.maxR && (!l.layer || layers[l.layer]?.visible !== false) && !labelState.quiet;
     if (labelState.extra) { const x = labelState.extra(l); if (x != null) want = x; }
@@ -81,7 +91,14 @@ export function updateLabels(layers) {
         if (sx - l.w / 2 < 4 || sx + l.w / 2 > innerWidth - 4 || sy < 30 || sy > innerHeight - 4) want = false;
       }
       if (want) {
-        const b = [sx - l.w / 2, sy - l.h - 6, sx + l.w / 2, sy - 6];
+        // the label's real size (measured once, again when its text or the window changes), and where it really sits:
+        // its bottom edge on the point (translate -50%, -100%), moved by its own top margin (satellite labels)
+        if (!l.mw) { l.mw = l.el.offsetWidth; l.mh = l.el.offsetHeight; l.mt = parseFloat(getComputedStyle(l.el).marginTop) || 0; }
+        const w = l.mw || l.w, h = l.mh || l.h, mt = l.mt || 0;
+        if (sx - w / 2 < 8 || sx + w / 2 > innerWidth - 8 || sy - h + mt < 8 || sy + mt > innerHeight - 8) want = false;
+      }
+      if (want) {
+        const w = l.mw || l.w, h = l.mh || l.h, mt = l.mt || 0, b = [sx - w / 2 - 3, sy - h + mt - 3, sx + w / 2 + 3, sy + mt + 3];
         for (const o of boxes) if (b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]) { want = false; break; }
         if (want) boxes.push(b);
       }

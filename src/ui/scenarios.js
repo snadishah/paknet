@@ -21,6 +21,7 @@ import { patchHtml } from './fades.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pct = x => `${Math.round(x * 100)}%`;
+const pc1 = x => (x < 0.05 ? '0%' : `${f1(x)}%`); // a percentage that is already ×100: "0%", not "0.0%"
 const f1 = x => (x == null ? '—' : x.toFixed(1));
 
 export function initScenarios(ctx) {
@@ -41,7 +42,7 @@ export function initScenarios(ctx) {
       camera: { lat: 24.8, lon: 58.5, range: 2700, tilt: 25, heading: 0 }, dur: 30, phases: [0, 6, 14], // Qatar and Karachi in view
       before: s => { s.cap0 = traffic.intlCapacityTbps(); s.u0 = busiest(); },
       beats: [[3, s => { const p = cutCable('AAE1', { lat: 25.9, lon: 52.3 }, [[25.12, 56.33], [25.9, 56.62], [26.6, 56.55], [26.45, 55.2]]); /* its branch into the Gulf towards Qatar (not in the route data): from Fujairah round Musandam to the fault */ fx.spark(p); fx.glow(p); }], [5, () => ctx.setLayer('heat', true)], [16, () => flyTo({ lat: 24.4, lon: 66.3, range: 700, tilt: 35 })]],
-      metric: s => `Room on the sea roads: ${f1(s.cap0)} → ${f1(traffic.intlCapacityTbps())} trillion bits a second. Busiest cable: ${pct(s.u0)} → ${pct(busiest())} full.`,
+      metric: s => `Room on the sea roads: ${f1(s.cap0)} → ${f1(traffic.intlCapacityTbps())} trillion bits a second. Busiest cable: ${pct(s.u0) === pct(busiest()) ? `still ${pct(busiest())} full` : `${pct(s.u0)} → ${pct(busiest())} full`}.`,
       expert: () => [['Cut', 'AAE-1, both directions (Jan 2025 fault near Qatar)'], ['Routing', 'BGP re-convergence (timer, see CLAUDE.md "mocked")'], ['Model', 'Operators move traffic to their other cables (PTCL: IMEWE, SMW4)']]
     },
     redsea: {
@@ -63,7 +64,7 @@ export function initScenarios(ctx) {
         [3.5, () => { const e = kkhFibre(), slide = fromLatLon(35.37, 74.0), at = e.gpts.reduce((a, p) => (p.distanceTo(slide) < a.distanceTo(slide) ? p : a)); e.cutAt = ecefToLatLon(at.x, at.y, at.z); net.cutEdge(e); /* the break is where the rocks reach the road */ net.topologyChanged([e], 'OSPF'); ctx.setLayer('microwave', true); fx.spark(e.cutPos || e.gpts[0]); }],
         [11, s => { s.towerTimer = setInterval(() => { if (!state.playing) return; const e = G.edges.find(x => x.type === 'mwbackup' && !x.cut); if (!e) { clearInterval(s.towerTimer); return; } net.cutEdge(e); net.topologyChanged([e], 'OSPF'); fx.spark(e.gpts[e.gpts.length - 1], 3); }, 450); }],
         [26, () => flyTo('pakistan')]],
-      metric: s => `Road to China: big glass cable (${Math.round(s.fib)} billion bits a second) → radio towers (${Math.round(s.mw)} billion) → none. China-bound parcels now wait; the rest use the sea cables.`,
+      metric: s => `Road to China: big glass cable (${s.fib >= 1000 ? f1(s.fib / 1000) + ' trillion' : Math.round(s.fib) + ' billion'} bits a second) → radio towers (${Math.round(s.mw)} billion) → none. China-bound parcels now wait; the rest use the sea cables.`,
       stop: s => clearInterval(s.towerTimer),
       expert: () => [['Cut', 'KKH fibre Chilas–Gilgit, then the 26-link microwave backup, tower by tower (illustrative landslide)'], ['Routing', 'OSPF re-converges after each cut']]
     },
@@ -71,7 +72,7 @@ export function initScenarios(ctx) {
       imaginary: true, camera: { lat: 24.2, lon: 61.2, range: 1300, tilt: 25, heading: 0 }, dur: 30, phases: [0, 4, 14],
       before: s => { s.km0 = routeKm(N('Gwadar'), G.INTL.W); s.ms0 = routeMs(N('Gwadar'), G.INTL.W); },
       beats: [[3, () => fx.drawLine(G.plannedEdges[0].gpts, { dur: 5 })], [8.5, () => { if (!state.plannedActive) failures.SCEN.gwadar(); }]],
-      metric: s => { const km = routeKm(N('Gwadar'), G.INTL.W), ms = routeMs(N('Gwadar'), G.INTL.W); return `From Gwadar to the Gulf: ${Math.round(s.km0).toLocaleString()} km → ${Math.round(km).toLocaleString()} km of cable, ${f1(s.ms0)} → ${f1(ms)} thousandths of a second. (Imaginary.)`; },
+      metric: s => { const km = routeKm(N('Gwadar'), G.INTL.W), ms = routeMs(N('Gwadar'), G.INTL.W); return `From Gwadar to the Gulf: ${Math.round(s.km0).toLocaleString()} km → ${Math.round(km).toLocaleString()} km of cable, ${f1(s.ms0)} → ${f1(ms)} ms. (Imaginary.)`; },
       stop: () => { if (state.plannedActive) failures.SCEN.gwadar(); ui('scGwadar')?.classList.remove('on'); },
       expert: () => [['What-if', 'Gwadar landing + CPEC Phase II fibre (not built; progress unverified)'], ['Measured', 'Shortest route Gwadar → Gulf endpoint, before and after']]
     },
@@ -85,7 +86,7 @@ export function initScenarios(ctx) {
         if (e.phase === 'analyse' && !s.bell) s.bell = fx.bubble(n.gpos, '<svg viewBox="0 0 20 20" width="22" height="22"><path d="M10 2a5 5 0 0 0-5 5v3l-2 3h14l-2-3V7a5 5 0 0 0-5-5zM8 15a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Alarm!', 'bub bell');
         if (e.phase === 'execute') { s.bell?.set('Shield up: the crowd goes to a filter'); s.healAt = s.t; }
       },
-      metric: s => (s.loss0 == null ? '' : `Lost parcels for real people: ${f1(s.loss0)}% before, ${f1(s.peak)}% at the worst, ${f1(loss())}% now.`),
+      metric: s => (s.loss0 == null ? '' : `Lost parcels for real people: ${pc1(s.loss0)} before, ${pc1(s.peak)} at the worst, ${pc1(loss())} now.`),
       stop: () => setAttackGrey(false),
       expert: () => [['Attack', '8 Tbps on the cables + a botnet in Pakistan, aimed at the Lahore CDN edge (illustrative)'], ['Detect', 'EWMA z-score on volume + source entropy'], ['Respond', 'Divert to the scrubbing centre (TWA data centre, illustrative)']]
     },
@@ -191,15 +192,16 @@ export function initScenarios(ctx) {
       ${cur.ended ? `<p class="learn"><b>What did we learn?</b> ${gloss(k.learn)}</p>` : ''}
       <p class="metric" id="scMetric"></p>
       <div class="bar" aria-hidden="true"><i style="width:${Math.min(100, cur.t / cur.def.dur * 100).toFixed(1)}%"></i></div>
-      <div class="row"><button class="sbtn" id="scPlay">${state.playing ? 'Pause' : 'Play'}</button><button class="sbtn" id="scStep" ${cur.ended ? 'disabled' : ''}>Next step</button><button class="sbtn" id="scAgain">Start again</button><button class="chipbtn ghost" id="scStop">Done</button></div>
+      <div class="row">${cur.ended ? '<button class="chipbtn" id="scStop">Done</button><button class="chipbtn ghost" id="scAgain">Start again</button>' : `<button class="chipbtn" id="scStep">Next step</button><button class="chipbtn ghost" id="scPlay">${state.playing ? 'Pause' : 'Play'}</button><button class="chipbtn ghost" id="scAgain">Start again</button>`}</div>
       <details id="scExp" ${document.body.classList.contains('expert') ? 'open' : ''}><summary>Expert details</summary><dl>${cur.def.expert().map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join('')}</dl></details>`;
     const key = html.replace(/width:[^%]+%/, '');
     if (key !== lastHtml) {
       lastHtml = key; patchHtml(ui('scen'), html); // details keep their open state
-      ui('scX').onclick = () => stop(); ui('scStop').onclick = () => stop();
+      ui('scX').onclick = () => stop(); if (ui('scStop')) ui('scStop').onclick = () => stop(); // Done only once the story has ended (the × stops it any time)
       // Again: the old run fades out first; Next step: at most one step every 0.7 s (each step's animation gets to start)
       ui('scAgain').onclick = () => { const id = cur.id; stop(true); setTimeout(() => start(id), 350); };
-      ui('scPlay').onclick = () => { shell.setPlaying(!state.playing); render(); }; ui('scStep').onclick = () => { if (performance.now() - lastStep < 700) return; lastStep = performance.now(); stepNext(); };
+      if (ui('scPlay')) ui('scPlay').onclick = () => { shell.setPlaying(!state.playing); render(); };
+      if (ui('scStep')) ui('scStep').onclick = () => { if (performance.now() - lastStep < 700) return; lastStep = performance.now(); stepNext(); };
     } else ui('scen').querySelector('.bar i').style.width = Math.min(100, cur.t / cur.def.dur * 100).toFixed(1) + '%';
     ui('scMetric').textContent = cur.t > 1 ? cur.def.metric(cur) : '';
     ui('scen').classList.add('on'); document.body.classList.add('scenario');
@@ -221,9 +223,9 @@ export function initScenarios(ctx) {
 
   // ---------- picker (tools button), search and presentation slides ----------
   const menu = ui('menuScen');
-  menu.innerHTML = '<h6>What can go wrong?</h6>' + ORDER.map(id => `<button class="mi" data-s="${id}"><b>${esc(KIDS[id].title)}</b><small>${esc(KIDS[id].what)}</small></button>`).join('');
+  menu.innerHTML = '<h6>Pick one · each plays in about a minute</h6>' + ORDER.map(id => `<button class="mi" data-s="${id}"><b>${esc(KIDS[id].title)}</b><small>${esc(KIDS[id].what)}</small></button>`).join('');
   menu.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { menu.classList.remove('on'); ui('tScen').classList.remove('on'); ctx.watch?.leave(false); start(b.dataset.s); }); // one mode at a time
-  ui('tScen').onclick = ev => { ev.stopPropagation(); const o = !menu.classList.contains('on'); menu.classList.toggle('on', o); ui('tScen').classList.toggle('on', o); ui('tScen').setAttribute('aria-expanded', o); };
+  ui('tScen').onclick = ev => { ev.stopPropagation(); const o = !menu.classList.contains('on'); shell.closeMenus?.('menuScen'); menu.classList.toggle('on', o); ui('tScen').classList.toggle('on', o); ui('tScen').setAttribute('aria-expanded', o); };
   document.addEventListener('click', ev => { if (!ev.target.closest('#menuScen') && !ev.target.closest('#tScen')) { menu.classList.remove('on'); ui('tScen').classList.remove('on'); } });
   shell.addSearch({ name: 'Telesat Lightspeed', sub: 'Coming soon — none in orbit yet', go: () => shell.showInfo({ kick: 'Low-orbit internet satellites', title: 'Telesat Lightspeed', tags: [['Coming soon — not yet licensed in Pakistan (as of late 2026)', 'grey'], ['No satellites in orbit yet (CelesTrak, Nov 2026)', 'grey']], what: 'A planned swarm of internet satellites from Telesat (Canada).', why: 'None are flying yet, so there is nothing to show on the globe.' }) });
   for (const id of ORDER) shell.addSearch({ name: KIDS[id].title, sub: 'Scenario', go: () => start(id) });

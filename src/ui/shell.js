@@ -71,7 +71,7 @@ export function initShell(ctx) {
 
   // ---------- lighting ----------
   let flood = false;
-  ui('tLight').onclick = () => { flood = !flood; setFlood(flood); sunLight.intensity = flood ? 1.2 : 2.2; ui('tLightLbl').textContent = flood ? 'Flood' : 'Natural'; ui('tLight').setAttribute('aria-label', 'Lighting: ' + (flood ? 'flood (everything lit)' : 'natural (real sun)')); ui('tLight').classList.toggle('on', flood); writeHash(); };
+  ui('tLight').onclick = () => { flood = !flood; setFlood(flood); sunLight.intensity = flood ? 1.2 : 2.2; ui('tLightLbl').textContent = flood ? 'All lit' : 'Sunlight'; ui('tLight').setAttribute('aria-label', 'Lighting: ' + (flood ? 'everything lit' : 'sunlight (the real sun)')); ui('tLight').classList.toggle('on', flood); writeHash(); };
   sh.setFloodLight = v => { if (v !== flood) ui('tLight').click(); };
 
   // ---------- Expert drawer ----------
@@ -93,7 +93,7 @@ export function initShell(ctx) {
     ['Planned links', 'Gwadar cable and CPEC fibre (not built)', ['planned']],
     ['Labels', 'Names of places', ['labels']]
   ];
-  const extraToggles = [['Satellite photos up close', 'Real photos of the ground when you zoom in', () => tileState.enabled, v => { tileState.enabled = v; }]];
+  const extraToggles = [['Photo map when zoomed in', 'Real photos of the ground as you come close', () => tileState.enabled, v => { tileState.enabled = v; }]];
   sh.extraToggles = extraToggles;
   function renderLayers() {
     const m = ui('menuLayers');
@@ -105,7 +105,15 @@ export function initShell(ctx) {
     m.querySelectorAll('[data-si]').forEach(i => i.onchange = () => sh.satToggles[+i.dataset.si][3](i.checked));
   }
   sh.renderLayers = renderLayers;
-  ui('tLayers').onclick = ev => { ev.stopPropagation(); const m = ui('menuLayers'); const o = !m.classList.contains('on'); if (o) renderLayers(); m.classList.toggle('on', o); ui('tLayers').classList.toggle('on', o); ui('tLayers').setAttribute('aria-expanded', o); };
+  // a soft fade at the bottom of a scrolling panel while there is more below it (CSS .more)
+  for (const id of ['menuLayers', 'menuScen', 'infocard', 'scen', 'trace']) {
+    const el = ui(id); if (!el) continue;
+    const f = () => el.classList.toggle('more', el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+    el.addEventListener('scroll', f, { passive: true }); new ResizeObserver(f).observe(el); new MutationObserver(f).observe(el, { childList: true, subtree: true });
+  }
+  // one toolbar menu at a time: opening one closes the other (each button stops its click, so the other's outside-click closer never runs)
+  sh.closeMenus = (except = null) => { for (const [b, m] of [['tLayers', 'menuLayers'], ['tScen', 'menuScen']]) if (m !== except) { ui(m).classList.remove('on'); ui(b).classList.remove('on'); ui(b).setAttribute('aria-expanded', false); } };
+  ui('tLayers').onclick = ev => { ev.stopPropagation(); const m = ui('menuLayers'); const o = !m.classList.contains('on'); sh.closeMenus('menuLayers'); if (o) renderLayers(); m.classList.toggle('on', o); ui('tLayers').classList.toggle('on', o); ui('tLayers').setAttribute('aria-expanded', o); };
   document.addEventListener('click', ev => { if (!ev.target.closest('#menuLayers') && !ev.target.closest('#tLayers')) { ui('menuLayers').classList.remove('on'); ui('tLayers').classList.remove('on'); } });
 
   // ---------- info card ----------
@@ -220,8 +228,10 @@ export function initShell(ctx) {
   function runSearch() {
     const q = norm(input_.value); if (!q) { list.classList.remove('on'); results = []; return; }
     const score = e => { const a = norm(e.name), b = norm(e.alt || ''); return a.startsWith(q) || b.startsWith(q) ? 0 : a.includes(q) || b.includes(q) ? 1 : norm(e.sub).includes(q) ? 2 : 9; };
-    results = entries.map(e => [score(e), e]).filter(x => x[0] < 9).sort((a, b) => a[0] - b[0] || a[1].name.length - b[1].name.length).slice(0, 8).map(x => x[1]);
-    sel = 0; list.innerHTML = results.length ? results.map((e, i) => `<li role="option" data-i="${i}" class="${i === sel ? 'sel' : ''}">${esc(e.name)}<small>${esc(e.sub)}</small></li>`).join('') : '<li class="muted">Nothing found</li>';
+    // equally good matches: big places first (cities, offices), then sites, then the rest; then the shorter name
+    const weight = e => (/\bcity\b|office|satellite/i.test(e.sub) ? 0 : /landing|exchange|data cent|station|cable/i.test(e.sub) ? 1 : 2);
+    results = entries.map(e => [score(e), e]).filter(x => x[0] < 9).sort((a, b) => a[0] - b[0] || weight(a[1]) - weight(b[1]) || a[1].name.length - b[1].name.length).slice(0, 8).map(x => x[1]);
+    sel = 0; list.innerHTML = results.length ? results.map((e, i) => `<li role="option" data-i="${i}" class="${i === sel ? 'sel' : ''}"><span class="nm">${esc(e.name)}</span><small>${esc(e.sub)}</small></li>`).join('') : '<li class="muted">Nothing found</li>';
     list.classList.add('on'); list.querySelectorAll('[data-i]').forEach(li => li.onclick = () => pickResult(+li.dataset.i));
   }
   function pickResult(i) { const e = results[i]; if (!e) return; input_.value = ''; list.classList.remove('on'); input_.blur(); if (!sh.started) start(true); e.go(); }
@@ -239,7 +249,7 @@ export function initShell(ctx) {
     if (ev.target.closest?.('input, textarea, select')) return;
     if (sh.keyHook?.(ev)) return; // tour / presentation keys first (Esc leaves them, Space steps slides)
     if (ev.key === '/' ) { ev.preventDefault(); if (!sh.started) start(true); input_.focus(); return; }
-    if (ev.key === 'Escape') { closeInfo(); ui('menuLayers').classList.remove('on'); return; }
+    if (ev.key === 'Escape') { closeInfo(); sh.closeMenus(); return; }
     if (ev.key === ' ' && sh.started && !ev.target.closest('button')) { ev.preventDefault(); setPlaying(!state.playing); return; }
     if (sh.started && keyNav(ev)) ev.preventDefault();
   });

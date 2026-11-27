@@ -39,7 +39,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* map labels */
 .lbl { white-space: nowrap; pointer-events: none; font-family: var(--f); --halo: 0 0 2px #fff, 0 0 3px #fff, 0 0 5px rgba(255,255,255,.9); }
-.lbl.core { font-size: 12.5px; font-weight: 650; color: #17221e; text-shadow: var(--halo); }
+.lbl.core { font-size: 12.5px; font-weight: 600; color: #17221e; text-shadow: var(--halo); }
 .lbl.agg { font-size: 10.5px; font-weight: 500; color: #33433c; text-shadow: var(--halo); }
 .lbl.acc { font-size: 9.5px; color: #56665f; text-shadow: var(--halo); }
 .lbl.small { font-size: 10px; font-weight: 500; color: #33433c; text-shadow: var(--halo); } .lbl.cls { color: #9a3412; } .lbl.planned { color: #b45309; font-weight: 600; }
@@ -59,7 +59,7 @@ body.panel-open #header { max-width: calc(100vw - var(--rail-w) - var(--panel-w)
 #kpis { display: flex; gap: var(--s4); padding-left: var(--s4); border-left: 1px solid var(--line); min-width: 0; overflow: hidden; }
 .kpi { display: flex; flex-direction: column; gap: 1px; flex: none; }
 .kpi label { font-size: var(--t-xs); color: var(--mute); font-weight: 500; white-space: nowrap; }
-.kpi b { font-size: var(--t-lg); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi b { font-size: var(--t-lg); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .kpi em { font-style: normal; font-weight: 500; font-size: var(--t-xs); color: var(--mute); margin-left: 2px; }
 .kpi.bad b { color: var(--bad); }
 
@@ -88,7 +88,7 @@ body.panel-open #panel { transform: none; }
 .iconbtn { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; color: var(--ink-2); }
 .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
 .pane { display: none; padding: var(--s4) var(--s4) var(--s6); overflow: auto; flex: 1; } .pane.on { display: block; }
-h2 { font-size: var(--t-lg); margin: 0 0 var(--s1); font-weight: 650; }
+h2 { font-size: var(--t-lg); margin: 0 0 var(--s1); font-weight: 600; }
 h5 { margin: var(--s6) 0 var(--s2); font-size: var(--t-xs); font-weight: 600; color: var(--mute); text-transform: uppercase; letter-spacing: .07em; }
 .lead { color: var(--ink-2); margin: 0 0 var(--s4); } .muted { color: var(--mute); font-size: var(--t-sm); }
 .mx { display: grid; grid-template-columns: 8px 1fr 72px 32px; gap: var(--s3); align-items: center; margin: var(--s2) 0; }
@@ -116,10 +116,10 @@ select { width: 100%; appearance: none; -webkit-appearance: none; border: 1px so
 .aspath { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1); margin: var(--s2) 0; } .aspath span { font-size: var(--t-xs); font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--acc-soft); color: var(--acc); } .aspath i { color: var(--mute); font-style: normal; }
 details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); font-weight: 600; color: var(--acc); padding: var(--s1) 0; }
 .hops { list-style: none; padding: 0; margin: 6px 0 0; counter-reset: h; } .hops li { display: grid; grid-template-columns: 22px 1fr 40px; gap: 2px 6px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: var(--t-sm); counter-increment: h; }
-.hops li:before { content: counter(h); grid-row: 1/3; color: var(--mute); font-size: var(--t-xs); } .hops em { grid-column: 2; font-style: normal; color: var(--mute); font-size: var(--t-xs); } .hops b { grid-row: 1/3; grid-column: 3; text-align: right; font-weight: 550; font-variant-numeric: tabular-nums; }
+.hops li:before { content: counter(h); grid-row: 1/3; color: var(--mute); font-size: var(--t-xs); } .hops em { grid-column: 2; font-style: normal; color: var(--mute); font-size: var(--t-xs); } .hops b { grid-row: 1/3; grid-column: 3; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ctirow { display: flex; flex-direction: column; font-size: var(--t-sm); padding: 6px 10px; border-left: 2px solid #d97706; margin: 5px 0; background: var(--warn-soft); border-radius: 0 8px 8px 0; } .ctirow span:first-child { color: var(--mute); font-size: var(--t-xs); } .ctirow.done { border-color: var(--acc); background: var(--acc-soft); }
-.crow { display: flex; align-items: center; justify-content: space-between; padding: var(--s2) 2px; border-bottom: 1px solid rgba(255,255,255,.08); cursor: pointer; } .crow b { font-size: var(--t-md); font-weight: 550; } .crow small { display: block; color: var(--mute); font-size: var(--t-xs); }
-.crow.cut small { color: var(--bad); font-weight: 550; } .crow.pending small { color: var(--warn); }
+.crow { display: flex; align-items: center; justify-content: space-between; padding: var(--s2) 2px; border-bottom: 1px solid rgba(255,255,255,.08); cursor: pointer; } .crow b { font-size: var(--t-md); font-weight: 600; } .crow small { display: block; color: var(--mute); font-size: var(--t-xs); }
+.crow.cut small { color: var(--bad); font-weight: 600; } .crow.pending small { color: var(--warn); }
 .tog { position: relative; flex: none; } .tog input, .chk input { display: none; } .tog i { display: block; width: 32px; height: 18px; border-radius: 10px; background: #cfd8d3; position: relative; transition: .2s; }
 .tog i:after { content: ''; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: .2s; }
 .tog input:checked + i { background: var(--acc); } .tog input:checked + i:after { left: 16px; }
@@ -135,7 +135,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 /* stories */
 #pane-story { display: none; flex-direction: column; } #pane-story.on { display: flex; }
 .st-kicker { font-size: var(--t-xs); font-weight: 600; color: var(--bad); text-transform: uppercase; letter-spacing: .08em; }
-.st-title { font-size: var(--t-xl); line-height: 1.25; margin: 2px 0 8px; font-weight: 650; letter-spacing: -.01em; }
+.st-title { font-size: var(--t-xl); line-height: 1.25; margin: 2px 0 8px; font-weight: 600; letter-spacing: -.01em; }
 .st-text { color: var(--ink-2); } .st-text code, .st-live code { font-size: var(--t-xs); background: var(--surface-2); padding: 0 4px; border-radius: 4px; }
 .st-live { margin: 10px 0 4px; } .st-live:empty { display: none; }
 .live-kpis { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .live-kpis span { background: var(--surface-2); border-radius: 8px; padding: 5px 8px; font-size: var(--t-xs); color: var(--mute); } .live-kpis b { color: var(--ink); font-size: var(--t-md); font-variant-numeric: tabular-nums; } .live-kpis b.bad { color: var(--bad); }
@@ -192,7 +192,7 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 #insp .x { position: absolute; right: 8px; top: 6px; font-size: 20px; color: var(--mute); } #insp .kick { color: var(--mute); font-size: var(--t-xs); font-weight: 500; } #insp h3 { margin: 1px 0 10px; font-size: var(--t-lg); }
 .meters { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: end; margin-bottom: 10px; } .meters label, .sub { display: block; font-size: var(--t-xs); color: var(--mute); margin-bottom: var(--s1); } .meters b { font-size: var(--t-sm); font-variant-numeric: tabular-nums; }
 #iq { background: var(--acc); width: 10%; }
-.links { list-style: none; margin: 0 0 10px; padding: 0; max-height: 180px; overflow: auto; } .links li { display: grid; grid-template-columns: 1fr auto; padding: var(--s1) 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: var(--t-sm); } .links em { font-style: normal; color: var(--mute); font-size: var(--t-xs); } .links b { grid-row: 1/3; grid-column: 2; align-self: center; font-weight: 550; font-size: var(--t-xs); } .links li.cut span, .links li.cut b { color: var(--bad); }
+.links { list-style: none; margin: 0 0 10px; padding: 0; max-height: 180px; overflow: auto; } .links li { display: grid; grid-template-columns: 1fr auto; padding: var(--s1) 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: var(--t-sm); } .links em { font-style: normal; color: var(--mute); font-size: var(--t-xs); } .links b { grid-row: 1/3; grid-column: 2; align-self: center; font-weight: 600; font-size: var(--t-xs); } .links li.cut span, .links li.cut b { color: var(--bad); }
 
 /* narrower desktops */
 @media (max-width: 1280px) { body.panel-open #kpis .opt { display: none; } }
@@ -291,7 +291,7 @@ body.started .chrome { opacity: 1; pointer-events: auto; }
 #search ul.on { display: block; }
 #search li { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
 #search li small { color: var(--sp-mute); font-size: 14px; } #search li.sel, #search li:hover { background: rgba(255,255,255,.1); }
-#tools { position: fixed; top: 16px; right: 16px; z-index: 12; display: flex; gap: 4px; padding: 4px; }
+#tools { position: fixed; top: 16px; right: 16px; z-index: 14; display: flex; gap: 4px; padding: 4px; }
 #tools .lbl { display: inline; } @media (max-width: 900px) { #tools .lbl { display: none; } }
 #menuLayers { position: fixed; top: 70px; right: 16px; z-index: 13; padding: 10px 6px; width: 280px; display: none; max-height: calc(100vh - 170px); overflow: auto; }
 #menuLayers.on { display: block; }
@@ -421,7 +421,6 @@ body.touring #timebar, body.touring #hint { display: none; }
 #trace .trhops .d { font-size: 14px; color: #cfe3ef; font-variant-numeric: tabular-nums; white-space: nowrap; padding-top: 2px; }
 #trace .sum { font-size: 14px; color: #c5d0d7; margin: 10px 0 0; border-top: 1px solid var(--sp-line); padding-top: 10px; }
 #timebar .slowmo { font-size: 14px; color: #f6d9a8; padding: 0 8px; white-space: nowrap; display: none; } #timebar .slowmo.on { display: inline; }
-body.tracing #search { display: none; }
 body.expert #trace { top: auto; bottom: 100px; }
 @media (max-width: 600px) { body.touring #trace { top: 120px; bottom: auto; max-height: 34vh; } #trace { top: auto; bottom: 96px; max-height: 50vh; } #timebar .slowmo { font-size: 14px; padding: 0 4px; } #timebar .slowmo .w { display: none; } }
 @media (max-width: 600px) {
@@ -444,6 +443,96 @@ body.expert #trace { top: auto; bottom: 100px; }
 #tip { transition-duration: .25s; } #glosstip { transition-duration: .25s; }
 @media (prefers-reduced-motion: reduce) { .leaving, .chg, .callout, .on { animation-duration: 1ms !important; } }
 @media (prefers-reduced-motion: reduce) { .ml, #intro, .chrome, #hint { transition: none !important; } }
+/* ---------- Layout guarantees (laptop): nothing overlaps, nothing leaves the window ----------
+   Bottom up: the credits are one line at the very bottom (their full text opens on hover, as on Esri's own maps);
+   the dock row above them holds the time bar, the Watch bar and the loading pill; cards and captions sit above
+   the dock; every side panel and menu ends above it and scrolls inside itself. */
+:root { --cred-h: 40px; --dock-h: 50px; --top: 72px; --above-dock: calc(var(--cred-h) + var(--dock-h) + 16px); }
+#credits { height: var(--cred-h); box-sizing: border-box; padding: 0 16px 5px; display: flex; flex-direction: column; justify-content: flex-end; white-space: normal; overflow: visible; } /* up to two lines, sitting on the bottom edge */
+#timebar, #watch { bottom: calc(var(--cred-h) + 6px) !important; }
+#busy { bottom: calc(var(--cred-h) + 12px); }
+#capbar { bottom: var(--cred-h); }
+#hint, #tourcard, #wcap { bottom: var(--above-dock); }
+#infocard, #scen, #trace, #menuLayers, #menuScen { max-height: calc(100vh - var(--top) - var(--above-dock)); }
+#search ul { max-height: calc(100vh - var(--top) - var(--above-dock)); overflow: auto; }
+/* Expert: the rail and its panel start below the toolbar; the panel is as tall as its content and stops above the dock */
+body.expert #rail { top: var(--top); bottom: calc(var(--cred-h) + 8px); }
+body.expert #panel { top: var(--top); bottom: auto; height: auto; max-height: calc(100vh - var(--top) - var(--above-dock)); }
+body.expert #panel .pane { flex: 1 1 auto; min-height: 0; }
+body.expert #trace { top: auto; bottom: var(--above-dock); max-height: calc(100vh - 160px - var(--above-dock)); }
+/* story bubbles step aside (fade) when a panel would cover them: labels.js sets .covered */
+.callout.covered { opacity: 0 !important; transition: opacity .25s ease; pointer-events: none; }
+/* ---------- Design system (round 3 review): one scale for bars, cards, buttons, type and states ---------- */
+:root { --edge: 16px; --bar-h: 50px; --stack-top: calc(var(--edge) + var(--bar-h) + 8px); --top: var(--stack-top); --card-w: 380px; --card-pad: 20px; }
+/* surfaces: bars are pills, cards 16 px, rows inside them 10 px; a hairline highlight on top of every glass surface */
+.glass { border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.35); }
+#tools, #timebar, #watch { border-radius: 25px; }
+#search { border-radius: 25px; } #search:has(ul.on) { border-radius: 16px; }
+#search .box { height: 48px; } /* + its border = the toolbar's 50 px */
+#menuScen .mi, #search li, #trace .trhops button, #menuLayers label { border-radius: 10px; }
+/* cards: one width, padding and top edge, 8 px under the bars */
+#infocard, #scen, #trace { top: var(--stack-top); width: min(var(--card-w), calc(100vw - 32px)); padding: var(--card-pad); }
+#menuLayers, #menuScen { top: var(--stack-top); } #menuLayers { width: 300px; }
+/* close buttons: one size, the top-right corner of every card, never squeezed by a long title */
+.ico2 { flex: none; }
+.sbtn.x { width: 32px; height: 32px; min-width: 0; padding: 0; border-radius: 10px; flex: none; color: var(--sp-mute); }
+.sbtn.x:hover { color: #fff; background: rgba(255,255,255,.1); }
+#infocard .x, #scen .x, #trace .x { position: absolute; top: 14px; right: 14px; }
+#scen .sh, #trace .th { padding-right: 40px; }
+#menuLayers input { flex: none; } #menuLayers label > span { min-width: 0; }
+/* the time bar never changes width: "Slowed down so you can watch" floats beside it */
+#timebar .slowmo { position: absolute; left: calc(100% + 8px); top: 50%; translate: 0 -50%; padding: 6px 12px; border-radius: 16px; background: var(--sp-bg); border: 1px solid var(--sp-line); font-size: 13px; backdrop-filter: blur(14px); }
+#timebar .slowmo.on { display: block; }
+/* search: a rounded focus ring, no browser clear button, results on one line */
+#search input:focus-visible { outline: none; }
+#search:focus-within { box-shadow: 0 0 0 2px #f0c27a, 0 12px 32px rgba(0,0,0,.35); }
+#search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+#search ul { margin: 0; border-top: 1px solid var(--sp-line); }
+#search li { align-items: baseline; } #search li .nm { min-width: 0; }
+#search li small { flex: none; white-space: nowrap; font-size: 12px; }
+/* trace: chips keep their width when picked; the Watch caption stays clear of the trace card */
+.chipbtn.ghost { font-weight: 600; }
+body.tracing #wcap { width: min(780px, calc(100vw - 2 * (var(--card-w) + 40px))); }
+/* scrolling panels: thin scrollbar, no scroll chaining, a soft fade where more is below (shell.js sets .more) */
+#menuLayers, #menuScen, #infocard, #scen, #trace, #search ul, #panel .pane { overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+.more { -webkit-mask-image: linear-gradient(#000 calc(100% - 36px), transparent); mask-image: linear-gradient(#000 calc(100% - 36px), transparent); }
+/* buttons: readable primary, hover / pressed / disabled states, one focus ring everywhere */
+.btn { color: #0b1a24; } #rail button { font-size: 12px; }
+.chipbtn:hover { background: #fff; } .chipbtn.ghost:hover { background: rgba(255,255,255,.16); }
+.sbtn, .chipbtn, .btn { transition: background-color .15s, color .15s, transform .1s; }
+.sbtn:active, .chipbtn:active, .btn:active { transform: scale(.97); }
+:is(.sbtn, .chipbtn, .btn):disabled { opacity: .35; cursor: default; background: none; pointer-events: none; }
+:where(button, summary, [tabindex], a, select):focus-visible { outline: 2px solid #f0c27a; outline-offset: 2px; }
+#menuScen .mi:focus-visible, #trace .trhops button:focus-visible { outline: 2px solid #f0c27a; outline-offset: -2px; }
+#menuLayers label:has(input:focus-visible) { outline: 2px solid #f0c27a; outline-offset: -2px; }
+/* "Expert details": a drawn chevron instead of the browser's triangle */
+summary { list-style: none; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: ''; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; rotate: -45deg; transition: rotate .2s; flex: none; margin-left: 2px; }
+details[open] > summary::before { rotate: 45deg; }
+/* type: 15 px names, 14 px text, 12 px meta (kickers, headings, chips, sub-lines); balanced titles; steady numbers */
+#menuLayers h6, #menuScen h6 { font: 600 12px/1.3 var(--f); letter-spacing: .06em; text-transform: uppercase; color: var(--sp-mute); }
+#infocard .kick, #scen .kick, #trace .kick { font: 600 12px/1.35 var(--f); letter-spacing: .06em; text-transform: uppercase; color: var(--sp-acc); }
+#infocard .tag, #trace .tag { font: 500 12px/1.3 var(--f); padding: 4px 8px; border-radius: 6px; }
+#timebar .clock { font: 600 15px/1.15 var(--f); } #timebar .clock small { font-size: 12px; font-weight: 500; line-height: 1.3; margin-top: 2px; }
+#infocard h3, #scen h3, #trace h3 { font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+#tourcard .cap, #wcap p, #capbar p { text-wrap: balance; } #capbar p { letter-spacing: -.01em; }
+#infocard p, #scen p, #scen li, #trace p, #tourcard p { text-wrap: pretty; }
+#scen .metric, .callout.bub, #watch .wmid, #tourcard .count, #trace .sum, #timebar .clock, #trace .trhops .d { font-variant-numeric: tabular-nums; }
+#wcap .gl, #capbar .gl { border-bottom: 0; } /* captions can't be clicked: no glossary underline */
+/* tooltips on icon-only buttons (below the top bar, above the bottom bars) */
+[data-tip] { position: relative; }
+[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 10px); left: 50%; translate: -50% -4px; padding: 6px 9px; border-radius: 8px; background: rgba(18,22,28,.96); border: 1px solid var(--sp-line); color: var(--sp-ink); font: 500 12px/1 var(--f); white-space: pre; opacity: 0; pointer-events: none; transition: opacity .15s .35s, translate .15s .35s; z-index: 30; }
+[data-tip]:is(:hover, :focus-visible)::after { opacity: 1; translate: -50% 0; }
+#tools [data-tip]:last-child::after { left: auto; right: 0; translate: 0 -4px; } #tools [data-tip]:last-child:is(:hover, :focus-visible)::after { translate: 0 0; }
+#timebar [data-tip]::after, #watch [data-tip]::after { top: auto; bottom: calc(100% + 10px); }
+/* toolbar groups, key caps, the trace's hops drawn as one path */
+#tools .div { width: 1px; height: 24px; align-self: center; margin: 0 2px; background: var(--sp-line); flex: none; }
+kbd { font: 600 12px/1 var(--f); padding: 2px 6px; border-radius: 5px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); border-bottom-width: 2px; color: var(--sp-ink); }
+#trace .trhops li { position: relative; }
+#trace .trhops li:not(:last-child)::after { content: ''; position: absolute; left: 17px; top: 36px; bottom: -4px; width: 2px; border-radius: 1px; background: rgba(240,194,122,.22); pointer-events: none; }
+#trace .trhops .t .how { font-size: 12px; margin-top: 2px; } #trace .trhops .t .how::first-letter { text-transform: uppercase; }
+#wSpeed button { height: 32px; min-width: 40px; padding: 0 10px; border-radius: 16px; font: 500 13px var(--f); } #wSpeed button.on { background: rgba(143,195,230,.22); color: #fff; }
 </style>
 </head>
 <body>
@@ -632,8 +721,8 @@ body.expert #trace { top: auto; bottom: 100px; }
 </svg>
 <div id="intro" role="dialog" aria-label="Welcome">
   <h1>PAKNET <span>How Pakistan's internet travels</span></h1>
-  <div class="gos"><button class="go" id="btnWatch">Watch the story</button><button class="go ghost" id="btnStart">Explore</button></div>
-  <button class="skip" id="btnSkip">Skip intro</button>
+  <div class="gos"><button class="go" id="btnWatch">Watch the story</button><button class="go ghost" id="btnStart">Quick tour</button></div>
+  <button class="skip" id="btnSkip">Explore on my own</button>
 </div>
 <div id="search" class="glass chrome" role="search">
   <div class="box"><svg class="ico2"><use href="#s-search"/></svg><input id="searchInput" type="search" placeholder="Search: Karachi, PakSat, AAE-1…" aria-label="Search for a place, cable or satellite" autocomplete="off"></div>
@@ -641,11 +730,11 @@ body.expert #trace { top: auto; bottom: 100px; }
 </div>
 <div id="tools" class="glass chrome" role="toolbar" aria-label="Tools">
   <button class="sbtn" id="tLayers" aria-label="Layers" aria-expanded="false"><svg class="ico2"><use href="#s-layers"/></svg><span class="lbl">Layers</span></button>
-  <button class="sbtn" id="tLight" aria-label="Lighting: natural"><svg class="ico2"><use href="#s-sun"/></svg><span class="lbl" id="tLightLbl">Natural</span></button>
-  <button class="sbtn" id="tScen" aria-label="What can go wrong? Scenarios" aria-expanded="false"><svg class="ico2"><use href="#s-alert"/></svg><span class="lbl">What can go wrong?</span></button>
-  <button class="sbtn" id="tHelp" aria-label="Help and tour"><svg class="ico2"><use href="#s-help"/></svg></button>
-  <button class="sbtn" id="tPresent" aria-label="Presentation mode (P)"><svg class="ico2"><use href="#s-present"/></svg></button>
-  <button class="sbtn" id="tExpert" aria-label="Expert mode" aria-pressed="false"><svg class="ico2"><use href="#s-expert"/></svg><span class="lbl">Expert</span></button>
+  <button class="sbtn" id="tLight" aria-label="Lighting: sunlight" title="Sunlight, or light everything"><svg class="ico2"><use href="#s-sun"/></svg><span class="lbl" id="tLightLbl">Sunlight</span></button>
+  <span class="div" aria-hidden="true"></span><button class="sbtn" id="tScen" aria-label="What can go wrong? Scenarios" aria-expanded="false"><svg class="ico2"><use href="#s-alert"/></svg><span class="lbl">What can go wrong?</span></button>
+  <span class="div" aria-hidden="true"></span><button class="sbtn" id="tHelp" aria-label="Help and tour (?)" data-tip="Help and tour  ?"><svg class="ico2"><use href="#s-help"/></svg></button>
+  <button class="sbtn" id="tPresent" aria-label="Watch the story (P)" data-tip="Watch the story  P"><svg class="ico2"><use href="#s-present"/></svg></button>
+  <button class="sbtn" id="tExpert" aria-label="Expert mode" aria-pressed="false" data-tip="Numbers and controls for experts"><svg class="ico2"><use href="#s-expert"/></svg><span class="lbl">Expert</span></button>
 </div>
 <div id="menuLayers" class="glass" role="menu" aria-label="Layers"></div>
 <div id="menuScen" class="glass" role="menu" aria-label="Scenarios"></div>
@@ -673,10 +762,10 @@ body.expert #trace { top: auto; bottom: 100px; }
   <div class="wmid"><span id="wTitle"></span><span class="wbar"><i id="wProg"></i></span></div>
   <div id="wSpeed" role="group" aria-label="Speed"><button data-s="0.5">0.5×</button><button data-s="1">1×</button><button data-s="2">2×</button></div>
   <button class="sbtn" id="wChapters" aria-label="Chapters">Chapters</button>
-  <button class="sbtn" id="wExit" aria-label="Leave the story">Explore</button>
+  <button class="sbtn" id="wExit" aria-label="Leave the story" data-tip="Leave the story  Esc"><svg class="ico2"><use href="#s-close"/></svg>Exit</button>
   <ul id="wList"></ul>
 </div>
-<div id="credits">Earth: NASA Blue Marble &amp; Black Marble<span class="long"> (public domain;</span> not endorsed by NASA<span class="long">)</span><span class="tiles" id="creditTiles"></span><span id="creditsMore"> · Orbital data: CelesTrak</span> · Cable routes © <a href="https://www.submarinecablemap.com" target="_blank" rel="noopener">TeleGeography</a><span class="long"> (CC BY-NC-SA 3.0)</span><span class="roads"> · Roads © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a></span><span class="osm"> · Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</span><span class="long"> · Network inside Pakistan is illustrative</span> · <button class="linkbtn" id="btnAbout2" style="color:inherit;text-decoration:underline">Sources</button></div>
+<div id="credits"><div class="in">Earth: NASA Blue Marble &amp; Black Marble<span class="long"> (public domain;</span> not endorsed by NASA<span class="long">)</span><span class="tiles" id="creditTiles"></span><span id="creditsMore"> · Orbital data: CelesTrak</span> · Cable routes © <a href="https://www.submarinecablemap.com" target="_blank" rel="noopener">TeleGeography</a><span class="long"> (CC BY-NC-SA 3.0)</span><span class="roads"> · Roads © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a></span><span class="osm"> · Buildings © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</span><span class="long"> · Network inside Pakistan is illustrative</span> · <button class="linkbtn" id="btnAbout2" style="color:inherit;text-decoration:underline">Sources</button></div></div>
 <script type="application/json" id="sourcesData">/*SOURCES*/</script>
 <div id="tip" class="card"></div>
 <div id="insp" class="card"></div>

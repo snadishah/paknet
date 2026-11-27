@@ -47,7 +47,7 @@ function place(c, on, pos, label) {
   c.close = d < (c.close ? HIDE_KM : SHOW_KM);
   // enlarge so the model spans at least ICON_PX on screen; 1 = true size
   const px = SPAN_M * 0.001 * innerHeight / (2 * Math.tan(camera.fov * Math.PI / 360) * d), k = Math.max(1, ICON_PX / px);
-  if (label && (k > 1.5) !== c.enlarged) { c.enlarged = k > 1.5; label.text = label.el.textContent = c.enlarged ? `${c.name} · shown enlarged` : c.name; label.w = label.text.length * 7.6 + 16; }
+  if (label && (k > 1.5) !== c.enlarged) { c.enlarged = k > 1.5; label.text = label.el.textContent = c.enlarged ? `${c.name} · shown enlarged` : c.name; label.mw = 0; } // re-measured by labels.js
   // local frame at the satellite: u away from the Earth, n north, e east; metres → km
   u.copy(pos).normalize(); n.set(0, 0, 1).sub(u.clone().multiplyScalar(u.z)).normalize(); e.crossVectors(n, u);
   m.makeBasis(e, n, u).setPosition(pos).multiply(sc.makeScale(0.001 * k, 0.001 * k, 0.001 * k));

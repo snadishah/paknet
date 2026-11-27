@@ -202,7 +202,7 @@ window.__paknet.zoomTest = async (stepMs = 0) => {
 
 /* ---------- main loop ---------- */
 const fmtClock = h => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
-let last = performance.now(), lastNet = null;
+let last = performance.now(), lastNet = null, viewOff = 0;
 const VERIFY = new URLSearchParams(location.search).has('verify'); let peakCalls = 0;
 
 // Bursts where bundles are lost (tail drop, cut link, blocked) or swallowed by a sink.
@@ -270,6 +270,11 @@ function frame(now) {
   updateFx(dt); updateFades(dt); // after the effects, so a fade wins over their own opacity for its 300 ms
   ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame
   ctx.watch.tick(Math.min(0.25, rawMs / 1000));
+  // the view's centre moves into the space beside an open card, so what a card talks about is not under it
+  const cardR = (ui('infocard')?.classList.contains('on') || ui('scen')?.classList.contains('on')) && !document.body.classList.contains('presenting'), cardL = ui('trace')?.classList.contains('on');
+  const wantOff = cardR && !cardL ? (Math.min(380, innerWidth - 32) + 16) / 2 : cardL && !cardR ? -(Math.min(380, innerWidth - 32) + 16) / 2 : 0;
+  viewOff += (wantOff - viewOff) * Math.min(1, dt * 5);
+  if (Math.abs(viewOff) > 0.5) camera.setViewOffset(innerWidth, innerHeight, viewOff, 0, innerWidth, innerHeight); else if (camera.view?.enabled) camera.clearViewOffset();
   updateLabels(layers);
   ctx.inspector.frame();
   renderer.render(scene, camera); if (hasCallouts()) labelRenderer.render(scene, camera);

@@ -68,8 +68,8 @@ export function initTour(ctx) {
       patchHtml(ui('tourcard'), `<p class="cap">${gloss(s.text)}</p>
         <div class="row"><div class="dots" aria-hidden="true">${run.steps.map((_, k) => `<i class="${k === run.i ? 'on' : ''}"></i>`).join('')}</div>
         <span class="count">${run.i + 1} of ${n}</span>
-        <button class="sbtn" id="tcBack" ${run.i ? '' : 'disabled'}>Back</button><button class="chipbtn" id="tcNext">${last ? 'Finish' : 'Next'}</button></div>
-        <button class="skip" id="tcSkip">Skip the tour</button>`);
+        <button class="chipbtn ghost" id="tcBack" ${run.i ? '' : 'disabled'}>Back</button><button class="chipbtn" id="tcNext">${last ? 'Finish' : 'Next'}</button></div>
+        <button class="skip" id="tcSkip">Skip tour</button>`);
       ui('tourcard').classList.add('on');
       ui('tcBack').onclick = () => go(run.i - 1); ui('tcNext').onclick = () => go(run.i + 1); ui('tcSkip').onclick = finish;
       ui('tcNext').focus({ preventScroll: true });

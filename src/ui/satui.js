@@ -9,14 +9,14 @@ export function initSatelliteUI(ctx) {
   const sh = ctx.shell;
   const set = (k, v) => { satLayers[k] = v; applyLayers(); if (k === 'far') ctx.setLayer('satellite', v); };
   sh.satToggles = [
-    ['Far: geostationary (35,786 km)', 'So high they seem to stand still over one spot. PakSat-MM1 lives here.', () => satLayers.far, v => set('far', v)],
-    ['Near: low orbit (~500–1,200 km)', 'Low and fast: once round the Earth in about 1.5 hours. Not licensed in Pakistan yet.', () => satLayers.soon, v => set('soon', v)],
+    ['Far satellites · 36,000 km up', 'So high they seem to stand still over one spot. PakSat-MM1 lives here.', () => satLayers.far, v => set('far', v)],
+    ['Near satellites · 500–1,200 km up', 'Low and fast: once round the Earth in about 1.5 hours. Not licensed in Pakistan yet.', () => satLayers.soon, v => set('soon', v)],
     ["Pakistan's eyes in space", 'Satellites that take pictures, not internet.', () => satLayers.eyes, v => set('eyes', v)],
     ['Navigation (GPS, BeiDou)', 'They tell your phone where it is. Navigation, not internet.', () => satLayers.nav, v => set('nav', v)]
   ];
   sh.pickExtra = (x, y) => pickSatellite(x, y);
 
-  const closeUp = ['Look at it up close', () => flyTo(PAKSAT_VIEW(), 4200)]; // a representative model (DFH-4E platform)
+  const closeUp = ['See it up close', () => flyTo(PAKSAT_VIEW(), 4200)]; // a representative model (DFH-4E platform)
   const MODEL_TAG = ['Close-up: representative 3D model', 'grey'];
   const nearFar = [['Show near satellites', () => { set('soon', true); sh.renderLayers(); flyTo('near'); }], ['Show far satellites', () => { set('far', true); flyTo('far'); }]];
   const card = s => { if (!s) { sh.hint('Satellites are still loading. Try again in a moment.', 3000); return; } const info = s.describe(); sh.showInfo({ ...info, tags: [...(info.tags || []), ...(s.norad === 59915 ? [MODEL_TAG] : [])], buttons: s.norad === 59915 ? [closeUp, ...nearFar] : nearFar }); sh.selected = { name: s.name }; };

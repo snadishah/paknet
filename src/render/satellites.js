@@ -170,7 +170,9 @@ export function updateSatellites() {
   if (iMM1 >= 0) visT[iMM1] = paksatShown() ? 0 : satLayers.far ? 1 : 0; // the 3D models replace the dots
   if (i1R >= 0) visT[i1R] = paksat1RShown() ? 0 : satLayers.far ? 1 : 0;
   // the orbit rings: not on the first screen (they cut through the title) nor right next to the satellite
-  if (tracks) tracks.visible = !!satState.started && !paksatClose();
+  // the orbit rings fade out below ~8,000 km: from close to the Earth they only cross the view as stray hairlines
+  const camAlt = camera.position.length() - R, ringA = THREE.MathUtils.smoothstep(camAlt, 7000, 14000);
+  if (tracks) { tracks.visible = !!satState.started && !paksatClose() && ringA > 0.01; tracks.material.opacity = 0.35 * ringA; }
   const now = performance.now(), step = Math.min(1, (now - lastVis) / 400); lastVis = now; let moved = false;
   for (let i = 0; i < N; i++) if (vis[i] !== visT[i]) { vis[i] = visT[i] > vis[i] ? Math.min(visT[i], vis[i] + step) : Math.max(visT[i], vis[i] - step); moved = true; }
   if (moved) geo.attributes.aVis.needsUpdate = true;
