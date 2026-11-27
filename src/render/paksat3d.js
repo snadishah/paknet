@@ -10,6 +10,7 @@ import { globeUniforms } from './globe.js';
 import { fadeIn, fadeOut } from './fade3d.js';
 import { paksat } from './models/satellite.js';
 import { R } from '../geo/globe.js';
+import { pose, setPose, flying } from './globecam.js';
 
 const SHOW_KM = 6, HIDE_KM = 9, SPAN_M = 17, ICON_PX = 64;
 const e = new THREE.Vector3(), n = new THREE.Vector3(), u = new THREE.Vector3(), m = new THREE.Matrix4(), sc = new THREE.Matrix4();
@@ -23,6 +24,13 @@ export const PAKSAT_VIEW = () => { const r = paksatPos.length(); return { lat: M
 
 // on: the satellites are on screen (started, and the "far" layer on). mm1 / r1: { pos, label } of each.
 export function updatePaksat3d(on, mm1, r1) {
+  // inspecting PakSat-MM1 (the camera orbits a point in space): that point follows the satellite, whose position
+  // can be refined after the camera got there (the orbit data arrives), so it never drifts out of view
+  if (pose.alt > 1000 && !flying() && paksatPos.lengthSq() > 0) {
+    const la = pose.lat * Math.PI / 180, lo = pose.lon * Math.PI / 180, r = R + pose.alt;
+    const d = Math.hypot(r * Math.cos(la) * Math.cos(lo) - paksatPos.x, r * Math.cos(la) * Math.sin(lo) - paksatPos.y, r * Math.sin(la) - paksatPos.z);
+    if (d > 0.3 && d < 60) { const v = PAKSAT_VIEW(); setPose({ ...pose, lat: v.lat, lon: v.lon, alt: v.alt }); }
+  }
   place(crafts.mm1, on, paksatPos, mm1?.label);
   place(crafts.r1, on && !!r1?.pos, r1?.pos, r1?.label);
 }

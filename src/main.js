@@ -28,7 +28,7 @@ import * as THREE from 'three';
 import { initTiles, updateTiles, tileDebug, tileState } from './render/tiles.js';
 import { initSatellites, updateSatellites, satState, satLayers } from './render/satellites.js';
 import { drawNetwork, glyphUniforms } from './render/network.js';
-import { buildLabels, updateLabels, hasCallouts } from './render/labels.js';
+import { buildLabels, updateLabels, hasCallouts, labelState } from './render/labels.js';
 import { initPackets, drawPackets, packetPos, packetUniforms, setTrailStep } from './render/packets.js';
 import { sendOnward, updateOnward } from './render/onward.js';
 import { edgeDelayMs } from './sim/links.js';
@@ -266,7 +266,7 @@ function frame(now) {
   stepWorld(sdt);
   drawPackets(traffic.packets);
   const netNow = traffic.engine.now; updateOnward(netNow - (lastNet ?? netNow)); lastNet = netNow;
-  view.satLinkFade(altitudeKm, paksatClose()); view.borderFade(altitudeKm);
+  view.satLinkFade(altitudeKm, paksatClose()); labelState.quiet = paksatClose(); view.borderFade(altitudeKm);
   updateFx(dt); updateFades(dt); // after the effects, so a fade wins over their own opacity for its 300 ms
   ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame
   ctx.watch.tick(Math.min(0.25, rawMs / 1000));

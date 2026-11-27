@@ -13,7 +13,7 @@ const PANELS = ['infocard', 'scen', 'trace', 'tourcard', 'search', 'tools', 'tim
 const OPEN_ON = new Set(['infocard', 'scen', 'trace', 'tourcard', 'watch', 'wcap', 'busy']); // these are open only with the class "on"
 const MAX_LABELS = 14; // calm, but room for the destinations abroad
 const layerEl = document.createElement('div'); layerEl.id = 'maplabels'; document.getElementById('app').appendChild(layerEl);
-export const labelState = { enabled: true, extra: null }; // extra: (label) => bool overrides
+export const labelState = { enabled: true, extra: null, quiet: false }; // extra: (label) => bool overrides; quiet: no map labels (the PakSat close-up: the satellite fills the view)
 const labels = [];
 
 // pos: Vector3 (globe). prio: lower = more important. node: optional sim node (click → info card).
@@ -64,7 +64,7 @@ export function updateLabels(layers) {
   // story bubbles (callouts) count as panels too, so a label never sits under one
   for (const el of labelRenderer.domElement.children) { const r = el.getBoundingClientRect(); if (r.width > 0 && r.height > 0 && el.style.display !== 'none') boxes.push([r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]); }
   for (const l of labels) {
-    let want = labelState.enabled && range >= l.minR && range <= l.maxR && (!l.layer || layers[l.layer]?.visible !== false);
+    let want = labelState.enabled && range >= l.minR && range <= l.maxR && (!l.layer || layers[l.layer]?.visible !== false) && !labelState.quiet;
     if (labelState.extra) { const x = labelState.extra(l); if (x != null) want = x; }
     if (want && shown >= MAX_LABELS) want = false;
     if (want) {
