@@ -1,23 +1,23 @@
-# Handoff: round 2 complete (Phases 0–5, merged from `redesign` into `main` on 27 Nov)
+# Handoff: round 3 (branch `round3`, not merged into `main`)
 
-**Done**
-- **P1:** one imagery config (Esri → MapTiler → EOX → NASA, keys from `.env` at build time); feathered, brightness-matched tiles; OSM roads; Pakistan outline + dimmed neighbours; loading spinner; no debug text.
-- **P2:** TeleGeography routes to Marseille, Toulon, Singapore, Hong Kong, Mombasa, Mumbai, Fujairah; border links to Kashgar, Kabul, Kandahar, Zahedan; couriers + arrival pulses; fades everywhere; blended flights, damped wheel/keys; paced tour and scenarios.
-- **P3:** models in code (`render/models/`, `landmarks.js`): landing stations, IXPs, data centres, ground stations aimed at PakSat-MM1, exchanges, KKH towers, Khunjerab, offices with a live rack; procedural façades lit at night; PakSat-MM1 close up (DFH-4E) with the Earth behind.
-- **P4:** Watch the story (`ui/watch.js`): 15 chapters (5 guided + 10 scenarios), captions, controls; plays to the end with no input.
-- **P5:** fresh-context review and fixes (one mode at a time, clean verify shots, Expert-only rings, honesty tags, AAE-1 cut at Qatar, close-up clutter, phone bottom bar, text ≥ 12 px, jargon, labels avoid panels); README.
+**Done this round** (one commit each, `r3-1` … `r3-10` + fixes)
+- **Destinations abroad:** rings from space (the old blocks were ~1,000 km wide); 3D landing stations / exchanges up close on Esri imagery (imagery now also loads ±2° around each).
+- **PakSat-MM1 and PakSat-1R in 3D at every distance:** enlarged to ~64 px from afar ("shown enlarged"), true size up close; gold foil, solar-cell sheen; 1R weathered with folded wings; the close-up follows the satellite and hides map labels.
+- **Offices:** a warm beam above each (0.5–200 km), labels down to the roof, plots clear of city blocks.
+- **Speed:** destination tiles and buildings load during the flight; off-thread decoding; 0.6 s tile fade; quality steps back up. Sharp imagery 2.3 s after landing vs 4.9 s before (`scripts/sharpness-timing.mjs`). Real M1 at 1440×900 Retina: 60 fps.
+- **Light:** filmic tone mapping for models; soft sun shadows below 3 km.
+- **Scenarios in 3D:** ground rings, cut buoy / road barrier at the real fault (AAE-1's Gulf branch drawn to Qatar), fresnel DDoS shield, tumbling boulders, teal → amber → coral heat; labels avoid bubbles.
+- **Up close:** fibre trench with marker posts, aerial poles; street life (trees, lamps, cars) on OSM streets (`npm run streets`); see-through Gwadar station.
+- **Polish:** Inter shipped locally; 5 new tests (163 pass); README, REFERENCES §9.7; evidence in `docs/evidence/round3/`.
 
 **Last verify** (27 Nov)
-- **With key:** draw calls ≤ 131, 0 console errors, 10/10 scenarios, Watch 15/15, ready < 3 s, 5 MB. ❌ zoom smoothness 0.2 (limit 0.15) in the fast daylight zoom test.
-- **No key (EOX): overall PASS.** Zoom 0.08, draw calls ≤ 122, 0 console errors, 10/10 scenarios, Watch 15/15, ready 2.5 s.
+- **No key (EOX): overall PASS.** Zoom 0.09, draw calls ≤ 131, 0 errors, 10/10 scenarios, Watch 15/15, ready < 2.2 s.
+- **With key:** all pass except zoom smoothness 0.21 (limit 0.15; round 2: 0.2): Esri's finest levels need near-maximum brightness correction at 2–3 km in the fast synthetic zoom.
 
-**Known issues**
-- Regenerate the ArcGIS key (printed once by an old verify; never committed). It lacks Static Basemap Tiles, so the OSM road overlay is used.
-- Without a key, imagery stops at ~10 m (EOX z15).
-- Cut marks are still 2D.
-- SEA-ME-WE 6 and 2Africa's Pakistan branch are approximate.
+**Not done / known**
+- No real-sky (HDRI) reflections or ambient occlusion (a generated studio environment is used); other satellites (Starlink, etc.) stay dots.
+- Frankfurt / US East destinations not added; SEA-ME-WE 6 and 2Africa's Pakistan branch approximate.
+- Without a key, imagery stops at ~10 m (EOX z15). The Gwadar model sits at the planned node's position (may be just offshore).
 - Headless frame times are SwiftShader-bound; check on the Mac with `?perf=1`.
 
-**Next**: your review on `main`; regenerate the ArcGIS key.
-
-**Key files**: `src/config/imagery.js`, `src/render/{tiles,onward,landmarks,paksat3d,fade3d}.js`, `src/render/models/*`, `src/ui/{watch,fades}.js`, `scripts/{fetch-cables,fetch-roads,verify}.mjs`, `docs/REFERENCES.md` §9.
+**Next**: your review on http://localhost:4173 (`npm run preview`); merge `round3` into `main` only when you say.
