@@ -1,4 +1,4 @@
-# Handoff: round 3 (branch `round3`, not merged into `main`)
+# Handoff: round 3 (merged from `round3` into `main` on 27 Nov)
 
 **Done this round** (one commit each, `r3-1` … `r3-10` + fixes)
 - **Destinations abroad:** rings from space (the old blocks were ~1,000 km wide); 3D landing stations / exchanges up close on Esri imagery (imagery now also loads ±2° around each).
@@ -20,4 +20,4 @@
 - Without a key, imagery stops at ~10 m (EOX z15). The Gwadar model sits at the planned node's position (may be just offshore).
 - Headless frame times are SwiftShader-bound; check on the Mac with `?perf=1`.
 
-**Next**: your review on http://localhost:4173 (`npm run preview`); merge `round3` into `main` only when you say.
+**Next**: your review on http://localhost:4173 (`npm run preview`).
