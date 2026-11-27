@@ -25,7 +25,7 @@
 
 **Last verify** (27 Nov):
 - **With key:** draw calls ≤ 131, 0 console errors, no black frame, 10/10 scenarios, Watch 15/15 chapters, ready < 3 s, 5 MB. ❌ zoom smoothness 0.2 (limit 0.15) during the 150 ms/step synthetic zoom in daylight: Esri's levels still differ a little after brightness matching.
-- **No key (EOX):** see the final summary in the Phase 5 commit.
+- **No key (EOX): overall PASS.** Zoom 0.08, draw calls ≤ 122, 0 console errors, 10/10 scenarios, Watch 15/15 chapters, ready 2.5 s.
 
 **Known issues**
 - The ArcGIS key was printed once in chat by an old verify (never committed): regenerate it. The key lacks Static Basemap Tiles, so the OSM road overlay is used.
