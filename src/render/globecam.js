@@ -59,6 +59,7 @@ function apply() {
 
 // ---------- fly-to ----------
 let fly = null;
+export const flightTarget = () => (fly && !fly.b.alt ? fly.b : null); // where the camera is flying to (tiles and buildings start loading there)
 const norm180 = a => ((a + 540) % 360) - 180;
 const ease = f => (f < 0.5 ? 4 * f * f * f : 1 - Math.pow(-2 * f + 2, 3) / 2);
 

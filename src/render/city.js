@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { latLonToEcef, enuBasis, gcDistance } from '../geo/globe.js';
 import { scene } from './scene.js';
-import { pose, altitudeKm } from './globecam.js';
+import { pose, altitudeKm, flightTarget } from './globecam.js';
 import { clearZones } from './landmarks.js';
 import { globeUniforms } from './globe.js';
 const tmpUp = new THREE.Vector3();
@@ -106,7 +106,8 @@ export function updateCity(offices) {
     lastCheck = now;
     for (const o of offices) {
       const dKm = gcDistance(pose.lat, pose.lon, o.lat, o.lon);
-      if (altitudeKm < SHOW_KM && dKm < 40) { if (groups[o.key]?.userData?.leaving) groups[o.key].userData.leaving = null; load(o); } // came back while it faded: keep it
+      const b = flightTarget(), soon = b && b.range < SHOW_KM && gcDistance(b.lat, b.lon, o.lat, o.lon) < 40; // flying there: start now
+      if ((altitudeKm < SHOW_KM && dKm < 40) || soon) { if (groups[o.key]?.userData?.leaving) groups[o.key].userData.leaving = null; load(o); } // came back while it faded: keep it
       else if (groups[o.key] && (altitudeKm > HIDE_KM || dKm > 120)) unload(o.key);
     }
   }
