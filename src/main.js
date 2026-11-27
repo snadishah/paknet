@@ -263,7 +263,7 @@ function frame(now) {
   if (state.playing && ui('kClock')) ui('kClock').textContent = fmtClock(state.simHour);
   stepWorld(sdt);
   drawPackets(traffic.packets);
-  const netNow = traffic.engine.now; updateOnward(netNow - (lastNet ?? netNow), 2 * pose.range * Math.tan(camera.fov * Math.PI / 360) / innerHeight); lastNet = netNow;
+  const netNow = traffic.engine.now; updateOnward(netNow - (lastNet ?? netNow)); lastNet = netNow;
   view.satLinkFade(altitudeKm, paksatShownNow()); view.borderFade(altitudeKm);
   updateFx(dt); updateFades(dt); // after the effects, so a fade wins over their own opacity for its 300 ms
   ctx.scen.frame(Math.min(0.25, rawMs / 1000)); // the story clock follows wall time, even on a slow frame

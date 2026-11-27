@@ -12,6 +12,7 @@ import { flyTo, pose, spin, input, setPose, keyNav, altitudeKm } from '../render
 import { setSun, setFlood, globeUniforms } from '../render/globe.js';
 import { layers, renderer, sunLight, fillLight, lightState, netRoot } from '../render/scene.js';
 import { latLonToEcef } from '../geo/globe.js';
+import { AREA } from '../config/imagery.js';
 const upV = new THREE.Vector3();
 import { tileState } from '../render/tiles.js';
 import { cityBusy } from '../render/city.js';
@@ -300,6 +301,9 @@ export function initShell(ctx) {
     // no Earth blocks a directional light, so at night it is turned down here (with the ambient fill)
     const day = flood || pose.alt > 1000 ? 1 : THREE.MathUtils.smoothstep(upV.set(...latLonToEcef(pose.lat, pose.lon, 0)).normalize().dot(globeUniforms.uSun.value), -0.1, 0.15);
     lightState.day = day; sunLight.intensity = (flood ? 1.2 : 2.2) * day; fillLight.intensity = 0.1 + 0.35 * day;
+    // neighbours are dimmed so Pakistan stands out; close to the ground far from Pakistan (a destination abroad) the dimming lifts
+    const home = pose.lat > AREA.lat0 && pose.lat < AREA.lat1 && pose.lon > AREA.lon0 && pose.lon < AREA.lon1;
+    globeUniforms.uDim.value = 0.42 * (home ? 1 : THREE.MathUtils.smoothstep(altitudeKm, 60, 600));
     ui('tbClock').innerHTML = `${fmt(state.simHour)}<small>${clock.live ? 'Pakistan time · now' : new Date(clock.t + PKT * 3600000).toISOString().slice(0, 10)}</small>`;
     body.classList.toggle('tiles-on', tileState.active && tileState.loaded > 0 && (tileState.fade || 0) > 0.02);
     // the credits of whichever imagery is on screen (Esri: "Powered by Esri" + the text the service returns)

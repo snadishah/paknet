@@ -7,15 +7,16 @@
 import * as THREE from 'three';
 import DATA from '../data/cables.json';
 import { greatCircle, gcDistance, flatToLatLon } from '../geo/globe.js';
-import { fromLatLon, faceUp, setRoadGeometry, sampleRoad } from './geo3.js';
+import { fromLatLon, setRoadGeometry, sampleRoad } from './geo3.js';
 import { layers, renderer, fatSegs } from './scene.js';
 import { addLabel } from './labels.js';
 import { burst } from './fx.js';
+import { addImageryArea } from './tiles.js';
 
 export const CABLE_CREDIT = DATA.credit;
 // cable id → { dir → { gpts (globe points from the split to the destination), cum, dest } }
 export const ONWARD_BY_CABLE = {};
-const DESTS = new Map(); // destination name → { name, pos }
+const DESTS = new Map(); // destination name → { name, lat, lon, pos, kind ('sea' | 'land'), toward (a point back along the route) }
 
 // [lon, lat, …] → globe points, densified along great circles (≤ ~60 km steps) so long legs hug the sphere
 function densify(ll) {
@@ -37,9 +38,9 @@ export function routeCable(e, nodes) {
   const s = closest(pts, b); // split where the route passes closest to the simulator's sea point
   setRoadGeometry(e, pts.slice(0, s + 1).flat());
   const on = ONWARD_BY_CABLE[e.cable.id] ||= {};
-  e.onward = on[e.dir] = onward(pts.slice(s), c.dest[e.dir], c.approx);
+  e.onward = on[e.dir] = onward(pts.slice(s), c.dest[e.dir], c.approx, 'sea');
   // westbound cables also stop in the Gulf (Fujairah) for traffic that ends there
-  if (e.dir === 'W' && c.routes.G) { const g = lineOf(c.routes.G, a); e.onwardGulf = on.G = onward([pts[s], ...g.slice(closest(g, b) + 1)], c.dest.G, c.approx); }
+  if (e.dir === 'W' && c.routes.G) { const g = lineOf(c.routes.G, a); e.onwardGulf = on.G = onward([pts[s], ...g.slice(closest(g, b) + 1)], c.dest.G, c.approx, 'sea'); }
   return true;
 }
 function lineOf(route, start) {
@@ -48,9 +49,13 @@ function lineOf(route, start) {
   return densify(ll);
 }
 function closest(pts, p) { let s = 1, best = Infinity; pts.forEach(([lo, la], i) => { const d = gcDistance(la, lo, p.lat, p.lon); if (i > 0 && d < best) { best = d; s = i; } }); return s; }
-function onward(ll, dest, approx) {
+function onward(ll, dest, approx, kind) {
   const g = ll.map(([lo, la]) => fromLatLon(la, lo));
-  if (!DESTS.has(dest.name)) DESTS.set(dest.name, { name: dest.name, pos: fromLatLon(dest.lat, dest.lon) });
+  if (!DESTS.has(dest.name)) {
+    const [lon, lat] = ll[Math.max(0, ll.length - 2)];
+    DESTS.set(dest.name, { name: dest.name, lat: dest.lat, lon: dest.lon, pos: fromLatLon(dest.lat, dest.lon), kind, toward: { lat, lon } });
+    addImageryArea(dest.lat, dest.lon); // satellite imagery there too, for the close-up
+  }
   return { gpts: g, cum: cumOf(g), dest: DESTS.get(dest.name), approx: approx || null };
 }
 
@@ -69,13 +74,24 @@ export function routeBorder(e, nodes, key) {
   const pts = densify([[a.lon, a.lat], ...L.pts.slice(1)]);
   const s = closest(pts, b);
   setRoadGeometry(e, pts.slice(0, s + 1).flat());
-  const end = L.pts.at(-1); e.onward = onward(pts.slice(s), { name: L.dest, lon: end[0], lat: end[1] }, null);
+  const end = L.pts.at(-1); e.onward = onward(pts.slice(s), { name: L.dest, lon: end[0], lat: end[1] }, null, 'land');
   return true;
 }
 
-// The onward lines (three draw calls: live, landed, retired) and the destinations (one instanced mesh).
-
-let marks = null; const markPos = [];
+// The onward lines (three draw calls: live, landed, retired) and the destinations: a ring marker
+// from afar (like the international nodes), fading out up close where landmarks.js shows a
+// representative 3D landing station (or, across a border, the neighbour's exchange).
+export const destinationSites = () => [...DESTS.values()];
+let marks = null;
+const markMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, uniforms: { uPR: { value: renderer.getPixelRatio() } },
+  vertexShader: `uniform float uPR; varying float vA;
+    void main(){ vec4 w = modelMatrix*vec4(position,1.); vA = smoothstep(3., 10., distance(w.xyz, cameraPosition)); gl_PointSize = 10. * uPR; gl_Position = projectionMatrix*viewMatrix*w; }`,
+  fragmentShader: `varying float vA;
+    void main(){ vec2 p = gl_PointCoord*2.-1.; float r = length(p), a = 1.-smoothstep(.75,1.,r); if (a*vA <= 0.) discard;
+      vec3 c = r < .45 ? vec3(.08,.1,.12) : mix(vec3(.61,.78,.88), vec3(.2,.27,.31), smoothstep(.55,.95,r)*.6);
+      gl_FragColor = vec4(c, a*vA*(r < .45 ? .85 : 1.)); }`
+});
 export function drawOnward(cableEdges, group, landEdges = [], landGroup = group) {
   const style = { live: [[], { color: 0x8fc3e6, linewidth: 1.4, opacity: 0.8 }], landed: [[], { color: 0x8fc3e6, linewidth: 1.0, opacity: 0.45, dashed: true, dashSize: 8, gapSize: 6 }], retired: [[], { color: 0x8a949a, linewidth: 1.0, opacity: 0.45, dashed: true, dashSize: 8, gapSize: 6 }] };
   for (const e of cableEdges) {
@@ -86,24 +102,10 @@ export function drawOnward(cableEdges, group, landEdges = [], landGroup = group)
   // across the borders: the same dashed style as the cross-border links they continue
   const land = []; for (const e of landEdges) if (e.onward) for (let i = 1; i < e.onward.gpts.length; i++) land.push({ a: e.onward.gpts[i - 1], b: e.onward.gpts[i] });
   if (land.length) landGroup.add(fatSegs(land, { color: 0xe6ebee, linewidth: 1.0, opacity: 0.55, dashed: true, dashSize: 6, gapSize: 5 }));
-  // a small landing station at each destination: a low hall with a mast (Phase 3 brings detailed models)
-  const hall = new THREE.BoxGeometry(1, 0.62, 0.42).translate(0, 0, 0.21), mast = new THREE.CylinderGeometry(0.05, 0.07, 1.1, 6).rotateX(Math.PI / 2).translate(0.32, 0.12, 0.55);
-  const geo = mergeTwo(hall, mast);
-  marks = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0xdfe8ee, roughness: 0.55, metalness: 0.15, emissive: 0x24465a, emissiveIntensity: 0.6, transparent: true }), DESTS.size);
-  marks.frustumCulled = false; marks.renderOrder = 6;
-  for (const d of DESTS.values()) { markPos.push(d.pos); addLabel(d.name, d.pos, { cls: 'intl', minR: 1500, maxR: 30000, prio: 2, key: 'dest:' + d.name }); }
-  group.add(marks); placeMarks(1);
-}
-function mergeTwo(a, b) {
-  const g = new THREE.BufferGeometry(), A = a.toNonIndexed(), B = b.toNonIndexed();
-  for (const k of ['position', 'normal']) { const x = A.attributes[k].array, y = B.attributes[k].array, z = new Float32Array(x.length + y.length); z.set(x); z.set(y, x.length); g.setAttribute(k, new THREE.BufferAttribute(z, 3)); }
-  return g;
-}
-const m4 = new THREE.Matrix4(), o3 = new THREE.Object3D();
-// Destinations keep a steady size on screen (~14 px), like the other network markers.
-function placeMarks(kmPerPx) {
-  markPos.forEach((p, i) => { faceUp(o3, p); o3.scale.setScalar(Math.max(0.03, 14 * kmPerPx)); o3.updateMatrix(); marks.setMatrixAt(i, o3.matrix); });
-  marks.instanceMatrix.needsUpdate = true;
+  const pos = new Float32Array(DESTS.size * 3); let i = 0;
+  for (const d of DESTS.values()) { pos.set([d.pos.x, d.pos.y, d.pos.z], 3 * i++); addLabel(d.name, d.pos, { cls: 'intl', minR: 1500, maxR: 30000, prio: 2, key: 'dest:' + d.name }); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  marks = new THREE.Points(g, markMat); marks.frustumCulled = false; marks.renderOrder = 6; group.add(marks);
 }
 
 // ---------- couriers: parcels carrying on past the simulator's sea point ----------
@@ -128,9 +130,9 @@ export function sendOnward(e, color, speed, gulf = false) {
   couriers.push({ o, len, t: 0, dur: len / Math.max(1e-9, speed), c: col.set(color).toArray() });
 }
 const edgeLike = { gpts: null, gcum: null };
-// Advance by network time (couriers pause and speed up with the simulation) and size the markers.
-export function updateOnward(netDt, kmPerPx) {
-  if (marks) placeMarks(kmPerPx);
+// Advance by network time (couriers pause and speed up with the simulation).
+export function updateOnward(netDt) {
+  markMat.uniforms.uPR.value = cMat.uniforms.uPR.value = renderer.getPixelRatio();
   if (!cPoints) return;
   let j = 0;
   for (let i = couriers.length - 1; i >= 0; i--) {

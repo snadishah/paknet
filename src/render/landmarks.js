@@ -10,6 +10,7 @@ import { scene, renderer, lightState } from './scene.js';
 import { pose, altitudeKm } from './globecam.js';
 import { fadeIn, fadeOut } from './fade3d.js';
 import * as M from './models/buildings.js';
+import { destinationSites } from './onward.js';
 
 const SHOW_ALT = 14; // km: models appear below this camera height
 const sites = []; // { key, lat, lon, rot, make, group, leds, office }
@@ -55,6 +56,13 @@ export function initLandmarks(G, offices) {
     } else if (n.name === 'Khunjerab Pass') add('kp', ll, () => M.khunjerab(), 0.6);
   }
   for (const o of offices) add('office:' + o.key, { lat: o.lat, lon: o.lon }, () => M.office({ name: o.name }), 0, { office: o.key });
+  // abroad, where the cables and border roads end (onward.js): a landing station facing the way its cable
+  // comes in, or across a border the neighbour's exchange
+  for (const d of destinationSites()) {
+    if (d.kind === 'land') { add('dest:' + d.name, d, () => M.exchange(), 0.3); continue; }
+    const { az } = azEl(d.lat, d.lon, latLonToEcef(d.toward.lat, d.toward.lon, 0));
+    add('dest:' + d.name, d, () => M.landingStation({ seaward: (90 - az) * Math.PI / 180, variant: v++ }));
+  }
 }
 const offset = (ll, eastM, northM) => ({ lat: ll.lat + northM / 110540, lon: ll.lon + eastM / (111320 * Math.cos(ll.lat * Math.PI / 180)) });
 

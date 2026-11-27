@@ -19,6 +19,11 @@ import { pose, altitudeKm } from './globecam.js';
 import { globeUniforms } from './globe.js';
 import { pakMask } from './pakmask.js';
 
+// Small extra areas around the places abroad that have 3D models (onward.js: Marseille, Singapore …),
+// so their close-ups are on satellite imagery too: ±2° around each.
+const extraAreas = [];
+export const addImageryArea = (lat, lon) => extraAreas.push({ lat, lon });
+const nearArea = (lat, lon) => extraAreas.some(a => Math.abs(lat - a.lat) < 2 && Math.abs(lon - a.lon) < 2 / Math.cos(a.lat * Math.PI / 180));
 export const tileState = { enabled: true, active: false, busy: false, loaded: 0, failed: 0, online: true, provider: null, labels: null, credit: '', labelsCredit: '', poweredByEsri: false };
 const lat2y = (lat, z) => (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * 2 ** z;
 const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / 2 ** z; return 180 / Math.PI * Math.atan(Math.sinh(n)); };
@@ -221,7 +226,7 @@ function strays() { const o = imagery.group.children.filter(m => m.visible && im
 let last = 0;
 export function updateTiles() {
   const now = performance.now();
-  const inArea = pose.lat > AREA.lat0 && pose.lat < AREA.lat1 && pose.lon > AREA.lon0 && pose.lon < AREA.lon1;
+  const inArea = (pose.lat > AREA.lat0 && pose.lat < AREA.lat1 && pose.lon > AREA.lon0 && pose.lon < AREA.lon1) || nearArea(pose.lat, pose.lon);
   const active = tileState.enabled && !!chain[idx] && inArea && altitudeKm < START_KM;
   tileState.active = active; tileState.busy = active && inflight + queue.length > 0; // the loading spinner
   // cross-fade from the NASA globe, driven by camera height (no sudden switch)
