@@ -5,10 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PAKNET — How Pakistan's internet travels</title>
 <meta name="description" content="A 3D simulation of how Pakistan's internet traffic travels, from space down to a city office.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<!-- non-blocking: the app must start (and work offline) without waiting for the font -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<!-- Inter ships with the app (assets/fonts, SIL OFL 1.1): no outside request, works offline, no late swap -->
+<link rel="preload" href="assets/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap; src: url(assets/fonts/inter-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap; src: url(assets/fonts/inter-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap; src: url(assets/fonts/inter-latin-600-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap; src: url(assets/fonts/inter-latin-700-normal.woff2) format('woff2'); }
 /* Layout (CLAUDE.md, Design direction): floating header (brand + KPIs) top left
    with notifications under it; icon rail on the right opening a collapsible
    panel; bottom strip with playback, trends and Stories. Phone: the rail is a

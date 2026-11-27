@@ -36,7 +36,8 @@ A build that contains a key is for your own computer only: don't publish the `di
 Other commands:
 - `npm test` runs the unit tests for the routing and simulation logic.
 - `npm run verify` builds the app, opens it in a hidden browser at laptop and phone sizes, takes screenshots and checks for errors, draw calls, a continuous zoom from space to the street, every scenario and the whole "Watch the story" player. The results are in `.verify/`.
-- `npm run cables` / `npm run roads` re-bake the cable routes (TeleGeography) and the roads (OpenStreetMap).
+- `npm run cables` / `npm run roads` / `npm run buildings` / `npm run streets` re-bake the cable routes (TeleGeography) and the roads, city buildings and city streets (OpenStreetMap).
+- `node scripts/look.mjs name=lat,lon,range,heading,tilt …` takes quick headless screenshots of any views into `.verify/` (needs `npm run preview`); `node scripts/sharpness-timing.mjs` measures how soon the imagery is sharp after a flight.
 - Add `?perf=1` to the address (e.g. `http://localhost:4173/?perf=1`) and open the browser's developer console (⌥⌘J in Chrome): it logs the frame rate every 2 seconds. Nothing is ever shown on screen.
 
 ## How to use it
@@ -60,8 +61,9 @@ Other commands:
 - Roads: © OpenStreetMap contributors (ODbL)
 - Satellite orbits: CelesTrak
 - Borders: Natural Earth; provinces: Highcharts map collection; cities: GeoNames
-- Buildings: © OpenStreetMap contributors (ODbL)
+- Buildings and city streets: © OpenStreetMap contributors (ODbL); the trees, lamps and cars along the streets are placed by rule (illustrative)
+- Font: Inter, shipped with the app (SIL Open Font Licence 1.1)
 
-The internal network topology inside Pakistan is representative, not real. Everything made up for teaching is labelled "illustrative". The 3D buildings, stations and the satellite are representative models built in code.
+The internal network topology inside Pakistan is representative, not real. Everything made up for teaching is labelled "illustrative". The 3D buildings, stations and satellites are representative models built in code; from far away the satellites are shown enlarged so you can see them.
 
 See `CLAUDE.md` for the project rules, `docs/REDESIGN.md` for the design and `docs/REFERENCES.md` for every fact and its source.

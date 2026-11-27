@@ -86,6 +86,9 @@ const page = {
       cpSync(join(root, 'src/data/satellites.json'), join(dist, 'assets/satellites.json'));
       if (existsSync(join(root, 'src/data/roads.json'))) cpSync(join(root, 'src/data/roads.json'), join(dist, 'assets/roads.json'));
       if (existsSync(join(root, 'src/data/cities'))) cpSync(join(root, 'src/data/cities'), join(dist, 'assets/cities'), { recursive: true });
+      // Inter, shipped with the app (SIL Open Font Licence 1.1): Latin, the four weights the page uses
+      const fonts = join(root, 'node_modules/@fontsource/inter/files'); mkdirSync(join(dist, 'assets/fonts'), { recursive: true });
+      for (const w of [400, 500, 600, 700]) { const f = `inter-latin-${w}-normal.woff2`; if (existsSync(join(fonts, f))) cpSync(join(fonts, f), join(dist, 'assets/fonts', f)); }
       writeFileSync(join(dist, 'index.html'), html);
       console.log(`built dist/ (${(dirSize(dist) / 1048576).toFixed(2)} MB)`);
     });

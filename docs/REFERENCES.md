@@ -501,6 +501,13 @@ The four links that leave Pakistan by land carry on along the main road to the f
 ### 9.6 3D models (src/render/models/, landmarks.js, paksat3d.js)
 All models are built in code (boxes, cylinders, lathed dishes, bars) and labelled representative: no third-party model files, so nothing to license. Proportions are typical, not surveyed: landing stations (hall ~34 × 20 m, fenced yard, generators, fuel tank, beach manhole, cable trench towards the sea along the real cable route); exchanges / data centres (windowless hall, chillers, generators, tanks); satellite ground stations with three dishes of 9.8–13 m aimed at PakSat-MM1 by computed azimuth / elevation; a 5-storey city exchange with a lattice mast; KKH microwave towers (42 m lattice) aimed along the chain; the Khunjerab gate; illustrative 7-floor offices with a cut-away network room whose rack lights follow the office's live traffic. PakSat-MM1 follows the DFH-4E platform (§1.5, S39): a 2.4 × 2.1 × 3.6 m bus in gold insulation, two wings of three 2.3 × 2.0 m panels turned to the real sun, two 2.5 m reflectors, Ka spot-beam antennas; shown at its live orbital position. Lighting: three.js RoomEnvironment (generated, no HDRI download), dimmed with the local daylight. City buildings: OpenStreetMap footprints with procedural façades (windows by 3.3 m floor and 3.2 m bay; about a third lit at night).
 
+### 9.7 Round 3 (Nov 2026): streets, markers, font
+- **Streets** (src/data/cities/*-streets.json, scripts/fetch-streets.mjs): OpenStreetMap `highway` ways within each city file's radius of the illustrative office, via the Overpass API; © OpenStreetMap contributors, ODbL (credited on screen with the buildings). The trees, lamps and cars along them are placed by rule (streets.js), not mapped: illustrative.
+- **Cut markers** (models/markers.js): a marker buoy over a cut submarine cable and a road barrier on land, built in code, representative. Where the route data lacks the branch a fault was on (AAE-1 into the Gulf towards Qatar, 2025), that branch is drawn by hand from Fujairah round Musandam to the fault: approximate.
+- **PakSat-1R** after retirement (Aug 2026, §8.2): same representative DFH-family model, colours faded, wings folded (illustrative of a switched-off satellite).
+- **Satellites shown enlarged**: from afar PakSat-MM1 and PakSat-1R are drawn ~64 px tall so they can be seen; the label says "shown enlarged". Up close they are true size (~17 m across with wings).
+- **Inter** typeface, shipped with the app from the `@fontsource/inter` package: SIL Open Font Licence 1.1, © The Inter Project Authors (rsms.me/inter).
+
 ## Source list
 
 All web pages were accessed 21 Nov 2026. "(live)" means a database or API that changes over time.
