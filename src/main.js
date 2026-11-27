@@ -54,6 +54,7 @@ import { createRoutingDemos } from './scenarios/routing-demos.js';
 import { updateFades } from './render/fade3d.js';
 import { initLandmarks, updateLandmarks, landmarkState } from './render/landmarks.js';
 import { initShadows, updateShadows } from './render/shadows.js';
+import { initGroundCables, updateGroundCables } from './render/groundcables.js';
 import { updatePaksat3d, PAKSAT_VIEW, paksatClose } from './render/paksat3d.js';
 import { initWatch } from './ui/watch.js';
 
@@ -72,7 +73,7 @@ const net = createNetwork(G);
 const traffic = createTraffic(G, net);
 const offices = createOffices(G, net, traffic);
 // 3D models at the network's sites; an office's rack lights follow how many of its parcels are on the way
-initLandmarks(G, offices.OFFICES); initShadows();
+initLandmarks(G, offices.OFFICES); initShadows(); initGroundCables(G);
 landmarkState.activity = key => Math.min(1, offices.getFlowsFrom(key).length / 10);
 
 /* ---------- simulation → rendering ---------- */
@@ -241,7 +242,7 @@ function stepWorld(sdt) {
 
 function frame(now) {
   const rawMs = now - last; const dt = Math.min(0.05, rawMs / 1000); last = now;
-  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updatePaksat3d(satState.started && satLayers.far, satState.mm1Label); updateCity(G.OFFICES); updateLandmarks();
+  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updatePaksat3d(satState.started && satLayers.far, satState.mm1Label); updateCity(G.OFFICES); updateLandmarks(); updateGroundCables();
   document.body.classList.toggle('city-on', Object.keys(cityState.loaded).length > 0); // OSM credit while buildings are shown
   // our own road overlay when the imagery has no road labels: eased in below ~1,400 km
   const rl = layers.roads?.userData.lines;
