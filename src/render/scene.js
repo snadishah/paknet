@@ -26,6 +26,8 @@ export const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 
 // Objects that use light (satellite models, buildings) get a sun lamp and a soft fill.
 export const sunLight = new THREE.DirectionalLight(0xffffff, 2.2);
 export const fillLight = new THREE.AmbientLight(0xffffff, 0.45);
+// daylight where the camera is looking (0 night … 1 day): the models' lights and reflections follow it
+export const lightState = { day: 1 };
 scene.add(sunLight, sunLight.target, fillLight);
 
 // fat lines (screen-space width)
@@ -53,8 +55,8 @@ export function layer(name, vis = true, parent = netRoot) { const g = new THREE.
 export function setLift(liftKm) { netRoot.scale.setScalar(1 + liftKm / 6371); }
 
 // Near/far planes follow the camera altitude so depth precision holds from 300 m to GEO.
-export function fitClipPlanes(altKm, distToCentre) {
-  const near = Math.max(0.02, altKm * 0.04), far = distToCentre + 6371 + 48000;
+export function fitClipPlanes(altKm, distToCentre, minNear = 0.02) {
+  const near = Math.max(minNear, altKm * 0.04), far = distToCentre + 6371 + 48000;
   if (Math.abs(camera.near - near) / near > 0.02 || Math.abs(camera.far - far) > 100) { camera.near = near; camera.far = far; camera.updateProjectionMatrix(); }
 }
 

@@ -12,6 +12,7 @@ import { paksatPos } from './network.js';
 import { addLabel } from './labels.js';
 import { fromLatLon } from './geo3.js';
 import { busyBegin } from '../busy.js';
+import { paksatShown } from './paksat3d.js';
 
 export const satLayers = { far: true, soon: false, eyes: false, nav: false };
 export const satMeta = { fetched: null, groups: {} };
@@ -167,6 +168,7 @@ const p0 = new THREE.Vector3(), p1 = new THREE.Vector3();
 export function updateSatellites() {
   if (!N) return; // snapshot not loaded yet
   const t = satState.clock.t, rate = satState.clock.rate;
+  if (iMM1 >= 0) visT[iMM1] = paksatShown() ? 0 : satLayers.far ? 1 : 0; // up close the 3D model replaces the dot
   const now = performance.now(), step = Math.min(1, (now - lastVis) / 400); lastVis = now; let moved = false;
   for (let i = 0; i < N; i++) if (vis[i] !== visT[i]) { vis[i] = visT[i] > vis[i] ? Math.min(visT[i], vis[i] + step) : Math.max(visT[i], vis[i] - step); moved = true; }
   if (moved) geo.attributes.aVis.needsUpdate = true;

@@ -52,6 +52,8 @@ import { createFailures } from './scenarios/failures.js';
 import { createSecurity } from './scenarios/security.js';
 import { createRoutingDemos } from './scenarios/routing-demos.js';
 import { updateFades } from './render/fade3d.js';
+import { initLandmarks, updateLandmarks, landmarkState } from './render/landmarks.js';
+import { updatePaksat3d, PAKSAT_VIEW } from './render/paksat3d.js';
 
 /* ---------- build ---------- */
 const T0 = performance.now(); window.__paknetTiming = {};
@@ -67,6 +69,9 @@ initPackets(G);
 const net = createNetwork(G);
 const traffic = createTraffic(G, net);
 const offices = createOffices(G, net, traffic);
+// 3D models at the network's sites; an office's rack lights follow how many of its parcels are on the way
+initLandmarks(G, offices.OFFICES);
+landmarkState.activity = key => Math.min(1, offices.getFlowsFrom(key).length / 10);
 
 /* ---------- simulation → rendering ---------- */
 on('edge:cut', e => { markCut(e); burst(e.cutPos, '#e5484d', 0.5, 1); traffic.onCut(e); });
@@ -117,6 +122,7 @@ window.__paknet = { ctx, debug: { scene, camera, renderer, cityState, qualitySta
   'city-300m': async () => { shell.start(true); await flyTo({ lat: 24.85, lon: 67.02, range: 0.6, tilt: 60, heading: 20 }, 10); await settle(6000); },
   'info-card': async () => { shell.start(true); shell.searchGo('AAE-1'); await settle(3500); },
   'sat-far': async () => { shell.start(true); shell.searchGo('PakSat-MM1'); await settle(4500); },
+  'paksat-close': async () => { shell.start(true); await flyTo(PAKSAT_VIEW(), 10); await settle(3000); },
   'sat-near': async () => { shell.start(true); shell.closeInfo(); shell.searchGo('Starlink'); await settle(4500); },
   'traceroute': async () => { shell.start(true); const o = offices.byKey.karachi; ctx.trace.open('karachi', 'youtube'); await flyTo({ lat: o.lat, lon: o.lon, range: 1.1, tilt: 58, heading: 25 }, 10); await settle(9000); },
   'traceroute-pk': async () => { shell.start(true); ctx.trace.open('karachi', 'whatsapp'); await flyTo('pakistan', 10); await settle(3000); },
@@ -164,6 +170,7 @@ window.__paknet.scenarioSmoke = async () => {
   }
   return out;
 };
+window.__paknet.setPoseForTest = p => { shell.start(true); setPose(p); }; // screenshots of one place (scripts, verify)
 window.__paknet.setStep = i => { const r0 = 27000, r1 = 0.3, N = 48; setPose({ lat: 24.86, lon: 67.02, range: r0 * Math.pow(r1 / r0, i / N), heading: 0, tilt: Math.min(55, i * 1.6) }); };
 window.__paknet.zoomTest = async (stepMs = 0) => {
   shell.start(true); const out = []; const r0 = 27000, r1 = 0.3, N = 48;
@@ -218,7 +225,7 @@ function stepWorld(sdt) {
 
 function frame(now) {
   const rawMs = now - last; const dt = Math.min(0.05, rawMs / 1000); last = now;
-  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updateCity(G.OFFICES);
+  updateTour(); updateCamera(dt); updateGlobe(); updateTiles(); updateSatellites(); updatePaksat3d(); updateCity(G.OFFICES); updateLandmarks();
   document.body.classList.toggle('city-on', Object.keys(cityState.loaded).length > 0); // OSM credit while buildings are shown
   // our own road overlay when the imagery has no road labels: eased in below ~1,400 km
   const rl = layers.roads?.userData.lines;

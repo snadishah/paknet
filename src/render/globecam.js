@@ -12,7 +12,10 @@ const D = Math.PI / 180;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // The current pose. Exported so the shell can read it (deep links, info).
-export const pose = { lat: 22, lon: 58, range: 24000, heading: 0, tilt: 0 };
+// alt: the height of the point the camera orbits (0 = the ground; PakSat-MM1 = 35,786 km)
+export const pose = { lat: 22, lon: 58, range: 24000, heading: 0, tilt: 0, alt: 0 };
+// orbiting something in space (the satellite) the camera may come much closer
+const minRange = () => (pose.alt > 1000 ? 0.012 : MIN_RANGE);
 
 // Named views (lat, lon, range km, heading, tilt). Old keys kept for scenarios/stories.
 export const VIEWS = {
@@ -41,7 +44,7 @@ export let altitudeKm = pose.range;
 function apply() {
   pose.tilt = Math.min(pose.tilt, maxTilt(pose.range));
   const { e, n, u } = enuBasis(pose.lat, pose.lon);
-  latLonToEcef(pose.lat, pose.lon, 0, tmpA); T.set(tmpA[0], tmpA[1], tmpA[2]);
+  latLonToEcef(pose.lat, pose.lon, pose.alt || 0, tmpA); T.set(tmpA[0], tmpA[1], tmpA[2]);
   const h = pose.heading * D, t = pose.tilt * D;
   // forward (horizontal, where the camera looks) = north rotated by heading
   const f = [n[0] * Math.cos(h) + e[0] * Math.sin(h), n[1] * Math.cos(h) + e[1] * Math.sin(h), n[2] * Math.cos(h) + e[2] * Math.sin(h)];
@@ -50,7 +53,8 @@ function apply() {
   U.set(f[0] * ct + u[0] * st, f[1] * ct + u[1] * st, f[2] * ct + u[2] * st);
   camera.position.copy(P); camera.up.copy(U); camera.lookAt(T);
   const dc = P.length(); altitudeKm = dc - R;
-  fitClipPlanes(altitudeKm, dc);
+  if (pose.alt > 1000) fitClipPlanes(Math.min(altitudeKm, pose.range), dc, 0.0005); // a few metres from the satellite
+  else fitClipPlanes(altitudeKm, dc);
 }
 
 // ---------- fly-to ----------
@@ -60,9 +64,9 @@ const ease = f => (f < 0.5 ? 4 * f * f * f : 1 - Math.pow(-2 * f + 2, 3) / 2);
 
 // Turn anything flyTo accepts into a pose.
 export function toPose(k) {
-  if (typeof k === 'string') return VIEWS[k] ? { ...VIEWS[k] } : null;
+  if (typeof k === 'string') return VIEWS[k] ? { alt: 0, ...VIEWS[k] } : null;
   if (!k) return null;
-  if ('lat' in k) return { heading: 0, tilt: 0, range: 2000, ...k };
+  if ('lat' in k) return { heading: 0, tilt: 0, range: 2000, alt: 0, ...k };
   if (k.p && k.t) { // a pose in the old flat map plane: { p: camera, t: target }
     const t = flatToLatLon(k.t[0], k.t[1]); const dx = k.p[0] - k.t[0], dy = k.p[1] - k.t[1], dz = k.p[2] - (k.t[2] || 0);
     const horiz = Math.hypot(dx, dy), range = Math.hypot(horiz, dz) * KM_PER_UNIT;
@@ -105,10 +109,11 @@ function stepFly(now) {
   const lm = 2 * lp - (la + lb) / 2; // control point so the curve reaches lp at the middle
   pose.range = Math.exp((1 - e) * (1 - e) * la + 2 * (1 - e) * e * lm + e * e * lb);
   pose.heading = a.heading + fly.dh * e; pose.tilt = a.tilt + (b.tilt - a.tilt) * e;
+  pose.alt = (a.alt || 0) + ((b.alt || 0) - (a.alt || 0)) * e;
   // carried motion: starts at the old speed, gone after ~1 s (v·t·e^(−t/τ) returns to zero)
   const t = now - fly.s, c = t * Math.exp(-t / CARRY_MS), v = fly.v0;
   pose.lat = THREE.MathUtils.clamp(pose.lat + v.lat * c, -85, 85); pose.lon = norm180(pose.lon + v.lon * c);
-  pose.range = THREE.MathUtils.clamp(pose.range * Math.exp(v.lr * c), MIN_RANGE, MAX_RANGE); pose.heading += v.heading * c; pose.tilt = THREE.MathUtils.clamp(pose.tilt + v.tilt * c, 0, 85);
+  pose.range = THREE.MathUtils.clamp(pose.range * Math.exp(v.lr * c), minRange(), MAX_RANGE); pose.heading += v.heading * c; pose.tilt = THREE.MathUtils.clamp(pose.tilt + v.tilt * c, 0, 85);
   if (f >= 1) { Object.assign(pose, b); stopFly(); }
 }
 const CARRY_MS = 220;
@@ -148,7 +153,7 @@ function panBy(dx, dy) {
   pose.lon = norm180(pose.lon + east / Math.max(0.2, Math.cos(pose.lat * D)));
   return [north, east];
 }
-export function zoomBy(factor) { pose.range = THREE.MathUtils.clamp(pose.range * factor, MIN_RANGE, MAX_RANGE); }
+export function zoomBy(factor) { pose.range = THREE.MathUtils.clamp(pose.range * factor, minRange(), MAX_RANGE); }
 
 el.addEventListener('pointerdown', ev => {
   if (!input.enabled) return;
@@ -168,7 +173,7 @@ el.addEventListener('pointermove', ev => {
   }
   if (!drag) return;
   const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y; drag.x = ev.clientX; drag.y = ev.clientY;
-  if (drag.rot) { pose.heading = norm180(pose.heading - dx * 0.3); pose.tilt = THREE.MathUtils.clamp(pose.tilt - dy * 0.25, 0, maxTilt(pose.range)); }
+  if (drag.rot || pose.alt > 1000) { pose.heading = norm180(pose.heading - dx * 0.3); pose.tilt = THREE.MathUtils.clamp(pose.tilt - dy * 0.25, 0, maxTilt(pose.range)); }
   else { const now = performance.now(), dt = Math.max(1, now - drag.t); drag.t = now; const [n, e] = panBy(dx, dy); vel.lat = n / dt * 16; vel.lon = e / dt * 16; }
 });
 const up = ev => { pointers.delete(ev.pointerId); if (pointers.size < 2) pinch = null; if (!pointers.size) drag = null; };
@@ -177,13 +182,13 @@ el.addEventListener('contextmenu', ev => ev.preventDefault());
 el.addEventListener('wheel', ev => {
   if (!input.enabled) return; ev.preventDefault(); interact();
   const dy = ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY;
-  goal.lr = THREE.MathUtils.clamp((goal.lr ?? Math.log(pose.range)) + THREE.MathUtils.clamp(dy, -200, 200) * 0.0016, Math.log(MIN_RANGE), Math.log(MAX_RANGE)); // eased in updateCamera
+  goal.lr = THREE.MathUtils.clamp((goal.lr ?? Math.log(pose.range)) + THREE.MathUtils.clamp(dy, -200, 200) * 0.0016, Math.log(minRange()), Math.log(MAX_RANGE)); // eased in updateCamera
 }, { passive: false });
 
 // Keyboard: arrows pan, +/- zoom, [ ] rotate (when the canvas area has focus, i.e. no input field).
 export function keyNav(ev) {
   const step = 40, pan = (dx, dy) => { const [n, e] = panDelta(dx, dy); goal.lat = (goal.lat ?? pose.lat) + n; goal.lon = (goal.lon ?? pose.lon) + e; };
-  const zoom = f => { goal.lr = THREE.MathUtils.clamp((goal.lr ?? Math.log(pose.range)) + Math.log(f), Math.log(MIN_RANGE), Math.log(MAX_RANGE)); };
+  const zoom = f => { goal.lr = THREE.MathUtils.clamp((goal.lr ?? Math.log(pose.range)) + Math.log(f), Math.log(minRange()), Math.log(MAX_RANGE)); };
   const turn = d => { goal.heading = (goal.heading ?? pose.heading) + d; };
   switch (ev.key) { // each key sets a goal; updateCamera glides there
     case 'ArrowLeft': interact(); pan(step, 0); return true;
@@ -202,7 +207,7 @@ export function keyNav(ev) {
 // With stopAt set, the spin eases to a stop at that longitude (Pakistan comes into view).
 export const spin = { on: false, rate: 3, stopAt: null };
 
-export function setPose(p) { stopFly(); goal.lr = goal.lat = goal.lon = goal.heading = null; Object.assign(pose, p); apply(); }
+export function setPose(p) { stopFly(); goal.lr = goal.lat = goal.lon = goal.heading = null; pose.alt = 0; Object.assign(pose, p); apply(); }
 export function updateCamera(dt) {
   const now = performance.now();
   if (fly) stepFly(now);

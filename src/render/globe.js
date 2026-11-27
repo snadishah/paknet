@@ -32,7 +32,7 @@ function sphereGeometry(nLon, nLat) {
 
 export const globeUniforms = {
   uDay: { value: null }, uNight: { value: null }, uSun: { value: new THREE.Vector3(1, 0, 0) }, uFlood: { value: 0 },
-  uNightGain: { value: 1.0 }, uReady: { value: 0 },
+  uNightGain: { value: 1.0 }, uRim: { value: 1.0 }, uReady: { value: 0 },
   // neighbours are dimmed by this much (0–1) using Pakistan's mask (render/pakmask.js), set by globe.js below
   uDim: { value: 0.42 }, uMask: { value: null }
 };
@@ -43,7 +43,7 @@ const earthMat = new THREE.ShaderMaterial({
     varying vec3 vN; varying vec3 vW; varying vec2 vUv;
     void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; vN = normalize(w.xyz); gl_Position = projectionMatrix * viewMatrix * w; }`,
   fragmentShader: /* glsl */`
-    uniform sampler2D uDay; uniform sampler2D uNight; uniform vec3 uSun; uniform float uFlood; uniform float uNightGain; uniform float uReady; uniform sampler2D uMask; uniform float uDim;
+    uniform sampler2D uDay; uniform sampler2D uNight; uniform vec3 uSun; uniform float uFlood; uniform float uNightGain; uniform float uRim; uniform float uReady; uniform sampler2D uMask; uniform float uDim;
     varying vec3 vN; varying vec3 vW; varying vec2 vUv;
     void main(){
       vec3 n = normalize(vN); vec3 v = normalize(cameraPosition - vW);
@@ -62,7 +62,7 @@ const earthMat = new THREE.ShaderMaterial({
       vec3 col = mix(nightCol, lit + spec, dayMix);
       // thin atmosphere rim on the lit side
       float fres = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-      col += vec3(0.30, 0.55, 1.0) * fres * 0.55 * mix(smoothstep(-0.25, 0.4, ndl), 1.0, uFlood);
+      col += vec3(0.30, 0.55, 1.0) * fres * 0.55 * uRim * mix(smoothstep(-0.25, 0.4, ndl), 1.0, uFlood);
       // outside Pakistan: a little darker and less colourful, so the country stands out at every zoom
       float out_ = 1.0 - texture2D(uMask, vUv).r; float gr = dot(col, vec3(.299,.587,.114));
       col = mix(col, mix(vec3(gr), col, .55) * .78, out_ * uDim);
@@ -128,4 +128,8 @@ export function updateGlobe() {
   stars.position.copy(camera.position);
   // the outer halo is for the view from space; it fades out before the camera reaches its shell (~160 km)
   const a = THREE.MathUtils.smoothstep(altitudeKm, 500, 2500); atmoMat.uniforms.uAlpha.value = a; atmo.visible = a > 0.001;
+  // the boosted city lights and the blue rim are for the view from space; close up (where any gap between
+  // imagery tiles would show the globe) they would flood the screen white, so they fade out below ~1,000 km
+  const far = THREE.MathUtils.smoothstep(Math.log(Math.max(1, altitudeKm)), Math.log(80), Math.log(1200));
+  globeUniforms.uNightGain.value = 0.03 + 0.97 * far; globeUniforms.uRim.value = far;
 }

@@ -2,6 +2,7 @@
 // info card, layers menu, lighting toggle, Expert drawer, deep links, credits
 // and the credits line. The original panels keep working inside Expert mode.
 // No stats are ever shown on screen; ?perf=1 only logs a short line to the browser console.
+import * as THREE from 'three';
 import { state } from '../state.js';
 import { emit, on } from '../events.js';
 import { subSolarPoint, flatToLatLon } from '../geo/globe.js';
@@ -9,7 +10,9 @@ import { ui } from './dom.js';
 import { tierName, mediumName } from './route.js';
 import { flyTo, pose, spin, input, setPose, keyNav, altitudeKm } from '../render/globecam.js';
 import { setSun, setFlood, globeUniforms } from '../render/globe.js';
-import { layers, renderer, sunLight, netRoot } from '../render/scene.js';
+import { layers, renderer, sunLight, fillLight, lightState, netRoot } from '../render/scene.js';
+import { latLonToEcef } from '../geo/globe.js';
+const upV = new THREE.Vector3();
 import { tileState } from '../render/tiles.js';
 import { cityBusy } from '../render/city.js';
 import { busyLabel } from '../busy.js';
@@ -289,6 +292,9 @@ export function initShell(ctx) {
     state.simHour = pktHour(clock.t);
     const ss = subSolarPoint(new Date(clock.t)); setSun(ss.lat, ss.lon);
     sunLight.position.copy(globeUniforms.uSun.value).multiplyScalar(100000);
+    // no Earth blocks a directional light, so at night it is turned down here (with the ambient fill)
+    const day = flood || pose.alt > 1000 ? 1 : THREE.MathUtils.smoothstep(upV.set(...latLonToEcef(pose.lat, pose.lon, 0)).normalize().dot(globeUniforms.uSun.value), -0.1, 0.15);
+    lightState.day = day; sunLight.intensity = (flood ? 1.2 : 2.2) * day; fillLight.intensity = 0.1 + 0.35 * day;
     ui('tbClock').innerHTML = `${fmt(state.simHour)}<small>${clock.live ? 'Pakistan time · now' : new Date(clock.t + PKT * 3600000).toISOString().slice(0, 10)}</small>`;
     body.classList.toggle('tiles-on', tileState.active && tileState.loaded > 0 && (tileState.fade || 0) > 0.02);
     // the credits of whichever imagery is on screen (Esri: "Powered by Esri" + the text the service returns)
