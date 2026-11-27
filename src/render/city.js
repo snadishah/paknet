@@ -1,7 +1,7 @@
 // City views: OpenStreetMap buildings around each illustrative office, baked by
 // scripts/fetch-buildings.mjs and loaded only when the camera comes down to the
-// city. Each city is one merged mesh (calm grey-white) plus the office building
-// (highlighted): 2 draw calls. Geometry lives in a local East-North-Up frame in
+// city. Each city is one merged mesh (calm grey-white) plus street life along the OSM streets
+// (trees, lamps, cars: streets.js): ≤ 4 draw calls. Geometry lives in a local East-North-Up frame in
 // metres inside a group placed at the office (scale 0.001 → km), so there is no
 // float jitter at 300 m. Everything is disposed when the camera leaves.
 import * as THREE from 'three';
@@ -11,6 +11,7 @@ import { scene } from './scene.js';
 import { pose, altitudeKm, flightTarget } from './globecam.js';
 import { clearZones } from './landmarks.js';
 import { shadowsFor } from './shadows.js';
+import { streetProps } from './streets.js';
 import { globeUniforms } from './globe.js';
 const tmpUp = new THREE.Vector3();
 
@@ -55,7 +56,7 @@ function facadeMaterial() {
   return m;
 }
 
-function buildCity(data, at) {
+function buildCity(data, at, streets = null) {
   const geos = [];
   // make room for the 3D models (landmarks.js): their sites in this city's local frame, metres
   const room = clearZones().map(z => ({ x: (z.lon - at.lon) * 111320 * Math.cos(at.lat * Math.PI / 180), y: (z.lat - at.lat) * 110540, r: z.r })).filter(z => Math.hypot(z.x, z.y) < 5000);
@@ -72,6 +73,14 @@ function buildCity(data, at) {
   });
   const g = new THREE.Group();
   if (geos.length) { const merged = mergeGeometries(geos); geos.forEach(x => x.dispose()); const m = new THREE.Mesh(merged, facadeMaterial()); m.renderOrder = 2; shadowsFor(m); g.add(m); }
+  // street life (streets.js): trees, lamps and cars along the OSM streets, never in a building or a model's plot
+  if (streets?.s?.length) {
+    const cell = new Map(), key = (x, y) => `${Math.floor(x / 25)},${Math.floor(y / 25)}`, boxes = [];
+    data.b.forEach(row => { let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; for (let k = 1; k < row.length; k += 2) { x0 = Math.min(x0, row[k]); x1 = Math.max(x1, row[k]); y0 = Math.min(y0, row[k + 1]); y1 = Math.max(y1, row[k + 1]); } boxes.push([x0, y0, x1, y1]); });
+    boxes.forEach((b, i) => { for (let x = Math.floor(b[0] / 25); x <= Math.floor(b[2] / 25); x++) for (let y = Math.floor(b[1] / 25); y <= Math.floor(b[3] / 25); y++) { const k = `${x},${y}`; (cell.get(k) || cell.set(k, []).get(k)).push(i); } });
+    const free = (x, y, m) => !(cell.get(key(x, y)) || []).some(i => { const b = boxes[i]; return x > b[0] - m && x < b[2] + m && y > b[1] - m && y < b[3] + m; }) && !room.some(z => Math.abs(x - z.x) < z.r && Math.abs(y - z.y) < z.r);
+    for (const m of [...streetProps(streets, free).children]) g.add(m);
+  }
   g.userData.meshes = g.children;
   return g;
 }
@@ -80,10 +89,11 @@ async function load(office) {
   const k = office.key; if (groups[k] || cityState.failed[k]) return;
   groups[k] = { loading: true };
   try {
-    const r = await fetch(`assets/cities/${k}.json`); if (!r.ok) throw new Error(r.status);
+    const [r, streets] = await Promise.all([fetch(`assets/cities/${k}.json`), fetch(`assets/cities/${k}-streets.json`).then(x => (x.ok ? x.json() : null)).catch(() => null)]); // streets are optional
+    if (!r.ok) throw new Error(r.status);
     const data = await r.json();
     if (!groups[k]?.loading) return; // left while loading
-    const g = enuGroup(office.lat, office.lon); g.add(buildCity(data, office));
+    const g = enuGroup(office.lat, office.lon); g.add(buildCity(data, office, streets));
     g.userData.office = office; g.userData.shown = performance.now(); g.updateMatrixWorld(true);
     scene.add(g); groups[k] = g; cityState.loaded[k] = data.b.length; cityState.onStatus?.(k, true);
   } catch { delete groups[k]; cityState.failed[k] = true; cityState.onStatus?.(k, false); }

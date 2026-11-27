@@ -20,7 +20,8 @@
     "buildings": "node scripts/fetch-buildings.mjs",
     "size": "node scripts/size.mjs",
     "cables": "node scripts/fetch-cables.mjs",
-    "roads": "node scripts/fetch-roads.mjs"
+    "roads": "node scripts/fetch-roads.mjs",
+    "streets": "node scripts/fetch-streets.mjs"
   },
   "dependencies": {
     "satellite.js": "^7.2.0",
