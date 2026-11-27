@@ -40,7 +40,8 @@ const sctx = sampler.getContext('2d', { willReadFrequently: true });
 function balance(t, img) {
   try { sctx.drawImage(img, 0, 0, SAMP, SAMP); } catch { return; }
   const d = sctx.getImageData(0, 0, SAMP, SAMP).data, lum = new Float32Array(SAMP * SAMP); let sum = 0;
-  for (let i = 0; i < lum.length; i++) { lum[i] = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]; sum += lum[i]; }
+  // tiles are decoded upside down (ImageBitmap, flipY in pump): store rows the right way up, so a child's patch of its ancestor is the right one
+  for (let i = 0; i < lum.length; i++) { const v = 0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]; lum[(SAMP - 1 - Math.floor(i / SAMP)) * SAMP + (i % SAMP)] = v; sum += v; }
   t.lum = lum; t.gain = 1;
   for (let zz = t.z - 1, k = 1; zz >= Math.max(4, t.z - 6); zz--, k++) { // nearest loaded ancestor
     const a = t.layer.cache.get(`${t.src.id}/${zz}/${t.x >> k}/${t.y >> k}`); if (!a?.lum) continue;

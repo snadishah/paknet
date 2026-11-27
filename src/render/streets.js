@@ -9,7 +9,7 @@ const TREE = [0x4f6b3a, 0x5d7a3f, 0x45603a, 0x6b7d45], CARS = [0xb8c0c6, 0x2b3a5
 const MAX = { tree: 1500, lamp: 400, car: 600 };
 
 function coloured(parts) { // [[geometry, hex], …] → one vertex-coloured geometry (metres, z up)
-  const geos = parts.map(([g, hex]) => { g = g.toNonIndexed(); g.deleteAttribute('uv'); const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) c.toArray(a, i * 3); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; });
+  const geos = parts.map(([g, hex]) => { if (g.index) g = g.toNonIndexed(); g.deleteAttribute('uv'); const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) c.toArray(a, i * 3); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; });
   const out = new THREE.BufferGeometry();
   for (const k of ['position', 'normal', 'color']) { const arr = geos.map(g => g.attributes[k].array), z = new Float32Array(arr.reduce((s, x) => s + x.length, 0)); let o = 0; for (const x of arr) { z.set(x, o); o += x.length; } out.setAttribute(k, new THREE.BufferAttribute(z, 3)); }
   return out;
