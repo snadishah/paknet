@@ -28,7 +28,7 @@ export function initPanel(ctx) {
   if (matchMedia('(min-width: 721px)').matches) setTab('overview'); else closePanel();
 
   // layers
-  ui('layerList').innerHTML = LAYER_UI.map(([g, items]) => `<h5>${g}</h5>` + items.map(([k, t]) => `<label class="chk"><input type="checkbox" data-k="${k}" ${layers[k].visible ? 'checked' : ''}><i></i>${t}</label>`).join('')).join('');
+  ui('layerList').innerHTML = LAYER_UI.map(([g, items]) => `<h3 class="h5">${g}</h3>` + items.map(([k, t]) => `<label class="chk"><input type="checkbox" data-k="${k}" ${layers[k].visible ? 'checked' : ''}><i></i>${t}</label>`).join('')).join('');
   function setLayer(k, v) {
     showLayer(layers[k], v); const i = document.querySelector(`[data-k="${k}"]`); if (i) i.checked = v; // 400 ms fade
     if (k === 'labels') labelRenderer.domElement.style.display = v ? '' : 'none';

@@ -89,7 +89,7 @@ body.panel-open #panel { transform: none; }
 .iconbtn:hover { background: var(--surface-2); color: var(--ink); }
 .pane { display: none; padding: var(--s4) var(--s4) var(--s6); overflow: auto; flex: 1; } .pane.on { display: block; }
 h2 { font-size: var(--t-lg); margin: 0 0 var(--s1); font-weight: 600; }
-h5 { margin: var(--s6) 0 var(--s2); font-size: var(--t-xs); font-weight: 600; color: var(--mute); text-transform: uppercase; letter-spacing: .07em; }
+h5, .h5 { margin: var(--s6) 0 var(--s2); font-size: var(--t-xs); font-weight: 600; color: var(--mute); text-transform: uppercase; letter-spacing: .07em; }
 .lead { color: var(--ink-2); margin: 0 0 var(--s4); } .muted { color: var(--mute); font-size: var(--t-sm); }
 .mx { display: grid; grid-template-columns: 8px 1fr 72px 32px; gap: var(--s3); align-items: center; margin: var(--s2) 0; }
 .mx i { width: 8px; height: 8px; border-radius: 50%; }
@@ -177,10 +177,10 @@ details { margin-top: 6px; } summary { cursor: pointer; font-size: var(--t-sm); 
 
 /* pop-ups (Layers, Views, Legend) */
 .pop { position: fixed; right: calc(var(--gutter) + var(--rail-w) + var(--s2)); top: 200px; width: 270px; padding: var(--s3) var(--s4); z-index: 7; display: none; max-height: calc(100vh - 220px); overflow: auto; } .pop.on { display: block; animation: in .15s; }
-.pop h5:first-child { margin-top: 2px; }
+.pop :is(h5, .h5):first-child { margin-top: 2px; }
 .chk { display: flex; align-items: center; gap: 9px; padding: 5px 0; cursor: pointer; font-size: var(--t-md); } .chk i { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid #b7c3bd; flex: none; position: relative; transition: .15s; }
 .chk input:checked + i { background: var(--acc); border-color: var(--acc); } .chk input:checked + i:after { content: ''; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-.views { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .views button { border: 1px solid var(--line); background: #fff; border-radius: 9px; padding: var(--s2); font-size: var(--t-sm); } .views button.on { border-color: var(--acc); color: var(--acc); background: var(--acc-soft); }
+.views { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } .views button { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 9px; padding: var(--s2); font-size: var(--t-sm); } .views button.on { border-color: var(--acc); color: var(--acc); background: var(--acc-soft); }
 .lg { display: flex; align-items: center; gap: 10px; font-size: var(--t-sm); padding: 3px 0; } .lg i { width: 10px; height: 10px; border-radius: 50%; margin: 0 3px; } .pop hr { border: 0; border-top: 1px solid var(--line); margin: var(--s2) 0; }
 .hint { font-size: var(--t-xs); color: var(--mute); margin-top: 10px; }
 #mapbtns { display: none; }
@@ -259,7 +259,7 @@ body.expert #insp { left: 16px; right: auto; top: 260px; }
 .ml { position: absolute; left: 0; top: 0; white-space: nowrap; font: 500 14px/1 var(--f); color: #f2f5f7; text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.6); opacity: 0; transition: opacity .3s ease; padding: 3px 6px; letter-spacing: .01em; }
 .ml.on { opacity: 1; } .ml.click { pointer-events: auto; cursor: pointer; } .ml:not(.on) { pointer-events: none !important; }
 .ml.country { font-weight: 600; letter-spacing: .14em; font-size: 14px; color: #dfe6ea; }
-.ml.hero { font-size: clamp(26px, 3.2vw, 40px); font-weight: 600; letter-spacing: .32em; color: #fff6e6; text-shadow: 0 2px 18px rgba(0,0,0,.8), 0 0 30px rgba(255,217,160,.25); }
+.ml.hero { font-size: clamp(26px, 3.2vw, 40px); font-weight: 600; letter-spacing: .32em; color: #fff6e6; text-shadow: 0 2px 18px rgba(0,0,0,.8), 0 1px 3px rgba(0,0,0,.6); }
 .ml.hero.on { opacity: var(--o, 1); }
 .ml.sea { font-style: italic; color: #9cc7e0; font-weight: 400; }
 .ml.city { font-weight: 600; font-size: 15px; } .ml.town { font-size: 14px; color: #d4dbe0; font-weight: 400; }
@@ -276,8 +276,8 @@ body.expert #insp { left: 16px; right: auto; top: 260px; }
 #intro { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 0 16px 14vh; pointer-events: none; text-align: center; transition: opacity .6s ease; }
 #intro.gone { opacity: 0; } #intro > * { pointer-events: auto; }
 #intro h1 { margin: 0 0 6px; font: 600 clamp(28px, 5vw, 52px)/1.1 var(--f); letter-spacing: .02em; color: #fff; text-shadow: 0 2px 20px rgba(0,0,0,.6); }
-#intro h1 span { display: block; font-size: .42em; font-weight: 400; color: #cfd8de; letter-spacing: .04em; margin-top: 10px; }
-#intro .go { margin-top: 28px; height: 52px; padding: 0 40px; border-radius: 26px; background: #f2f5f7; color: #0b0f14; font-size: 17px; font-weight: 600; box-shadow: 0 6px 30px rgba(143,195,230,.25); transition: transform .2s; }
+#intro h1 span { display: block; font-size: max(18px, .42em); font-weight: 400; color: #cfd8de; letter-spacing: .04em; margin-top: 10px; }
+#intro .go { margin-top: 28px; height: 52px; padding: 0 40px; border-radius: 26px; background: #f2f5f7; color: #0b0f14; font-size: 17px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: transform .2s; }
 #intro .go:hover { transform: translateY(-1px); }
 #intro .skip { margin-top: 16px; color: #b9c4cc; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; background: none; }
 /* chrome appears after Start */
@@ -330,7 +330,7 @@ body.started .chrome { opacity: 1; pointer-events: auto; }
 /* phones: the credits are one line at the very bottom (the full list is under Sources), the time bar sits just above,
    and the slow-motion note is left out so the clock and LIVE always fit */
 @media (max-width: 600px) {
-  #credits { padding: 4px 12px 6px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #credits { padding: 4px 12px 6px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #timebar, #watch { bottom: 30px !important; } #timebar .slowmo, #timebar .slowmo.on { display: none !important; }
 }
 /* loading indicator: shows while imagery, buildings or data are still arriving */
@@ -340,7 +340,7 @@ body.started .chrome { opacity: 1; pointer-events: auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) { #busy { bottom: auto; top: 16px; left: auto; right: 16px; width: 32px; padding: 0; justify-content: center; } #busy .txt { display: none; } }
 @media (prefers-reduced-motion: reduce) { #busy .ring { animation-duration: 2.4s; } }
-@media (max-width: 600px) { #credits { font-size: 11px; padding: 4px 10px 6px; } }
+@media (max-width: 600px) { #credits { font-size: 12px; padding: 4px 10px 6px; } }
 #hint { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 11; padding: 10px 16px; font-size: 15px; max-width: calc(100vw - 32px); text-align: center; opacity: 0; transition: opacity .4s; pointer-events: none; }
 #hint.on { opacity: 1; }
 body.expert #infocard { right: auto; left: 16px; top: 72px; }
@@ -461,7 +461,7 @@ body.expert #panel { top: var(--top); bottom: auto; height: auto; max-height: ca
 body.expert #panel .pane { flex: 1 1 auto; min-height: 0; }
 body.expert #trace { top: auto; bottom: var(--above-dock); max-height: calc(100vh - 160px - var(--above-dock)); }
 /* story bubbles step aside (fade) when a panel would cover them: labels.js sets .covered */
-.callout.covered { opacity: 0 !important; transition: opacity .25s ease; pointer-events: none; }
+.callout.covered { opacity: 0 !important; transition: none !important; pointer-events: none; }
 /* ---------- Design system (round 3 review): one scale for bars, cards, buttons, type and states ---------- */
 :root { --edge: 16px; --bar-h: 50px; --stack-top: calc(var(--edge) + var(--bar-h) + 8px); --top: var(--stack-top); --card-w: 380px; --card-pad: 20px; }
 /* surfaces: bars are pills, cards 16 px, rows inside them 10 px; a hairline highlight on top of every glass surface */
@@ -606,9 +606,9 @@ kbd { font: 600 12px/1 var(--f); padding: 2px 6px; border-radius: 5px; backgroun
   <section class="pane on" id="pane-overview">
     <p class="lead">Each dot is a bundle of traffic (0.1 Gbit), queued and forwarded by a simulated network. Most international traffic goes through a few landing stations on Karachi's coast, then out on submarine cables.</p>
     <div id="mix"></div>
-    <h5>Stories</h5>
+    <h3 class="h5">Stories</h3>
     <div id="storyList"></div>
-    <h5>Explore</h5>
+    <h3 class="h5">Explore</h3>
     <button class="action" data-go="route"><span class="ic"><svg class="ico"><use href="#i-route"/></svg></span><div><b>Trace a route</b><small>Gilgit to Europe, hop by hop</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
     <p class="foot">Borders from Natural Earth; city positions from GeoNames (443 places). Which ISP runs which route isn't public, so the network here is representative, not exact.</p>
   </section>
@@ -632,7 +632,7 @@ kbd { font: 600 12px/1 var(--f); padding: 2px 6px; border-radius: 5px; backgroun
     <div class="fld"><label>Optimise for</label><select id="rmetric"><option value="latency">Lowest latency</option><option value="hops">Fewest hops</option><option value="cost">Lowest cost</option></select></div>
     <div class="row" style="margin-top:12px"><button class="btn" id="btnTrace">Trace route</button><button class="btn ghost sm" id="btnSwap" title="Swap" aria-label="Swap from and to"><svg class="ico"><use href="#i-swap"/></svg></button><button class="btn ghost sm" id="btnClearRoute" title="Clear the route highlight">Clear</button></div>
     <div id="rres"></div>
-    <div id="ctiWrap" style="display:none"><h5>Count-to-infinity (real RIP)</h5>
+    <div id="ctiWrap" style="display:none"><h3 class="h5">Count-to-infinity (real RIP)</h3>
     <button class="action amber" id="btnCTI"><span class="ic"><svg class="ico"><use href="#i-infinity"/></svg></span><div><b>Cut Nok Kundi–Taftan</b><small>Taftan and the Iran link lose their only path. Watch the routers count to 16.</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
     <label class="crow"><div><b>Split horizon</b><small>Don't advertise a route back to where it came from</small></div><span class="tog"><input type="checkbox" id="dvSH"><i></i></span></label>
     <label class="crow"><div><b>Poison reverse</b><small>Advertise it back as 16 instead</small></div><span class="tog"><input type="checkbox" id="dvPR"><i></i></span></label>
@@ -650,7 +650,7 @@ kbd { font: 600 12px/1 var(--f); padding: 2px 6px; border-radius: 5px; backgroun
     <button class="action amber" data-scen="kkh"><span class="ic"><svg class="ico"><use href="#i-mountain"/></svg></span><div><b>Landslide on the KKH</b><small>Gilgit-Baltistan switches to microwave</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
     <button class="action green" data-scen="gwadar" id="scGwadar"><span class="ic"><svg class="ico"><use href="#i-anchor"/></svg></span><div><b>What if Gwadar had a landing?</b><small>Planned second gateway</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
     <button class="btn ghost" data-scen="restore" style="margin-top:10px">Restore everything</button>
-    <h5>Submarine cables</h5>
+    <h3 class="h5">Submarine cables</h3>
     <div id="cablelist"></div>
     <div class="fld" style="margin-top:14px"><label>Routing protocol</label><select id="falgo"><option value="OSPF">OSPF · simulated link state</option><option value="RIP">RIP · simulated distance vector</option><option value="BGP">BGP · convergence timing mocked</option></select></div>
     <div class="fld" id="detectFld"><label>How OSPF routers notice a failure</label><select id="fdetect"><option value="carrier">Loss of light · about 50 ms</option><option value="hello">Hellos stop · 40 s dead interval</option></select></div>
@@ -665,9 +665,9 @@ kbd { font: 600 12px/1 var(--f); padding: 2px 6px; border-radius: 5px; backgroun
     <button class="action red" id="btnHijack"><span class="ic"><svg class="ico"><use href="#i-flag"/></svg></span><div><b>BGP prefix hijack</b><small>Replay of the 2008 PTCL / YouTube incident</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
     <button class="action red" id="btnDDoS"><span class="ic"><svg class="ico"><use href="#i-wave"/></svg></span><div><b>DDoS on a Lahore data centre</b><small>Detect, divert to scrubbing, recover</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
     <button class="action red" id="btnMal"><span class="ic"><svg class="ico"><use href="#i-phone"/></svg></span><div><b>Compromised phones</b><small>Self-protecting devices, adaptive access control</small></div><svg class="ico go"><use href="#i-next"/></svg></button>
-    <h5>Alerts</h5>
+    <h3 class="h5">Alerts</h3>
     <div id="alerts"><p class="muted empty">Run a scenario. Then switch defence off and run it again to compare.</p></div>
-    <div id="bgpBox" style="display:none"><h5>What each network believes · <span id="bgpClock"></span></h5><p class="muted" style="margin:-4px 0 8px">Route each network uses for YouTube's address 208.65.153.238 (longest-prefix match). Relationships are CAIDA inferences; world regions are aggregates.</p><div id="bgpTable"></div></div>
+    <div id="bgpBox" style="display:none"><h3 class="h5">What each network believes · <span id="bgpClock"></span></h3><p class="muted" style="margin:-4px 0 8px">Route each network uses for YouTube's address 208.65.153.238 (longest-prefix match). Relationships are CAIDA inferences; world regions are aggregates.</p><div id="bgpTable"></div></div>
   </section>
 
   <section class="pane" id="pane-metrics">
@@ -677,7 +677,7 @@ kbd { font: 600 12px/1 var(--f); padding: 2px 6px; border-radius: 5px; backgroun
       <div class="chart"><label>Packet loss</label><b id="mLoss">—</b><canvas id="cLoss"></canvas></div>
       <div class="chart"><label>Convergence</label><b id="mConv">—</b><canvas id="cConv"></canvas></div>
     </div>
-    <h5>Cable utilisation</h5><div id="cutil"></div>
+    <h3 class="h5">Cable utilisation</h3><div id="cutil"></div>
     <p class="foot">Measured from the simulation: bundles of 0.1 Gbit on links with representative capacities, FIFO queues and tail drop. Convergence time is measured for OSPF and RIP, and still mocked for BGP.</p>
   </section>
 </aside>
@@ -702,7 +702,7 @@ kbd { font: 600 12px/1 var(--f); padding: 2px 6px; border-radius: 5px; backgroun
   <button class="btn ghost" id="btnTour" style="margin-top:8px">Auto tour</button>
   <p class="hint">Drag to pan · right-drag to tilt · scroll to zoom · click anything on the map.</p>
 </div>
-<div id="popLegend" class="pop card"><h5>Packets</h5><div id="legendList"></div></div>
+<div id="popLegend" class="pop card"><h3 class="h5">Packets</h3><div id="legendList"></div></div>
 
 <div id="notice" class="card" role="dialog" aria-label="About this map"><b>A representative network</b><p>Pakistan's operators don't publish their internal networks. Cable landings, exchanges and incidents come from public sources; the corridors inside the country follow highways and are illustrative.</p><div class="row"><button class="btn sm" id="noticeOk">Got it</button><button class="btn ghost sm" id="noticeMore">Sources</button></div></div>
 <div id="about" aria-hidden="true"><div class="ab-card card" role="dialog" aria-label="About and sources"><div class="phead"><h2>About &amp; sources</h2><button class="iconbtn" id="aboutClose" aria-label="Close"><svg class="ico"><use href="#i-close"/></svg></button></div><div class="ab-body" id="aboutBody"></div></div></div>

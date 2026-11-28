@@ -73,6 +73,9 @@ export function updateLabels(layers) {
     const covered = [...panelBoxes, ...bubbleBoxes].some(o => r.left < o[2] && r.right > o[0] && r.top < o[3] && r.bottom > o[1]) || r.left < 8 || r.right > innerWidth - 8 || r.top < 8 || r.bottom > innerHeight - 8;
     el.classList.toggle('covered', covered); if (!covered) { const b = [r.left - 4, r.top - 4, r.right + 4, r.bottom + 4]; boxes.push(b); bubbleBoxes.push(b); } // a later bubble that would overlap this one waits
   }
+  // labels still fading out (0.3 s) keep their space, so a new label never fades in on top of one
+  const now = performance.now();
+  for (const l of labels) if (!l.on && !l.cut && l.lastBox && now - l.offAt < 350) boxes.push(l.lastBox);
   for (const l of labels) {
     let want = labelState.enabled && range >= l.minR && range <= l.maxR && (!l.layer || layers[l.layer]?.visible !== false) && !labelState.quiet;
     if (labelState.extra) { const x = labelState.extra(l); if (x != null) want = x; }
@@ -100,11 +103,11 @@ export function updateLabels(layers) {
       if (want) {
         const w = l.mw || l.w, h = l.mh || l.h, mt = l.mt || 0, b = [sx - w / 2 - 3, sy - h + mt - 3, sx + w / 2 + 3, sy + mt + 3];
         for (const o of boxes) if (b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]) { want = false; blocked = true; break; }
-        if (want) boxes.push(b);
+        if (want) { boxes.push(b); l.lastBox = b; }
       }
     }
     if (want) { shown++; l.el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) translate(-50%, -100%)`; if (l.fade) l.el.style.setProperty('--o', THREE.MathUtils.smoothstep(range, l.fade[0], l.fade[1]).toFixed(3)); }
-    if (want !== l.on) { l.on = want; l.el.classList.toggle('on', want); }
+    if (want !== l.on) { l.on = want; l.el.classList.toggle('on', want); if (!want) l.offAt = now; }
     if (blocked !== !!l.cut) { l.cut = blocked; l.el.classList.toggle('cut', blocked); }
   }
   void alt;

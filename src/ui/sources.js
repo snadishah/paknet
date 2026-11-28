@@ -21,14 +21,14 @@ export function initSources() {
 
   ui('aboutBody').innerHTML = `
     <section class="ab-note"><b>Representative topology.</b> Pakistan's operators don't publish their internal networks. Corridors here follow motorways and national highways, and which operator runs each one is illustrative. Cable landings, exchanges, the China fibre, the satellite and the 2008 and 2021 incidents come from public sources. Link capacities inside Pakistan, and attack volumes, are labelled assumptions.</section>
-    <h5>What is simulated</h5>
+    <h3 class="h5">What is simulated</h3>
     <p>Traffic moves as discrete events over links with capacity, delay, FIFO queues and tail drop; each moving dot is a 0.1 Gbit bundle. OSPF and RIP run as real protocols; BGP models 16 networks with inferred business relationships; the adaptive defence is a MAPE-K loop. All figures on screen are measured from the simulation. Time is compressed: packets 2 ms per second on screen; routing on its own faster clocks.</p>
-    <h5>Data and software</h5>
+    <h3 class="h5">Data and software</h3>
     <ul class="ab-libs">${LIBS.map(([n, l, u]) => `<li><a href="${u}" target="_blank" rel="noopener">${n}</a><span>${l}</span></li>`).join('')}</ul>
-    <h5>Sources (${count})</h5>
+    <h3 class="h5">Sources (${count})</h3>
     <p class="muted">Every fact, parameter and incident is listed with its source, status and notes in <code>docs/REFERENCES.md</code>. Pages accessed 21 November 2026.</p>
     ${groups.map(g => `<details class="ab-group"><summary>${esc(g.title)} <span class="muted">(${g.items.length})</span></summary><ol>${g.items.map(i => `<li><b>${i.id}</b> ${esc(i.text)}${i.url ? ` <a href="${i.url}" target="_blank" rel="noopener">link</a>` : ''}</li>`).join('')}</ol></details>`).join('')}
-    <h5>Course</h5>
+    <h3 class="h5">Course</h3>
     <p>Computer Networks, SEECS, NUST. The adaptive defence is inspired by Ms. Maryam Sajjad's published work on adaptive security and self-protection for mobile computing; it is not an implementation of it.</p>`;
 
   const open = () => { ui('about').classList.add('on'); ui('about').setAttribute('aria-hidden', 'false'); };
