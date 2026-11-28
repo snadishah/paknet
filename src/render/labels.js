@@ -61,7 +61,7 @@ function behindEarth(p) {
 }
 addEventListener('resize', () => { for (const l of labels) l.mw = 0; }); // sizes change with the window (the hero title scales)
 export function updateLabels(layers) {
-  if ((frameNo++ & 1) === 1) return; // every other frame is plenty
+  frameNo++; // every frame: a panel that appears hides the labels under it in the same frame it is first drawn
   const range = pose.range + (pose.alt || 0), alt = altitudeKm; boxes.length = 0; let shown = 0; // orbiting a point in space (PakSat): count its height too
   // open panels count as taken space: a label never hides half under a card or a bar
   // (fixed panels have no offsetParent, so visibility is read from their style: that check used to skip them all)
@@ -82,7 +82,7 @@ export function updateLabels(layers) {
       if (l.extraVisible && !l.extraVisible()) want = false;
       else if (behindEarth(l.pos)) want = false;
     }
-    let sx = 0, sy = 0;
+    let sx = 0, sy = 0, blocked = false; // blocked: a panel or another label is in the way: vanish at once, never fade on top of it
     if (want) {
       v.copy(l.pos).project(camera);
       if (v.z > 1) want = false;
@@ -99,12 +99,13 @@ export function updateLabels(layers) {
       }
       if (want) {
         const w = l.mw || l.w, h = l.mh || l.h, mt = l.mt || 0, b = [sx - w / 2 - 3, sy - h + mt - 3, sx + w / 2 + 3, sy + mt + 3];
-        for (const o of boxes) if (b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]) { want = false; break; }
+        for (const o of boxes) if (b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]) { want = false; blocked = true; break; }
         if (want) boxes.push(b);
       }
     }
     if (want) { shown++; l.el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) translate(-50%, -100%)`; if (l.fade) l.el.style.setProperty('--o', THREE.MathUtils.smoothstep(range, l.fade[0], l.fade[1]).toFixed(3)); }
     if (want !== l.on) { l.on = want; l.el.classList.toggle('on', want); }
+    if (blocked !== !!l.cut) { l.cut = blocked; l.el.classList.toggle('cut', blocked); }
   }
   void alt;
 }

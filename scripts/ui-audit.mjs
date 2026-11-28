@@ -125,7 +125,7 @@ for (const [w, h] of SIZES) {
     await page.waitForTimeout(nm.startsWith('scenario') || nm === 'watch' ? 4500 : 3500);
     const issues = await page.evaluate(audit);
     (report[tag] ||= {})[nm] = issues;
-    await page.screenshot({ path: `.verify/ui/${tag}-${nm}.png` });
+    await page.screenshot({ path: `.verify/ui/${tag}-${nm}.png`, timeout: 60000 }).catch(e => console.warn(`${tag} ${nm}: no screenshot (${e.message.split('\n')[0]})`)); // a slow frame is not a layout problem
   }
   if (errors.length) report[tag].pageErrors = errors.slice(0, 5);
   await page.close();

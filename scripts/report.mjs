@@ -39,7 +39,9 @@ const H1 = t => new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new 
 const H2 = t => new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(t)] });
 const bullet = t => new Paragraph({ numbering: { reference: 'bullets', level: 0 }, spacing: { after: 60 }, children: runs(t) });
 const caption = t => new Paragraph({ spacing: { before: 60, after: 200 }, children: [new TextRun({ text: t, italics: true, size: 18, color: '52514E' })] });
-const figure = (file, w = 600, h = 230) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120 }, children: [new ImageRun({ type: 'png', data: readFileSync(join(root, 'docs/results', file)), transformation: { width: w, height: h } })] });
+// a chart from docs/results, or a screenshot from docs/evidence (jpg)
+const figure = (file, w = 600, h = 230) => new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120 }, keepNext: true, children: [new ImageRun({ type: file.endsWith('.jpg') ? 'jpg' : 'png', data: readFileSync(join(root, file.includes('/') ? file : join('docs/results', file))), transformation: { width: w, height: h } })] });
+const shot = f => figure('docs/evidence/round3/' + f, 600, 375);
 function table(header, rows, widths) {
   const total = widths.reduce((a, b) => a + b, 0), scale = W / total, cols = widths.map(w => Math.round(w * scale));
   cols[cols.length - 1] += W - cols.reduce((a, b) => a + b, 0);
@@ -74,7 +76,7 @@ const body = [
 
   H1('1. Introduction'),
   P('Almost all of Pakistan\'s international internet traffic leaves through submarine cables that land on one stretch of coast near Karachi. That makes the country a clear case study for a networks course: a single point of failure, a handful of operators, a national backbone along the highways, and a well-documented history of incidents, from cable cuts to the 2008 YouTube hijack that started in Pakistan.'),
-  P('PAKNET is an interactive three.js simulation of that network. It began as a visual proof of concept with scripted behaviour. This report describes the version in which the behaviour is simulated: traffic moves as discrete events through links with real capacity, delay and queues; OSPF, RIP and BGP run as protocols; and an adaptive defence detects and answers attacks. Every number the app shows is measured from the simulation, and every fact and parameter is traced to a source or labelled as an assumption in the project\'s reference document (docs/REFERENCES.md).'),
+  P('PAKNET is an interactive three.js simulation of that network, shown on a 3D globe that zooms from space down to a street in Karachi. It began as a visual proof of concept with scripted behaviour. This report describes the version in which the behaviour is simulated: traffic moves as discrete events through links with real capacity, delay and queues; OSPF, RIP and BGP run as protocols; and an adaptive defence detects and answers attacks. Every number the app shows is measured from the simulation, and every fact and parameter is traced to a source or labelled as an assumption in the project\'s reference document (docs/REFERENCES.md).'),
 
   H1('2. Method'),
   H2('2.1 Geography and topology'),
@@ -89,8 +91,13 @@ const body = [
   bullet('**BGP.** Sixteen autonomous systems: seven Pakistani operators, four international carriers, YouTube, Facebook and three aggregated world regions, with relationships inferred by CAIDA. Preference customer > peer > provider, shortest AS path, valley-free export (Gao–Rexford), MRAI 30 s (RFC 4271), optional customer prefix filters and RPKI origin validation (RFC 6811), longest-prefix-match forwarding.'),
   H2('2.4 Adaptive defence'),
   P('The defence is a MAPE-K loop (Kephart and Chess, 2003). Monitor: flow telemetry of every bundle as it enters the network, and BGP routes seen from the carriers and world regions. Analyse: an EWMA z-score on each protected destination\'s inbound volume, the entropy of where that traffic comes from (after Lakhina et al., 2005), the regularity of connection gaps (beaconing) and RPKI origin validation. Plan and Execute: divert traffic to a scrubbing centre, quarantine devices with step-up authentication, or ask the carriers to deploy origin validation. No timer decides anything; with the defence off, the same attack goes unanswered.'),
-  H2('2.5 Presentation and verification'),
-  P('Six guided stories replay real incidents (2008 YouTube hijack, the January 2025 AAE-1 fault, the 2025 Red Sea cuts, the 2021 Facebook withdrawal) and two illustrative defence cases, with each step acting on the live simulation and citing its source. The simulation, routing and defence code has 69 automated tests (Vitest). The results in section 4 come from a headless script with seeded random numbers, so they are repeatable (npm run experiment).'),
+  H2('2.5 The 3D globe'),
+  P('The network is drawn on a globe in real coordinates (kilometres, Earth-centred). From space it shows NASA\'s Blue and Black Marble images with the day–night line at the real time; below about 1,500 km it cross-fades to satellite photographs (Esri World Imagery with a key, Sentinel-2 cloudless without one), sharp down to street level. The simulator\'s flat topology is mapped onto the globe at draw time only, so lengths and delays in the model are unchanged.'),
+  bullet('**Cables to real landing points.** The nine submarine cables follow their TeleGeography routes (CC BY-NC-SA 3.0) from Karachi to Marseille, Toulon, Penmarch, Singapore, Hong Kong, Mumbai, Mombasa and Fujairah; the land links continue along the roads to Kashgar, Kabul, Kandahar and Zahedan. Parcels ride on to the destination at the cable\'s own speed.'),
+  bullet('**Representative 3D models, built in code.** Landing stations, internet exchanges, data centres, satellite ground stations aimed at PakSat-MM1, telecom exchanges, the KKH microwave towers, the Khunjerab border post, the five illustrative offices with a network room whose rack lights follow live traffic, and PakSat-MM1 and the retired PakSat-1R (shown enlarged from far away, true size up close). City buildings, streets, trees, lamps and parked cars come from OpenStreetMap around each office. Every model is labelled representative; nothing is a licensed third-party asset.'),
+  bullet('**Light and close-up detail.** Filmic tone mapping, soft sun shadows near the ground, building windows lit at night, fibre trenches with marker posts beside the roads.'),
+  H2('2.6 Presentation and verification'),
+  P('Ten scenarios replay real incidents (the 2008 YouTube hijack, the January 2025 AAE-1 fault, the 2025 Red Sea cuts, a landslide on the Karakoram Highway, the 2021 Facebook withdrawal) and illustrative attack and routing cases, with each step acting on the live simulation; cuts are marked in 3D at the real fault positions. "Watch the story" plays a 15-chapter film with captions that needs no input, and a short tour introduces the controls. The code has 163 automated tests (Vitest). A headless browser check (npm run verify) opens the app at laptop and phone size and checks start-up time, draw calls (at most 150), console errors, a continuous zoom from space to the street, every scenario and the whole film; a layout audit (scripts/ui-audit.mjs) visits 26 states at four laptop sizes and reports any text that overlaps, is cut off or leaves the window. The results in section 4 come from a headless script with seeded random numbers, so they are repeatable (npm run experiment).'),
 
   H1('3. Assumptions and sources'),
   P('docs/REFERENCES.md checks every fact against primary sources (operators, regulators, registries, RFCs, incident post-mortems, papers) and records the source of every model parameter. Table 1 lists the items whose status affects what the app shows; Table 2 lists the parameters of the model.'),
@@ -137,23 +144,34 @@ const body = [
   P(`The loop detects the flood ${dd.on.detectMs} ms of network time after it begins, from a volume z-score and a jump in source entropy, and diverts it to the scrubbing centre at ${dd.on.responseMs} ms. Peak loss falls from ${dd.off.peakLossPct}% to ${dd.on.peakLossPct}% and average loss from ${dd.off.meanLossPct}% to ${dd.on.meanLossPct}%. Loss does not fall to zero: the flood still crosses the submarine cables to reach Karachi, so scrubbing on land cannot relieve congestion on the cables themselves; that would need scrubbing upstream, abroad.`),
   P(`Compromised phones beaconing every 0.1 ms of network time were detected after ${R.defence.beacon.detectMs} ms (gap variation near 0%) and quarantined. Over ${R.defence.falsePositives.networkMs} ms of a normal evening with the loop watching, it raised ${R.defence.falsePositives.alarms} false alarms.`),
 
+  H2('4.7 The interactive app'),
+  P('Figures 7 to 12 show the app at 1440 × 900 pixels. Every view was checked by the layout audit (no overlapping, clipped or out-of-window text at 1280 × 720, 1440 × 900, 1536 × 864 and 1920 × 1080) and by the browser check.'),
+  shot('pakistan.jpg'), caption('Figure 7. Pakistan from space: the national backbone, the cables leaving Karachi and the land links to China, Afghanistan and Iran.'),
+  shot('paksat-close.jpg'), caption('Figure 8. PakSat-MM1 up close (representative model of its DFH-4E platform), with the Earth behind it.'),
+  shot('karachi-office-street-life.jpg'), caption('Figure 9. The illustrative Karachi office among OpenStreetMap buildings and streets, on Esri satellite imagery.'),
+  shot('aae1-scenario.jpg'), caption('Figure 10. The AAE-1 cable fault of January 2025: the broken cable in red, its fault marked near Qatar, and the scenario card with live measurements.'),
+  shot('watch.jpg'), caption('Figure 11. "Watch the story": a chapter of the film, following a real parcel with the route card filling in hop by hop.'),
+  shot('marseille-landing-station.jpg'), caption('Figure 12. Where a cable from Karachi lands abroad: the representative landing station at Marseille, on satellite imagery.'),
+
   H1('5. Limitations'),
   bullet('The internal topology, domestic link capacities, operator market shares and attack volumes are assumptions (Table 2). Results show mechanisms and orders of magnitude, not forecasts.'),
   bullet('A bundle stands for 0.1 Gbit, so behaviour below that granularity (individual TCP flows, congestion control) is not modelled. Routing protocols run on their own compressed clocks, faster than packet time.'),
   bullet('BGP sessions are not mapped onto individual cables: inter-domain convergence after a cable cut is still a timer, and normal international traffic chooses its cable by operator and capacity.'),
   bullet('Detectors see sources as entry points and cities rather than addresses, so the entropy threshold is lower than real deployments would use. Defence runs are seeded and repeatable, but with one seed.'),
   bullet('In the model, YouTube\'s /25s also override PTCL\'s own internal block; in reality the ban inside Pakistan continued.'),
+  bullet('The 3D models are representative, not surveyed; the five offices and their server destinations are illustrative; the routes of SEA-ME-WE 6 and 2Africa\'s Pakistan branch, and AAE-1\'s branch into the Gulf, are drawn approximately. Satellites are shown enlarged from far away so they can be seen.'),
+  bullet('Street-level photographs need an ArcGIS key; without one the close-up imagery stops at about 10 m per pixel.'),
   bullet('Some facts remain open: whether 2Africa carries traffic for Pakistan, SMW6\'s service status, total international capacity (sources range from 13 to 17.7 Tbps) and the current activity of the PKIX exchanges.'),
 
   H1('6. Link to the instructor\'s research'),
   P('Ms. Maryam Sajjad\'s published work studies adaptive security and self-protection for mobile computing, and self-adaptation in access-control models. PAKNET applies the same principles at network scale: a monitor–analyse–plan–execute loop over shared knowledge, responses that change with context, and a compromised-phones scenario answered with quarantine and step-up authentication, which is adaptive access control. PAKNET is inspired by that work; it is not an implementation of her framework. Her publication list should be confirmed with her before it is cited.'),
 
   H1('7. Conclusion'),
-  P('Replacing the scripted proof of concept with a simulation changed what the app can say. The single landing city is not just a fact on a slide: losing one cable measurably congests the operator that owns it, and losing all of them leaves a 0.45 Tbps fibre for a country. Count-to-infinity, split horizon\'s limits, OSPF black holes and the 2008 hijack all emerge from the protocol rules rather than from animation, and the adaptive defence can be compared, with numbers, against doing nothing.'),
+  P('Replacing the scripted proof of concept with a simulation changed what the app can say. The single landing city is not just a fact on a slide: losing one cable measurably congests the operator that owns it, and losing all of them leaves a 0.45 Tbps fibre for a country. Count-to-infinity, split horizon\'s limits, OSPF black holes and the 2008 hijack all emerge from the protocol rules rather than from animation, and the adaptive defence can be compared, with numbers, against doing nothing. Drawing it all on a globe, from the cables\' landing points abroad down to an office\'s network room, lets a student follow one message the whole way and see where it can fail.'),
 
   new Paragraph({ children: [new PageBreak()] }),
   H1('References'),
-  P('All web pages accessed 21 November 2026. Status, notes and the facts each source supports are in docs/REFERENCES.md.', { run: { size: 18 } }),
+  P('All web pages accessed 21–27 November 2026. Status, notes and the facts each source supports are in docs/REFERENCES.md.', { run: { size: 18 } }),
   ...sources().map(([id, text]) => new Paragraph({ spacing: { after: 60 }, children: [new TextRun({ text: id + '  ', bold: true, size: 17 }), new TextRun({ text, size: 17 })] }))
 ];
 
